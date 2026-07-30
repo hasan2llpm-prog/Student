@@ -1,6 +1,5 @@
 /* =========================================================
    Student - Settings System
-   الإعدادات
 ========================================================= */
 
 (function () {
@@ -11,44 +10,20 @@
 
 
     /* =====================================================
-       أدوات عامة
+       أدوات
     ===================================================== */
 
-    function openPanel(title, content) {
-
-        if (
-            typeof window.showFloatingPanel !==
-            "function"
-        ) {
-            console.error(
-                "showFloatingPanel غير متاح."
-            );
-            return;
-        }
-
-        window.showFloatingPanel(
-            title,
-            content
-        );
-    }
-
-
     function getSupabase() {
-
-        if (
-            typeof supabaseClient !==
-            "undefined" &&
+        return (
+            typeof supabaseClient !== "undefined" &&
             supabaseClient
-        ) {
-            return supabaseClient;
-        }
-
-        return null;
+        )
+            ? supabaseClient
+            : null;
     }
 
 
-    function escapeHTML(value) {
-
+    function esc(value) {
         return String(value || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -59,31 +34,107 @@
 
 
     /* =====================================================
-       الإعدادات الرئيسية
+       فتح نافذة إعدادات ثابتة
+    ===================================================== */
+
+    function openSettingsPanel(title, content) {
+
+        if (
+            typeof window.showFloatingPanel !==
+            "function"
+        ) {
+            return;
+        }
+
+        window.showFloatingPanel(
+            title,
+            content
+        );
+
+        /*
+           منع إغلاق الإعدادات عند الضغط على
+           الخلفية، لكن السماح بزر × بالعمل.
+        */
+
+        const panel =
+            document.getElementById(
+                "floating-panel"
+            );
+
+        if (!panel) return;
+
+        panel.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target === panel
+                ) {
+                    event.stopPropagation();
+                }
+
+            },
+            true
+        );
+    }
+
+
+    /* =====================================================
+       زر الرجوع
+    ===================================================== */
+
+    function backToSettings() {
+        openSettings();
+    }
+
+
+    function closeSettings() {
+
+        if (
+            typeof window.closeFloatingPanel ===
+            "function"
+        ) {
+            window.closeFloatingPanel();
+            return;
+        }
+
+        const panel =
+            document.getElementById(
+                "floating-panel"
+            );
+
+        if (panel) {
+            panel.remove();
+        }
+    }
+
+
+    /* =====================================================
+       الرئيسية
     ===================================================== */
 
     function openSettings() {
 
-        const items = [
+        const sections = [
 
             {
-                id: "settings-account",
+                id: "account",
                 icon: "fa-regular fa-user",
                 title: "الحساب",
-                text: "الاسم والبريد وكلمة المرور",
+                text: "البريد الإلكتروني وكلمة المرور",
                 action: openAccountSettings
             },
 
             {
-                id: "settings-privacy",
+                id: "privacy",
                 icon: "fa-solid fa-lock",
                 title: "الخصوصية",
-                text: "إعدادات خصوصية الحساب",
+                text: "خصوصية الحساب",
                 action: openPrivacySettings
             },
 
             {
-                id: "settings-notifications",
+                id: "notifications",
                 icon: "fa-regular fa-bell",
                 title: "الإشعارات",
                 text: "التحكم بالإشعارات",
@@ -91,26 +142,26 @@
             },
 
             {
-                id: "settings-appearance",
+                id: "appearance",
                 icon: "fa-solid fa-palette",
                 title: "المظهر",
-                text: "الوضع الفاتح والداكن",
+                text: "فاتح أو داكن أو حسب الجهاز",
                 action: openAppearanceSettings
             },
 
             {
-                id: "settings-language",
+                id: "language",
                 icon: "fa-solid fa-language",
                 title: "اللغة",
-                text: "لغة التطبيق",
+                text: "لغة واجهة التطبيق",
                 action: openLanguageSettings
             },
 
             {
-                id: "settings-security",
+                id: "security",
                 icon: "fa-solid fa-shield-halved",
                 title: "الأمان",
-                text: "الجلسات وتسجيل الخروج",
+                text: "إدارة جلسات تسجيل الدخول",
                 action: openSecuritySettings
             }
 
@@ -118,31 +169,30 @@
 
 
         const html =
-            items.map(function (item) {
+            sections.map(function (item) {
 
                 return `
                     <button
                         type="button"
-                        data-settings-id="${item.id}"
+                        data-setting="${item.id}"
                         style="
                             width:100%;
                             border:none;
                             background:#f7f8fa;
-                            padding:15px;
-                            border-radius:14px;
+                            padding:14px;
+                            border-radius:15px;
                             text-align:right;
-                            font-size:15px;
-                            cursor:pointer;
                             display:flex;
                             align-items:center;
                             gap:13px;
                             direction:rtl;
+                            cursor:pointer;
                         "
                     >
 
                         <div style="
-                            width:40px;
-                            height:40px;
+                            width:42px;
+                            height:42px;
                             border-radius:12px;
                             background:#eaf5ff;
                             color:#0095f6;
@@ -150,6 +200,7 @@
                             align-items:center;
                             justify-content:center;
                             flex-shrink:0;
+                            font-size:17px;
                         ">
                             <i class="${item.icon}"></i>
                         </div>
@@ -159,14 +210,15 @@
                             <div style="
                                 font-weight:700;
                                 color:#222;
+                                font-size:15px;
                             ">
                                 ${item.title}
                             </div>
 
                             <div style="
                                 margin-top:4px;
-                                font-size:12px;
                                 color:#888;
+                                font-size:12px;
                             ">
                                 ${item.text}
                             </div>
@@ -188,7 +240,7 @@
             }).join("");
 
 
-        openPanel(
+        openSettingsPanel(
             "الإعدادات",
             `
             <div style="
@@ -202,21 +254,66 @@
         );
 
 
-        items.forEach(function (item) {
+        sections.forEach(function (item) {
 
-            const button =
-                document.querySelector(
-                    `[data-settings-id="${item.id}"]`
-                );
-
-            if (button) {
-
-                button.addEventListener(
+            document
+                .querySelector(
+                    `[data-setting="${item.id}"]`
+                )
+                ?.addEventListener(
                     "click",
                     item.action
                 );
-            }
+
         });
+    }
+
+
+    /* =====================================================
+       رأس الصفحات الداخلية
+    ===================================================== */
+
+    function pageHeader(title) {
+
+        return `
+            <button
+                id="settings-back"
+                type="button"
+                style="
+                    border:none;
+                    background:#f1f3f5;
+                    width:40px;
+                    height:40px;
+                    border-radius:50%;
+                    cursor:pointer;
+                    font-size:17px;
+                    color:#333;
+                "
+            >
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+
+            <div style="
+                font-size:19px;
+                font-weight:700;
+                color:#222;
+            ">
+                ${title}
+            </div>
+        `;
+    }
+
+
+    function bindBackButton() {
+
+        document
+            .getElementById(
+                "settings-back"
+            )
+            ?.addEventListener(
+                "click",
+                backToSettings
+            );
     }
 
 
@@ -229,109 +326,121 @@
         const client =
             getSupabase();
 
-        if (!client) {
-            return;
+        let email = "";
+
+        if (client) {
+
+            try {
+
+                const result =
+                    await client.auth.getUser();
+
+                email =
+                    result?.data?.user?.email ||
+                    "";
+
+            } catch (error) {
+
+                console.error(
+                    "User error:",
+                    error
+                );
+            }
         }
 
 
-        let user = null;
-
-
-        try {
-
-            const result =
-                await client.auth.getUser();
-
-            user =
-                result?.data?.user ||
-                null;
-
-        } catch (error) {
-
-            console.error(
-                "Get user error:",
-                error
-            );
-        }
-
-
-        const email =
-            user?.email ||
-            "";
-
-
-        openPanel(
+        openSettingsPanel(
             "الحساب",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
+            <div>
 
-                <button
-                    id="settings-email-btn"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    <strong>
-                        تغيير البريد الإلكتروني
-                    </strong>
-
-                    <div style="
-                        margin-top:5px;
-                        color:#888;
-                        font-size:12px;
-                        direction:ltr;
-                        text-align:right;
-                    ">
-                        ${escapeHTML(email)}
-                    </div>
-                </button>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("الحساب")}
+                </div>
 
 
-                <button
-                    id="settings-password-btn"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    <strong>
-                        تغيير كلمة المرور
-                    </strong>
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:10px;
+                ">
 
-                    <div style="
-                        margin-top:5px;
-                        color:#888;
-                        font-size:12px;
-                    ">
-                        تحديث كلمة مرور الحساب
-                    </div>
-                </button>
+                    <button
+                        id="change-email"
+                        type="button"
+                        style="
+                            width:100%;
+                            border:none;
+                            background:#f7f8fa;
+                            padding:15px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+
+                        <strong>
+                            تغيير البريد الإلكتروني
+                        </strong>
+
+                        <div style="
+                            margin-top:5px;
+                            font-size:12px;
+                            color:#888;
+                            direction:ltr;
+                            text-align:right;
+                        ">
+                            ${esc(email)}
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        id="change-password"
+                        type="button"
+                        style="
+                            width:100%;
+                            border:none;
+                            background:#f7f8fa;
+                            padding:15px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+
+                        <strong>
+                            تغيير كلمة المرور
+                        </strong>
+
+                        <div style="
+                            margin-top:5px;
+                            font-size:12px;
+                            color:#888;
+                        ">
+                            تحديث كلمة مرور الحساب
+                        </div>
+
+                    </button>
+
+                </div>
 
             </div>
             `
         );
 
+        bindBackButton();
+
 
         document
             .getElementById(
-                "settings-email-btn"
+                "change-email"
             )
             ?.addEventListener(
                 "click",
@@ -341,7 +450,7 @@
 
         document
             .getElementById(
-                "settings-password-btn"
+                "change-password"
             )
             ?.addEventListener(
                 "click",
@@ -359,71 +468,88 @@
         const client =
             getSupabase();
 
-        if (!client) {
-            return;
-        }
+        if (!client) return;
 
 
-        openPanel(
-            "تغيير البريد الإلكتروني",
+        openSettingsPanel(
+            "تغيير البريد",
             `
-            <form
-                id="change-email-form"
-                style="
+            <div>
+
+                <div style="
                     display:flex;
-                    flex-direction:column;
-                    gap:12px;
-                "
-            >
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader(
+                        "تغيير البريد الإلكتروني"
+                    )}
+                </div>
 
-                <input
-                    id="new-email"
-                    type="email"
-                    placeholder="البريد الإلكتروني الجديد"
-                    required
+
+                <form
+                    id="email-form"
                     style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:13px;
-                        border:1px solid #ddd;
-                        border-radius:11px;
-                        outline:none;
-                        direction:ltr;
+                        display:flex;
+                        flex-direction:column;
+                        gap:12px;
                     "
                 >
 
-                <button
-                    type="submit"
-                    id="change-email-submit"
-                    style="
-                        border:none;
-                        background:#0095f6;
-                        color:#fff;
-                        padding:13px;
-                        border-radius:11px;
-                        cursor:pointer;
-                    "
-                >
-                    حفظ
-                </button>
+                    <input
+                        id="new-email"
+                        type="email"
+                        placeholder="البريد الإلكتروني الجديد"
+                        required
+                        style="
+                            width:100%;
+                            box-sizing:border-box;
+                            padding:13px;
+                            border:1px solid #ddd;
+                            border-radius:11px;
+                            direction:ltr;
+                        "
+                    >
 
-                <div
-                    id="change-email-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        font-size:13px;
-                    "
-                ></div>
 
-            </form>
+                    <button
+                        type="submit"
+                        id="email-save"
+                        style="
+                            border:none;
+                            background:#0095f6;
+                            color:#fff;
+                            padding:13px;
+                            border-radius:11px;
+                            cursor:pointer;
+                        "
+                    >
+                        حفظ
+                    </button>
+
+
+                    <div
+                        id="email-message"
+                        style="
+                            min-height:20px;
+                            text-align:center;
+                            font-size:13px;
+                        "
+                    ></div>
+
+                </form>
+
+            </div>
             `
         );
+
+        bindBackButton();
 
 
         document
             .getElementById(
-                "change-email-form"
+                "email-form"
             )
             ?.addEventListener(
                 "submit",
@@ -436,30 +562,21 @@
                             .getElementById(
                                 "new-email"
                             )
-                            ?.value
+                            .value
                             .trim();
 
                     const message =
-                        document
-                            .getElementById(
-                                "change-email-message"
-                            );
+                        document.getElementById(
+                            "email-message"
+                        );
 
                     const button =
-                        document
-                            .getElementById(
-                                "change-email-submit"
-                            );
+                        document.getElementById(
+                            "email-save"
+                        );
 
 
-                    if (!email) {
-                        return;
-                    }
-
-
-                    button.disabled =
-                        true;
-
+                    button.disabled = true;
                     button.textContent =
                         "جارٍ الحفظ...";
 
@@ -473,40 +590,32 @@
                                 email: email
                             });
 
-
                         if (error) {
                             throw error;
                         }
-
 
                         message.style.color =
                             "#16803c";
 
                         message.textContent =
-                            "تم الطلب. قد يطلب منك تأكيد البريد الجديد عبر رسالة بريد إلكتروني.";
+                            "تم إرسال طلب تأكيد البريد الإلكتروني.";
 
                     } catch (error) {
-
-                        console.error(
-                            "Email update error:",
-                            error
-                        );
 
                         message.style.color =
                             "#d93025";
 
                         message.textContent =
                             error?.message ||
-                            "تعذر تغيير البريد الإلكتروني.";
+                            "تعذر تغيير البريد.";
 
                     } finally {
 
-                        button.disabled =
-                            false;
-
+                        button.disabled = false;
                         button.textContent =
                             "حفظ";
                     }
+
                 }
             );
     }
@@ -521,87 +630,99 @@
         const client =
             getSupabase();
 
-        if (!client) {
-            return;
-        }
+        if (!client) return;
 
 
-        openPanel(
-            "تغيير كلمة المرور",
+        openSettingsPanel(
+            "كلمة المرور",
             `
-            <form
-                id="change-password-form"
-                style="
+            <div>
+
+                <div style="
                     display:flex;
-                    flex-direction:column;
-                    gap:12px;
-                "
-            >
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader(
+                        "تغيير كلمة المرور"
+                    )}
+                </div>
 
-                <input
-                    id="new-password"
-                    type="password"
-                    placeholder="كلمة المرور الجديدة"
-                    minlength="6"
-                    required
+
+                <form
+                    id="password-form"
                     style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:13px;
-                        border:1px solid #ddd;
-                        border-radius:11px;
-                        outline:none;
+                        display:flex;
+                        flex-direction:column;
+                        gap:12px;
                     "
                 >
 
-                <input
-                    id="new-password-confirm"
-                    type="password"
-                    placeholder="تأكيد كلمة المرور"
-                    minlength="6"
-                    required
-                    style="
-                        width:100%;
-                        box-sizing:border-box;
-                        padding:13px;
-                        border:1px solid #ddd;
-                        border-radius:11px;
-                        outline:none;
-                    "
-                >
+                    <input
+                        id="password-new"
+                        type="password"
+                        minlength="6"
+                        placeholder="كلمة المرور الجديدة"
+                        required
+                        style="
+                            padding:13px;
+                            border:1px solid #ddd;
+                            border-radius:11px;
+                        "
+                    >
 
-                <button
-                    type="submit"
-                    id="change-password-submit"
-                    style="
-                        border:none;
-                        background:#0095f6;
-                        color:#fff;
-                        padding:13px;
-                        border-radius:11px;
-                        cursor:pointer;
-                    "
-                >
-                    تحديث كلمة المرور
-                </button>
 
-                <div
-                    id="change-password-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        font-size:13px;
-                    "
-                ></div>
+                    <input
+                        id="password-confirm"
+                        type="password"
+                        minlength="6"
+                        placeholder="تأكيد كلمة المرور"
+                        required
+                        style="
+                            padding:13px;
+                            border:1px solid #ddd;
+                            border-radius:11px;
+                        "
+                    >
 
-            </form>
+
+                    <button
+                        type="submit"
+                        id="password-save"
+                        style="
+                            border:none;
+                            background:#0095f6;
+                            color:white;
+                            padding:13px;
+                            border-radius:11px;
+                        "
+                    >
+                        تحديث
+                    </button>
+
+
+                    <div
+                        id="password-message"
+                        style="
+                            min-height:20px;
+                            text-align:center;
+                            font-size:13px;
+                        "
+                    ></div>
+
+                </form>
+
+            </div>
             `
         );
+
+        bindBackButton();
 
 
         document
             .getElementById(
-                "change-password-form"
+                "password-form"
             )
             ?.addEventListener(
                 "submit",
@@ -609,39 +730,28 @@
 
                     event.preventDefault();
 
-
                     const password =
-                        document
-                            .getElementById(
-                                "new-password"
-                            )
-                            ?.value;
-
+                        document.getElementById(
+                            "password-new"
+                        ).value;
 
                     const confirm =
-                        document
-                            .getElementById(
-                                "new-password-confirm"
-                            )
-                            ?.value;
-
+                        document.getElementById(
+                            "password-confirm"
+                        ).value;
 
                     const message =
-                        document
-                            .getElementById(
-                                "change-password-message"
-                            );
-
+                        document.getElementById(
+                            "password-message"
+                        );
 
                     const button =
-                        document
-                            .getElementById(
-                                "change-password-submit"
-                            );
+                        document.getElementById(
+                            "password-save"
+                        );
 
 
                     if (
-                        !password ||
                         password.length < 6
                     ) {
 
@@ -670,9 +780,7 @@
                     }
 
 
-                    button.disabled =
-                        true;
-
+                    button.disabled = true;
                     button.textContent =
                         "جارٍ التحديث...";
 
@@ -683,14 +791,13 @@
                             error
                         } =
                             await client.auth.updateUser({
-                                password: password
+                                password:
+                                    password
                             });
-
 
                         if (error) {
                             throw error;
                         }
-
 
                         message.style.color =
                             "#16803c";
@@ -699,11 +806,6 @@
                             "تم تحديث كلمة المرور بنجاح.";
 
                     } catch (error) {
-
-                        console.error(
-                            "Password update error:",
-                            error
-                        );
 
                         message.style.color =
                             "#d93025";
@@ -714,12 +816,11 @@
 
                     } finally {
 
-                        button.disabled =
-                            false;
-
+                        button.disabled = false;
                         button.textContent =
-                            "تحديث كلمة المرور";
+                            "تحديث";
                     }
+
                 }
             );
     }
@@ -729,14 +830,10 @@
        الخصوصية
     ===================================================== */
 
-    async function openPrivacySettings() {
+    function openPrivacySettings() {
 
-        const client =
-            getSupabase();
-
-        let currentStatus =
+        let status =
             "public";
-
 
         if (
             typeof currentProfile !==
@@ -744,20 +841,26 @@
             currentProfile
         ) {
 
-            currentStatus =
+            status =
                 currentProfile.account_status ||
                 "public";
         }
 
 
-        openPanel(
+        openSettingsPanel(
             "الخصوصية",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:12px;
-            ">
+            <div>
+
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("الخصوصية")}
+                </div>
+
 
                 <div style="
                     background:#f7f8fa;
@@ -773,38 +876,25 @@
                     </div>
 
                     <select
-                        id="privacy-account-status"
+                        id="account-privacy"
                         style="
                             width:100%;
-                            box-sizing:border-box;
                             padding:12px;
                             border:1px solid #ddd;
                             border-radius:10px;
-                            background:#fff;
-                            font-size:14px;
                         "
                     >
 
                         <option
                             value="public"
-                            ${
-                                currentStatus ===
-                                "public"
-                                    ? "selected"
-                                    : ""
-                            }
+                            ${status === "public" ? "selected" : ""}
                         >
                             حساب عام
                         </option>
 
                         <option
                             value="private"
-                            ${
-                                currentStatus ===
-                                "private"
-                                    ? "selected"
-                                    : ""
-                            }
+                            ${status === "private" ? "selected" : ""}
                         >
                             حساب خاص
                         </option>
@@ -815,25 +905,28 @@
 
 
                 <button
-                    id="privacy-save-button"
+                    id="privacy-save"
                     type="button"
                     style="
+                        width:100%;
                         border:none;
                         background:#0095f6;
-                        color:#fff;
+                        color:white;
                         padding:13px;
                         border-radius:11px;
-                        cursor:pointer;
+                        margin-top:12px;
                     "
                 >
-                    حفظ إعدادات الخصوصية
+                    حفظ
                 </button>
+
 
                 <div
                     id="privacy-message"
                     style="
-                        text-align:center;
                         min-height:20px;
+                        text-align:center;
+                        margin-top:10px;
                         font-size:13px;
                     "
                 ></div>
@@ -842,41 +935,32 @@
             `
         );
 
+        bindBackButton();
+
 
         document
             .getElementById(
-                "privacy-save-button"
+                "privacy-save"
             )
             ?.addEventListener(
                 "click",
                 async function () {
 
-                    if (!client) {
-                        return;
-                    }
+                    const client =
+                        getSupabase();
 
-
-                    const status =
-                        document
-                            .getElementById(
-                                "privacy-account-status"
-                            )
-                            ?.value;
-
+                    const newStatus =
+                        document.getElementById(
+                            "account-privacy"
+                        ).value;
 
                     const message =
-                        document
-                            .getElementById(
-                                "privacy-message"
-                            );
+                        document.getElementById(
+                            "privacy-message"
+                        );
 
 
                     try {
-
-                        /*
-                           نستخدم RPC الموجودة
-                           في مشروعك لتغيير حالة الحساب.
-                        */
 
                         const {
                             data,
@@ -886,34 +970,26 @@
                                 "set_account_status",
                                 {
                                     p_status:
-                                        status
+                                        newStatus
                                 }
                             );
-
 
                         if (error) {
                             throw error;
                         }
 
-
                         if (
-                            data !==
-                            "public" &&
-                            data !==
-                            "private"
+                            data !== "public" &&
+                            data !== "private"
                         ) {
-
                             throw new Error(
-                                "تعذر تحديث خصوصية الحساب."
+                                "تعذر تحديث الخصوصية."
                             );
                         }
-
 
                         if (
                             typeof loadProfile ===
                             "function" &&
-                            typeof currentUser !==
-                            "undefined" &&
                             currentUser
                         ) {
 
@@ -922,26 +998,20 @@
                             );
                         }
 
-
                         message.style.color =
                             "#16803c";
 
                         message.textContent =
-                            "تم حفظ إعدادات الخصوصية.";
+                            "تم حفظ الخصوصية.";
 
                     } catch (error) {
-
-                        console.error(
-                            "Privacy settings error:",
-                            error
-                        );
 
                         message.style.color =
                             "#d93025";
 
                         message.textContent =
                             error?.message ||
-                            "تعذر حفظ إعدادات الخصوصية.";
+                            "تعذر حفظ الخصوصية.";
                     }
                 }
             );
@@ -954,48 +1024,51 @@
 
     function openNotificationSettings() {
 
-        const saved =
+        const stored =
             localStorage.getItem(
                 "student_notifications_enabled"
             );
 
-
         const enabled =
-            saved !== "false";
+            stored !== "false";
 
 
-        openPanel(
+        openSettingsPanel(
             "الإشعارات",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
+            <div>
 
                 <div style="
                     display:flex;
                     align-items:center;
-                    justify-content:space-between;
-                    padding:15px;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("الإشعارات")}
+                </div>
+
+
+                <div style="
                     background:#f7f8fa;
+                    padding:16px;
                     border-radius:14px;
+                    display:flex;
+                    align-items:center;
+                    justify-content:space-between;
                 ">
 
                     <div>
 
-                        <div style="
-                            font-weight:700;
-                        ">
+                        <strong>
                             إشعارات التطبيق
-                        </div>
+                        </strong>
 
                         <div style="
-                            margin-top:4px;
-                            font-size:12px;
                             color:#888;
+                            font-size:12px;
+                            margin-top:4px;
                         ">
-                            الإشعارات والتنبيهات
+                            تشغيل أو إيقاف تنبيهات التطبيق
                         </div>
 
                     </div>
@@ -1003,25 +1076,21 @@
 
                     <label style="
                         position:relative;
-                        width:48px;
-                        height:27px;
+                        width:50px;
+                        height:28px;
                     ">
 
                         <input
-                            id="student-notifications-toggle"
+                            id="notification-toggle"
                             type="checkbox"
-                            ${
-                                enabled
-                                    ? "checked"
-                                    : ""
-                            }
+                            ${enabled ? "checked" : ""}
                             style="
                                 display:none;
                             "
                         >
 
                         <span
-                            id="student-notifications-slider"
+                            id="notification-switch"
                             style="
                                 position:absolute;
                                 inset:0;
@@ -1041,10 +1110,11 @@
 
 
                 <div
-                    id="notifications-settings-message"
+                    id="notification-message"
                     style="
                         text-align:center;
                         min-height:20px;
+                        margin-top:10px;
                         font-size:13px;
                     "
                 ></div>
@@ -1053,63 +1123,51 @@
             `
         );
 
+        bindBackButton();
+
 
         const toggle =
             document.getElementById(
-                "student-notifications-toggle"
+                "notification-toggle"
             );
 
-
-        const slider =
+        const switchElement =
             document.getElementById(
-                "student-notifications-slider"
+                "notification-switch"
             );
-
 
         const message =
             document.getElementById(
-                "notifications-settings-message"
+                "notification-message"
             );
 
 
-        if (
-            toggle &&
-            slider
-        ) {
+        toggle?.addEventListener(
+            "change",
+            function () {
 
-            toggle.addEventListener(
-                "change",
-                function () {
+                const value =
+                    toggle.checked;
 
-                    const isEnabled =
-                        toggle.checked;
+                localStorage.setItem(
+                    "student_notifications_enabled",
+                    String(value)
+                );
 
+                switchElement.style.background =
+                    value
+                        ? "#0095f6"
+                        : "#ccc";
 
-                    localStorage.setItem(
-                        "student_notifications_enabled",
-                        String(isEnabled)
-                    );
+                message.style.color =
+                    "#16803c";
 
-
-                    slider.style.background =
-                        isEnabled
-                            ? "#0095f6"
-                            : "#ccc";
-
-
-                    if (message) {
-
-                        message.style.color =
-                            "#16803c";
-
-                        message.textContent =
-                            isEnabled
-                                ? "تم تفعيل الإشعارات."
-                                : "تم إيقاف الإشعارات.";
-                    }
-                }
-            );
-        }
+                message.textContent =
+                    value
+                        ? "تم تفعيل الإشعارات."
+                        : "تم إيقاف الإشعارات.";
+            }
+        );
     }
 
 
@@ -1117,96 +1175,151 @@
        المظهر
     ===================================================== */
 
+    function applyTheme(theme) {
+
+        if (
+            theme !== "light" &&
+            theme !== "dark" &&
+            theme !== "system"
+        ) {
+            theme = "light";
+        }
+
+        localStorage.setItem(
+            "student_theme",
+            theme
+        );
+
+
+        document.documentElement
+            .setAttribute(
+                "data-student-theme",
+                theme
+            );
+
+
+        if (theme === "dark") {
+
+            document.documentElement
+                .style
+                .colorScheme =
+                "dark";
+
+        } else if (
+            theme === "light"
+        ) {
+
+            document.documentElement
+                .style
+                .colorScheme =
+                "light";
+
+        } else {
+
+            document.documentElement
+                .style
+                .colorScheme =
+                "normal";
+        }
+    }
+
+
     function openAppearanceSettings() {
 
-        const currentTheme =
+        const current =
             localStorage.getItem(
                 "student_theme"
             ) ||
             "light";
 
 
-        openPanel(
+        openSettingsPanel(
             "المظهر",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
+            <div>
 
-                <button
-                    type="button"
-                    data-theme="light"
-                    style="
-                        width:100%;
-                        border:2px solid ${
-                            currentTheme ===
-                            "light"
-                                ? "#0095f6"
-                                : "transparent"
-                        };
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    ☀️ الوضع الفاتح
-                </button>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("المظهر")}
+                </div>
 
 
-                <button
-                    type="button"
-                    data-theme="dark"
-                    style="
-                        width:100%;
-                        border:2px solid ${
-                            currentTheme ===
-                            "dark"
-                                ? "#0095f6"
-                                : "transparent"
-                        };
-                        background:#222;
-                        color:#fff;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    🌙 الوضع الداكن
-                </button>
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:10px;
+                ">
+
+                    <button
+                        data-theme="light"
+                        style="
+                            border:2px solid ${
+                                current === "light"
+                                    ? "#0095f6"
+                                    : "transparent"
+                            };
+                            background:#f7f8fa;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+                        ☀️ الوضع الفاتح
+                    </button>
 
 
-                <button
-                    type="button"
-                    data-theme="system"
-                    style="
-                        width:100%;
-                        border:2px solid ${
-                            currentTheme ===
-                            "system"
-                                ? "#0095f6"
-                                : "transparent"
-                        };
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    📱 حسب الجهاز
-                </button>
+                    <button
+                        data-theme="dark"
+                        style="
+                            border:2px solid ${
+                                current === "dark"
+                                    ? "#0095f6"
+                                    : "transparent"
+                            };
+                            background:#222;
+                            color:white;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+                        🌙 الوضع الداكن
+                    </button>
+
+
+                    <button
+                        data-theme="system"
+                        style="
+                            border:2px solid ${
+                                current === "system"
+                                    ? "#0095f6"
+                                    : "transparent"
+                            };
+                            background:#f7f8fa;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+                        📱 حسب الجهاز
+                    </button>
+
+                </div>
 
 
                 <div
-                    id="theme-settings-message"
+                    id="theme-message"
                     style="
                         text-align:center;
                         min-height:20px;
+                        margin-top:10px;
                         color:#16803c;
                         font-size:13px;
                     "
@@ -1215,6 +1328,8 @@
             </div>
             `
         );
+
+        bindBackButton();
 
 
         document
@@ -1230,81 +1345,31 @@
                         const theme =
                             button.dataset.theme;
 
+                        applyTheme(theme);
 
-                        localStorage.setItem(
-                            "student_theme",
-                            theme
-                        );
-
-
-                        applyTheme(
-                            theme
-                        );
-
-
-                        const message =
-                            document.getElementById(
-                                "theme-settings-message"
+                        document
+                            .querySelectorAll(
+                                "[data-theme]"
+                            )
+                            .forEach(
+                                function (item) {
+                                    item.style.borderColor =
+                                        item.dataset.theme ===
+                                        theme
+                                            ? "#0095f6"
+                                            : "transparent";
+                                }
                             );
 
-
-                        if (message) {
-
-                            message.textContent =
-                                "تم حفظ المظهر.";
-                        }
-
+                        document
+                            .getElementById(
+                                "theme-message"
+                            )
+                            .textContent =
+                            "تم حفظ المظهر.";
                     }
                 );
-
             });
-    }
-
-
-    /* =====================================================
-       تطبيق المظهر
-    ===================================================== */
-
-    function applyTheme(theme) {
-
-        if (
-            theme !== "dark" &&
-            theme !== "light" &&
-            theme !== "system"
-        ) {
-            theme = "light";
-        }
-
-
-        if (theme === "dark") {
-
-            document.documentElement
-                .setAttribute(
-                    "data-student-theme",
-                    "dark"
-                );
-
-            return;
-        }
-
-
-        if (theme === "light") {
-
-            document.documentElement
-                .setAttribute(
-                    "data-student-theme",
-                    "light"
-                );
-
-            return;
-        }
-
-
-        document.documentElement
-            .setAttribute(
-                "data-student-theme",
-                "system"
-            );
     }
 
 
@@ -1314,135 +1379,139 @@
 
     function openLanguageSettings() {
 
-        openPanel(
+        const current =
+            localStorage.getItem(
+                "student_language"
+            ) ||
+            "ar";
+
+
+        openSettingsPanel(
             "اللغة",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
+            <div>
 
-                <button
-                    id="student-language-ar"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:2px solid #0095f6;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    🇮🇶 العربية
-                </button>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("اللغة")}
+                </div>
 
 
-                <button
-                    id="student-language-en"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:2px solid transparent;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-                    🇬🇧 English
-                </button>
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:10px;
+                ">
+
+                    <button
+                        data-language="ar"
+                        style="
+                            border:2px solid ${
+                                current === "ar"
+                                    ? "#0095f6"
+                                    : "transparent"
+                            };
+                            background:#f7f8fa;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                        "
+                    >
+                        🇮🇶 العربية
+                    </button>
 
 
-                <div
-                    style="
-                        color:#888;
-                        font-size:12px;
-                        text-align:center;
-                        padding-top:5px;
-                    "
-                >
-                    دعم اللغة الإنجليزية سيُستكمل
-                    في مرحلة لاحقة.
+                    <button
+                        data-language="en"
+                        style="
+                            border:2px solid ${
+                                current === "en"
+                                    ? "#0095f6"
+                                    : "transparent"
+                            };
+                            background:#f7f8fa;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                        "
+                    >
+                        🇬🇧 English
+                    </button>
+
+                </div>
+
+
+                <div style="
+                    color:#888;
+                    text-align:center;
+                    font-size:12px;
+                    margin-top:12px;
+                ">
+                    الترجمة الإنجليزية الكاملة
+                    ستُستكمل مع دعم اللغات.
                 </div>
 
             </div>
             `
         );
 
-
-        document
-            .getElementById(
-                "student-language-ar"
-            )
-            ?.addEventListener(
-                "click",
-                function () {
-
-                    localStorage.setItem(
-                        "student_language",
-                        "ar"
-                    );
-
-                    document.documentElement
-                        .lang = "ar";
-
-                    document.documentElement
-                        .dir = "rtl";
-
-                    openSettings();
-                }
-            );
+        bindBackButton();
 
 
         document
-            .getElementById(
-                "student-language-en"
+            .querySelectorAll(
+                "[data-language]"
             )
-            ?.addEventListener(
-                "click",
-                function () {
+            .forEach(
+                function (button) {
 
-                    localStorage.setItem(
-                        "student_language",
-                        "en"
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            const language =
+                                button.dataset.language;
+
+                            localStorage.setItem(
+                                "student_language",
+                                language
+                            );
+
+
+                            document.documentElement
+                                .lang =
+                                language;
+
+                            document.documentElement
+                                .dir =
+                                language === "en"
+                                    ? "ltr"
+                                    : "rtl";
+
+
+                            document
+                                .querySelectorAll(
+                                    "[data-language]"
+                                )
+                                .forEach(
+                                    function (
+                                        item
+                                    ) {
+
+                                        item.style.borderColor =
+                                            item.dataset.language ===
+                                            language
+                                                ? "#0095f6"
+                                                : "transparent";
+                                    }
+                                );
+                        }
                     );
 
-                    document.documentElement
-                        .lang = "en";
-
-                    document.documentElement
-                        .dir = "ltr";
-
-                    openPanel(
-                        "English",
-                        `
-                        <div style="
-                            text-align:center;
-                            padding:25px 10px;
-                        ">
-                            <div style="
-                                font-size:45px;
-                                margin-bottom:12px;
-                            ">
-                                🇬🇧
-                            </div>
-
-                            <p style="
-                                color:#777;
-                                line-height:1.8;
-                                margin:0;
-                            ">
-                                سيتم استكمال ترجمة
-                                واجهة Student
-                                إلى الإنجليزية لاحقًا.
-                            </p>
-                        </div>
-                        `
-                    );
                 }
             );
     }
@@ -1454,83 +1523,92 @@
 
     function openSecuritySettings() {
 
-        openPanel(
+        openSettingsPanel(
             "الأمان",
             `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
+            <div>
 
-                <button
-                    id="student-signout-others"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
-
-                    <div style="
-                        font-weight:700;
-                    ">
-                        تسجيل الخروج من الأجهزة الأخرى
-                    </div>
-
-                    <div style="
-                        margin-top:5px;
-                        color:#888;
-                        font-size:12px;
-                    ">
-                        يبقى هذا الجهاز متصلًا
-                    </div>
-
-                </button>
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:10px;
+                    margin-bottom:18px;
+                ">
+                    ${pageHeader("الأمان")}
+                </div>
 
 
-                <button
-                    id="student-signout-all"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#fff2f2;
-                        color:#d93025;
-                        padding:15px;
-                        border-radius:14px;
-                        text-align:right;
-                        cursor:pointer;
-                    "
-                >
+                <div style="
+                    display:flex;
+                    flex-direction:column;
+                    gap:10px;
+                ">
 
-                    <div style="
-                        font-weight:700;
-                    ">
-                        تسجيل الخروج من جميع الأجهزة
-                    </div>
+                    <button
+                        id="signout-others"
+                        type="button"
+                        style="
+                            border:none;
+                            background:#f7f8fa;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
 
-                    <div style="
-                        margin-top:5px;
-                        color:#c77777;
-                        font-size:12px;
-                    ">
-                        يشمل هذا الجهاز أيضًا
-                    </div>
+                        <strong>
+                            تسجيل الخروج من الأجهزة الأخرى
+                        </strong>
 
-                </button>
+                        <div style="
+                            color:#888;
+                            font-size:12px;
+                            margin-top:5px;
+                        ">
+                            يبقى هذا الجهاز متصلًا
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        id="signout-all"
+                        type="button"
+                        style="
+                            border:none;
+                            background:#fff2f2;
+                            color:#d93025;
+                            padding:16px;
+                            border-radius:14px;
+                            text-align:right;
+                            cursor:pointer;
+                        "
+                    >
+
+                        <strong>
+                            تسجيل الخروج من جميع الأجهزة
+                        </strong>
+
+                        <div style="
+                            color:#c77777;
+                            font-size:12px;
+                            margin-top:5px;
+                        ">
+                            يشمل هذا الجهاز أيضًا
+                        </div>
+
+                    </button>
+
+                </div>
 
 
                 <div
-                    id="security-settings-message"
+                    id="security-message"
                     style="
                         text-align:center;
                         min-height:20px;
+                        margin-top:10px;
                         font-size:13px;
                     "
                 ></div>
@@ -1539,158 +1617,110 @@
             `
         );
 
-
-        document
-            .getElementById(
-                "student-signout-others"
-            )
-            ?.addEventListener(
-                "click",
-                signOutOtherDevices
-            );
+        bindBackButton();
 
 
         document
             .getElementById(
-                "student-signout-all"
+                "signout-others"
             )
             ?.addEventListener(
                 "click",
-                signOutAllDevices
+                async function () {
+
+                    const client =
+                        getSupabase();
+
+                    const message =
+                        document.getElementById(
+                            "security-message"
+                        );
+
+
+                    try {
+
+                        const {
+                            error
+                        } =
+                            await client.auth.signOut({
+                                scope: "others"
+                            });
+
+                        if (error) {
+                            throw error;
+                        }
+
+                        message.style.color =
+                            "#16803c";
+
+                        message.textContent =
+                            "تم تسجيل الخروج من الأجهزة الأخرى.";
+
+                    } catch (error) {
+
+                        message.style.color =
+                            "#d93025";
+
+                        message.textContent =
+                            error?.message ||
+                            "تعذر تنفيذ العملية.";
+                    }
+
+                }
+            );
+
+
+        document
+            .getElementById(
+                "signout-all"
+            )
+            ?.addEventListener(
+                "click",
+                async function () {
+
+                    const confirmed =
+                        window.confirm(
+                            "هل أنت متأكد أنك تريد تسجيل الخروج من جميع الأجهزة؟"
+                        );
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+
+                    const client =
+                        getSupabase();
+
+                    if (!client) {
+                        return;
+                    }
+
+
+                    const {
+                        error
+                    } =
+                        await client.auth.signOut();
+
+
+                    if (error) {
+
+                        console.error(
+                            error
+                        );
+
+                        return;
+                    }
+
+                }
             );
     }
 
 
     /* =====================================================
-       تسجيل الخروج من الأجهزة الأخرى
+       تحميل المظهر واللغة المحفوظين
     ===================================================== */
 
-    async function signOutOtherDevices() {
-
-        const client =
-            getSupabase();
-
-        const message =
-            document.getElementById(
-                "security-settings-message"
-            );
-
-
-        if (!client) {
-            return;
-        }
-
-
-        try {
-
-            const {
-                error
-            } =
-                await client.auth.signOut({
-                    scope: "others"
-                });
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            if (message) {
-
-                message.style.color =
-                    "#16803c";
-
-                message.textContent =
-                    "تم تسجيل الخروج من الأجهزة الأخرى.";
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Sign out others error:",
-                error
-            );
-
-            if (message) {
-
-                message.style.color =
-                    "#d93025";
-
-                message.textContent =
-                    error?.message ||
-                    "تعذر تسجيل الخروج من الأجهزة الأخرى.";
-            }
-        }
-    }
-
-
-    /* =====================================================
-       تسجيل الخروج من جميع الأجهزة
-    ===================================================== */
-
-    async function signOutAllDevices() {
-
-        const client =
-            getSupabase();
-
-
-        if (!client) {
-            return;
-        }
-
-
-        const confirmed =
-            window.confirm(
-                "هل أنت متأكد أنك تريد تسجيل الخروج من جميع الأجهزة؟"
-            );
-
-
-        if (!confirmed) {
-            return;
-        }
-
-
-        try {
-
-            const {
-                error
-            } =
-                await client.auth.signOut();
-
-
-            if (error) {
-                throw error;
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Global sign out error:",
-                error
-            );
-
-            openPanel(
-                "خطأ",
-                `
-                <div style="
-                    text-align:center;
-                    padding:25px 10px;
-                    color:#d93025;
-                ">
-                    تعذر تسجيل الخروج من جميع الأجهزة.
-                </div>
-                `
-            );
-        }
-    }
-
-
-    /* =====================================================
-       تحميل المظهر المحفوظ
-    ===================================================== */
-
-    function loadSavedSettings() {
+    function loadStoredPreferences() {
 
         const theme =
             localStorage.getItem(
@@ -1698,10 +1728,7 @@
             ) ||
             "light";
 
-
-        applyTheme(
-            theme
-        );
+        applyTheme(theme);
 
 
         const language =
@@ -1715,7 +1742,6 @@
             .lang =
             language;
 
-
         document.documentElement
             .dir =
             language === "en"
@@ -1728,40 +1754,17 @@
        الدوال العامة
     ===================================================== */
 
-    window.openStudentSettings =
-        openSettings;
-
     window.showSettingsPanel =
         openSettings;
 
-    window.applyStudentTheme =
-        applyTheme;
+    window.openStudentSettings =
+        openSettings;
 
 
     /* =====================================================
-       بدء النظام
+       تشغيل
     ===================================================== */
 
-    function startSettings() {
-
-        loadSavedSettings();
-
-    }
-
-
-    if (
-        document.readyState ===
-        "loading"
-    ) {
-
-        document.addEventListener(
-            "DOMContentLoaded",
-            startSettings
-        );
-
-    } else {
-
-        startSettings();
-    }
+    loadStoredPreferences();
 
 })();
