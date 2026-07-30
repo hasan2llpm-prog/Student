@@ -1,7 +1,7 @@
 {
   "app_url": "https://student-b1v.pages.dev/",
   "supabase_url": "https://mlcbixsyizsuxxfjwrym.supabase.co",
-  "supabase_key": "Sb_publishable_DDvBmb3o1x_VfArVUg-mzw_nbsR7rRA",
+  "supabase_key": "sb_publishable_DDvBmb3o1x_VfArVUg-mzw_nbsR7rRA",
   "version": "1.0.0",
   "environment": "production"
 }
