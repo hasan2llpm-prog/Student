@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0095f6">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <!-- الهيدر العلوي -->
+    <header>
+        <div class="header-icons">
+            <i class="fa-regular fa-bell"></i>
+            <span class="badge">3</span>
+        </div>
+        <div class="logo">Student</div>
+        <div class="header-icons">
+            <i class="fa-solid fa-bars"></i>
+        </div>
+    </header>
+
+    <!-- شريط الستوريات -->
+    <div class="stories-container">
+        <div class="story add-story">
+            <div class="story-ring"><i class="fa-solid fa-plus" style="color: #0095f6;"></i></div>
+            <span class="story-name">إضافة ستوري</span>
+        </div>
+        <div class="story">
+            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')"></div></div>
+            <span class="story-name">قصتي</span>
+        </div>
+        <div class="story">
+            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1519681393784-d120267933ba')"></div></div>
+            <span class="story-name">Ahmed</span>
+        </div>
+        <div class="story">
+            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05')"></div></div>
+            <span class="story-name">Sara</span>
+        </div>
+        <div class="story">
+            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1426604966848-d7adacbd02bff')"></div></div>
+            <span class="story-name">Khalid</span>
+        </div>
+    </div>
+
+    <!-- البطاقات الأربع الرئيسية -->
+    <div class="main-content">
+        <div class="cards-grid">
+            <div class="card" onclick="openStage('primary')">
+                <div class="card-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+                <div class="card-title">الابتدائي</div>
+            </div>
+            <div class="card" onclick="openStage('middle')">
+                <div class="card-icon"><i class="fa-solid fa-school"></i></div>
+                <div class="card-title">الإعدادي</div>
+            </div>
+            <div class="card" onclick="openStage('secondary')">
+                <div class="card-icon"><i class="fa-solid fa-building-columns"></i></div>
+                <div class="card-title">الثانوي</div>
+            </div>
+            <div class="card" onclick="openStage('university')">
+                <div class="card-icon"><i class="fa-solid fa-university"></i></div>
+                <div class="card-title">الجامعة</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- شريط التنقل السفلي -->
+    <nav>
+        <a href="#" class="active"><i class="fa-solid fa-house"></i></a>
+        <a href="#"><i class="fa-solid fa-magnifying-glass"></i></a>
+        <a href="#"><i class="fa-regular fa-square-plus"></i></a>
+        <a href="#"><i class="fa-regular fa-paper-plane"></i></a>
+        <a href="#"><i class="fa-regular fa-user"></i></a>
+    </nav>
+
+    <script src="app.js"></script>
+</body>
+</html>
