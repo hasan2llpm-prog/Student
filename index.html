@@ -1,210 +1,513 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width,
-                   initial-scale=1.0,
-                   maximum-scale=1.0,
-                   user-scalable=no">
-
-    <meta name="theme-color" content="#2563eb">
-
-    <meta name="description"
-          content="منصة تعليمية للطلاب العراقيين">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Student</title>
 
-
-    <!-- CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0095f6">
 
-
-    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-</head>
+    <style>
+        /* =========================
+           شاشة المصادقة
+        ========================= */
 
+        #auth-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #ffffff;
+        }
+
+        .auth-box {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border: 1px solid #dbdbdb;
+            border-radius: 16px;
+            padding: 28px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+        }
+
+        .auth-logo {
+            text-align: center;
+            font-size: 34px;
+            font-weight: bold;
+            color: #0095f6;
+            font-style: italic;
+            font-family: cursive;
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .auth-title {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #262626;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid #d5d5d5;
+            border-radius: 10px;
+            outline: none;
+            font-size: 15px;
+            direction: rtl;
+        }
+
+        .auth-form input:focus {
+            border-color: #0095f6;
+        }
+
+        .auth-button {
+            border: none;
+            background: #0095f6;
+            color: #fff;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .auth-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .auth-switch {
+            margin-top: 16px;
+            text-align: center;
+            color: #0095f6;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .auth-message {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 22px;
+        }
+
+        .auth-message.error {
+            color: #d93025;
+        }
+
+        .auth-message.success {
+            color: #16803c;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* =========================
+           اسم المستخدم
+        ========================= */
+
+        .welcome-user {
+            font-size: 13px;
+            color: #666;
+            margin-top: 3px;
+            text-align: right;
+        }
+    </style>
+</head>
 
 <body>
 
+    <!-- =========================================
+         شاشة تسجيل الدخول / إنشاء الحساب
+    ========================================== -->
 
-    <!--
-        محتوى التطبيق يتم إنشاؤه بواسطة app.js
-    -->
+    <section id="auth-screen">
+
+        <div class="auth-box">
+
+            <div class="auth-logo">Student</div>
+
+            <div class="auth-subtitle">
+                منصة تعليمية للطلاب العراقيين
+            </div>
+
+            <!-- تسجيل الدخول -->
+            <div id="login-section">
+
+                <h2 class="auth-title">تسجيل الدخول</h2>
+
+                <form id="login-form" class="auth-form">
+
+                    <input
+                        type="email"
+                        id="login-email"
+                        placeholder="البريد الإلكتروني"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="login-password"
+                        placeholder="كلمة المرور"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button
+                        type="submit"
+                        id="login-btn"
+                        class="auth-button"
+                    >
+                        دخول
+                    </button>
+
+                </form>
+
+                <div
+                    id="login-message"
+                    class="auth-message"
+                ></div>
+
+                <div
+                    id="show-register"
+                    class="auth-switch"
+                >
+                    ليس لديك حساب؟ إنشاء حساب
+                </div>
+
+            </div>
+
+            <!-- إنشاء حساب -->
+            <div id="register-section" class="hidden">
+
+                <h2 class="auth-title">إنشاء حساب جديد</h2>
+
+                <form id="register-form" class="auth-form">
+
+                    <input
+                        type="text"
+                        id="register-name"
+                        placeholder="الاسم الكامل"
+                        autocomplete="name"
+                        required
+                    >
+
+                    <input
+                        type="email"
+                        id="register-email"
+                        placeholder="البريد الإلكتروني"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="register-password"
+                        placeholder="كلمة المرور"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="register-password-confirm"
+                        placeholder="تأكيد كلمة المرور"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                    <button
+                        type="submit"
+                        id="register-btn"
+                        class="auth-button"
+                    >
+                        إنشاء الحساب
+                    </button>
+
+                </form>
+
+                <div
+                    id="register-message"
+                    class="auth-message"
+                ></div>
+
+                <div
+                    id="show-login"
+                    class="auth-switch"
+                >
+                    لديك حساب؟ تسجيل الدخول
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
 
 
-    <script>
+    <!-- =========================================
+         التطبيق الرئيسي
+    ========================================== -->
 
-        /*
-        ============================================================
-        تحميل إعدادات التطبيق
-        ============================================================
-        */
+    <section id="main-screen" class="hidden">
 
-        async function startStudentApp() {
+        <!-- الهيدر -->
+        <header>
 
-            try {
+            <div class="header-icons">
+                <i class="fa-regular fa-bell"></i>
+                <span class="badge">0</span>
+            </div>
 
-                /*
-                ----------------------------------------------------
-                قراءة config.json
-                ----------------------------------------------------
-                */
+            <div>
+                <div class="logo">Student</div>
+                <div id="welcome-user" class="welcome-user"></div>
+            </div>
 
-                const response = await fetch(
-                    "config.json",
-                    {
-                        cache: "no-store"
-                    }
-                );
+            <div class="header-icons">
+                <i
+                    id="menu-icon"
+                    class="fa-solid fa-bars"
+                ></i>
+            </div>
 
-
-                if (!response.ok) {
-
-                    throw new Error(
-                        "تعذر تحميل config.json"
-                    );
-
-                }
+        </header>
 
 
-                const config =
-                    await response.json();
+        <!-- الستوريات -->
+        <div class="stories-container">
+
+            <div class="story add-story">
+
+                <div class="story-ring">
+
+                    <i
+                        class="fa-solid fa-plus"
+                        style="color:#0095f6;"
+                    ></i>
+
+                </div>
+
+                <span class="story-name">
+                    إضافة ستوري
+                </span>
+
+            </div>
 
 
-                /*
-                ----------------------------------------------------
-                حفظ الإعدادات بشكل عام
-                ----------------------------------------------------
-                */
+            <div class="story">
 
-                window.APP_CONFIG =
-                    config;
+                <div class="story-ring">
 
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')"
+                    ></div>
 
-                /*
-                ----------------------------------------------------
-                إنشاء Supabase Client
-                ----------------------------------------------------
-                */
+                </div>
 
-                if (
-                    window.supabase &&
-                    config.supabase_url &&
-                    config.supabase_key
-                ) {
+                <span class="story-name">
+                    قصتي
+                </span>
 
-                    window.supabaseClient =
-                        window.supabase.createClient(
-                            config.supabase_url,
-                            config.supabase_key
-                        );
-
-                }
+            </div>
 
 
-                /*
-                ----------------------------------------------------
-                تحميل app.js
-                ----------------------------------------------------
-                */
+            <div class="story">
 
-                const script =
-                    document.createElement("script");
+                <div class="story-ring">
 
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1519681393784-d120267933ba')"
+                    ></div>
 
-                script.src =
-                    "app.js";
+                </div>
 
+                <span class="story-name">
+                    Ahmed
+                </span>
 
-                script.async =
-                    false;
-
-
-                document.body.appendChild(
-                    script
-                );
+            </div>
 
 
-            } catch (error) {
+            <div class="story">
 
-                console.error(
-                    "Student App Error:",
-                    error
-                );
+                <div class="story-ring">
+
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05')"
+                    ></div>
+
+                </div>
+
+                <span class="story-name">
+                    Sara
+                </span>
+
+            </div>
 
 
-                /*
-                ----------------------------------------------------
-                عرض الخطأ فقط إذا فشل تحميل الإعدادات
-                ----------------------------------------------------
-                */
+            <div class="story">
 
-                document.body.innerHTML = `
+                <div class="story-ring">
 
-                    <div style="
-                        min-height:100vh;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        padding:20px;
-                        box-sizing:border-box;
-                        background:#ffffff;
-                        font-family:Arial,sans-serif;
-                        direction:rtl;
-                    ">
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1426604966848-d7adacbd02bff')"
+                    ></div>
 
-                        <div style="
-                            width:100%;
-                            max-width:450px;
-                            padding:25px;
-                            border-radius:18px;
-                            background:#f8d7da;
-                            color:#721c24;
-                            text-align:center;
-                            line-height:1.8;
-                        ">
+                </div>
 
-                            <h2 style="
-                                margin-top:0;
-                            ">
-                                تعذر تشغيل التطبيق
-                            </h2>
+                <span class="story-name">
+                    Khalid
+                </span>
 
-                            <p>
-                                تحقق من وجود
-                                <b>config.json</b>
-                                في نفس مجلد
-                                <b>index.html</b>.
-                            </p>
+            </div>
 
-                        </div>
+        </div>
 
+
+        <!-- البطاقات -->
+        <div class="main-content">
+
+            <div class="cards-grid">
+
+                <div
+                    class="card"
+                    onclick="openStage('primary')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-graduation-cap"></i>
                     </div>
 
-                `;
+                    <div class="card-title">
+                        الابتدائي
+                    </div>
+                </div>
 
-            }
 
-        }
+                <div
+                    class="card"
+                    onclick="openStage('middle')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-school"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الإعدادي
+                    </div>
+                </div>
 
 
-        /*
-        ============================================================
-        بدء التطبيق
-        ============================================================
-        */
+                <div
+                    class="card"
+                    onclick="openStage('secondary')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-building-columns"></i>
+                    </div>
 
-        startStudentApp();
+                    <div class="card-title">
+                        الثانوي
+                    </div>
+                </div>
 
-    </script>
 
+                <div
+                    class="card"
+                    onclick="openStage('university')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-university"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الجامعة
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- التنقل السفلي -->
+        <nav>
+
+            <a
+                href="#"
+                class="active"
+                onclick="return false;"
+            >
+                <i class="fa-solid fa-house"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-square-plus"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-paper-plane"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-user"></i>
+            </a>
+
+        </nav>
+
+    </section>
+
+
+    <!-- =========================================
+         JavaScript
+    ========================================== -->
+
+    <script src="app.js"></script>
 
 </body>
-
 </html>
-<!-- DEPLOY TEST 3072026 -->
