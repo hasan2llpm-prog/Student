@@ -2362,6 +2362,51 @@ function initInterface() {
 
 
 /* =========================================================
+   تحميل لوحة المشرف
+========================================================= */
+
+function loadAdminSystem() {
+
+    if (
+        document.querySelector(
+            'script[data-student-admin="true"]'
+        )
+    ) {
+        return;
+    }
+
+    const script =
+        document.createElement("script");
+
+    script.src = "admin.js";
+
+    script.dataset.studentAdmin = "true";
+
+    script.async = true;
+
+    script.onload = function () {
+
+        console.log(
+            "Student Admin loaded."
+        );
+
+    };
+
+    script.onerror = function () {
+
+        console.error(
+            "تعذر تحميل admin.js"
+        );
+
+    };
+
+    document.body.appendChild(
+        script
+    );
+}
+
+
+/* =========================================================
    تشغيل التطبيق
 ========================================================= */
 
@@ -2372,6 +2417,8 @@ document.addEventListener(
         initInterface();
 
         initSupabase();
+
+        loadAdminSystem();
 
     }
 );
