@@ -4,6 +4,7 @@ const CONFIG_URL =
     "https://raw.githubusercontent.com/hasan2llpm-prog/Student/main/config.json";
 
 let currentUser = null;
+let currentProfile = null;
 
 
 /* =========================================================
@@ -129,13 +130,13 @@ function showAuthScreen() {
 
 
 /* =========================================================
-   الملف الشخصي
+   تحميل الملف الشخصي
 ========================================================= */
 
 async function loadProfile(userId) {
 
     if (!supabaseClient || !userId) {
-        return;
+        return null;
     }
 
     try {
@@ -143,20 +144,31 @@ async function loadProfile(userId) {
         const { data, error } =
             await supabaseClient
                 .from("profiles")
-                .select("full_name, username, role")
+                .select(`
+                    id,
+                    full_name,
+                    username,
+                    email,
+                    bio,
+                    avatar_url,
+                    account_status,
+                    role
+                `)
                 .eq("id", userId)
                 .maybeSingle();
 
         if (error) {
             console.error("Profile error:", error);
-            return;
+            return null;
         }
+
+        currentProfile = data || null;
 
         const welcomeUser =
             document.getElementById("welcome-user");
 
         if (!welcomeUser) {
-            return;
+            return data;
         }
 
         if (data?.full_name) {
@@ -167,7 +179,7 @@ async function loadProfile(userId) {
         } else if (data?.username) {
 
             welcomeUser.textContent =
-                `مرحباً ${data.username}`;
+                `مرحباً @${data.username}`;
 
         } else {
 
@@ -175,12 +187,83 @@ async function loadProfile(userId) {
                 "مرحباً بك";
         }
 
+        return data;
+
     } catch (error) {
 
         console.error(
             "Profile error:",
             error
         );
+
+        return null;
+    }
+}
+
+
+/* =========================================================
+   إحصائيات الملف الشخصي
+========================================================= */
+
+async function getProfileStats(userId) {
+
+    if (!supabaseClient || !userId) {
+        return {
+            followers: 0,
+            following: 0
+        };
+    }
+
+    try {
+
+        const { data, error } =
+            await supabaseClient.rpc(
+                "get_profile_stats",
+                {
+                    p_user_id: userId
+                }
+            );
+
+        if (error) {
+            console.error(
+                "Profile stats error:",
+                error
+            );
+
+            return {
+                followers: 0,
+                following: 0
+            };
+        }
+
+        const stats =
+            Array.isArray(data)
+                ? data[0]
+                : data;
+
+        return {
+            followers:
+                Number(
+                    stats?.followers_count || 0
+                ),
+
+            following:
+                Number(
+                    stats?.following_count || 0
+                )
+        };
+
+    } catch (error) {
+
+        console.error(
+            "Stats error:",
+            error
+        );
+
+        return {
+            followers: 0,
+            following: 0
+        };
     }
 }
 
@@ -193,7 +276,8 @@ async function handleSession(session) {
 
     if (session?.user) {
 
-        currentUser = session.user;
+        currentUser =
+            session.user;
 
         showMainScreen();
 
@@ -204,6 +288,7 @@ async function handleSession(session) {
     } else {
 
         currentUser = null;
+        currentProfile = null;
 
         showAuthScreen();
     }
@@ -311,7 +396,7 @@ async function loginUser(event) {
 
 
 /* =========================================================
-   إنشاء حساب
+   إنشاء الحساب
 ========================================================= */
 
 async function registerUser(event) {
@@ -485,7 +570,6 @@ async function registerUser(event) {
 
 /* =========================================================
    تسجيل الخروج
-   لا يوجد confirm ولا alert
 ========================================================= */
 
 async function logoutUser() {
@@ -503,6 +587,7 @@ async function logoutUser() {
         }
 
         currentUser = null;
+        currentProfile = null;
 
         closeFloatingPanel();
 
@@ -582,14 +667,6 @@ function translateAuthError(error) {
         return "تم تجاوز عدد المحاولات. حاول لاحقاً.";
     }
 
-    if (
-        message.includes(
-            "password should be at least"
-        )
-    ) {
-        return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
-    }
-
     return (
         error?.message ||
         "حدث خطأ غير متوقع."
@@ -658,10 +735,10 @@ function showFloatingPanel(title, content) {
 
         <div style="
             width:100%;
-            max-width:430px;
-            max-height:80vh;
+            max-width:450px;
+            max-height:88vh;
             overflow:auto;
-            background:#ffffff;
+            background:#fff;
             border-radius:22px;
             padding:22px;
             box-sizing:border-box;
@@ -737,6 +814,772 @@ function showFloatingPanel(title, content) {
 
         }
     );
+}
+
+
+/* =========================================================
+   الملف الشخصي
+========================================================= */
+
+async function showProfilePanel() {
+
+    if (!currentUser) {
+        return;
+    }
+
+    closeFloatingPanel();
+
+    const profile =
+        currentProfile ||
+        await loadProfile(
+            currentUser.id
+        );
+
+    const stats =
+        await getProfileStats(
+            currentUser.id
+        );
+
+    const fullName =
+        profile?.full_name ||
+        "بدون اسم";
+
+    const username =
+        profile?.username ||
+        "username";
+
+    const email =
+        profile?.email ||
+        currentUser.email ||
+        "";
+
+    const bio =
+        profile?.bio ||
+        "لا توجد نبذة بعد.";
+
+    const status =
+        profile?.account_status ||
+        "public";
+
+    const avatar =
+        profile?.avatar_url;
+
+    const avatarHTML =
+        avatar
+            ? `
+                <img
+                    src="${avatar}"
+                    alt="صورة الملف الشخصي"
+                    style="
+                        width:96px;
+                        height:96px;
+                        border-radius:50%;
+                        object-fit:cover;
+                        display:block;
+                    "
+                >
+              `
+            : `
+                <div style="
+                    width:96px;
+                    height:96px;
+                    border-radius:50%;
+                    background:#eaf5ff;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:42px;
+                    color:#0095f6;
+                ">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+              `;
+
+    showFloatingPanel(
+        "الملف الشخصي",
+        `
+        <div>
+
+            <div style="
+                text-align:center;
+                margin-bottom:20px;
+            ">
+
+                <div style="
+                    width:96px;
+                    height:96px;
+                    margin:0 auto 12px;
+                ">
+                    ${avatarHTML}
+                </div>
+
+                <div style="
+                    font-size:20px;
+                    font-weight:700;
+                    color:#222;
+                ">
+                    ${escapeHTML(fullName)}
+                </div>
+
+                <div style="
+                    color:#777;
+                    margin-top:4px;
+                    font-size:14px;
+                ">
+                    @${escapeHTML(username)}
+                </div>
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                justify-content:space-around;
+                text-align:center;
+                border-top:1px solid #eee;
+                border-bottom:1px solid #eee;
+                padding:15px 5px;
+                margin-bottom:18px;
+            ">
+
+                <div>
+                    <strong style="
+                        display:block;
+                        font-size:19px;
+                    ">
+                        0
+                    </strong>
+
+                    <span style="
+                        color:#777;
+                        font-size:13px;
+                    ">
+                        المنشورات
+                    </span>
+                </div>
+
+                <div>
+                    <strong style="
+                        display:block;
+                        font-size:19px;
+                    ">
+                        ${stats.followers}
+                    </strong>
+
+                    <span style="
+                        color:#777;
+                        font-size:13px;
+                    ">
+                        المتابعون
+                    </span>
+                </div>
+
+                <div>
+                    <strong style="
+                        display:block;
+                        font-size:19px;
+                    ">
+                        ${stats.following}
+                    </strong>
+
+                    <span style="
+                        color:#777;
+                        font-size:13px;
+                    ">
+                        يتابعهم
+                    </span>
+                </div>
+
+            </div>
+
+
+            <div style="
+                background:#f7f8fa;
+                border-radius:14px;
+                padding:14px;
+                margin-bottom:12px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    margin-bottom:6px;
+                ">
+                    نبذة
+                </div>
+
+                <div style="
+                    color:#666;
+                    line-height:1.7;
+                ">
+                    ${escapeHTML(bio)}
+                </div>
+
+            </div>
+
+
+            <div style="
+                background:#f7f8fa;
+                border-radius:14px;
+                padding:14px;
+                margin-bottom:12px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    margin-bottom:6px;
+                ">
+                    البريد الإلكتروني
+                </div>
+
+                <div style="
+                    color:#666;
+                    direction:ltr;
+                    text-align:right;
+                ">
+                    ${escapeHTML(email)}
+                </div>
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                background:#f7f8fa;
+                border-radius:14px;
+                padding:14px;
+                margin-bottom:15px;
+            ">
+
+                <div>
+
+                    <div style="
+                        font-weight:700;
+                    ">
+                        خصوصية الحساب
+                    </div>
+
+                    <div id="profile-status-text"
+                        style="
+                            color:#777;
+                            font-size:13px;
+                            margin-top:4px;
+                        ">
+                        ${status === "private" ? "حساب خاص" : "حساب عام"}
+                    </div>
+
+                </div>
+
+                <button
+                    id="profile-toggle-status"
+                    type="button"
+                    style="
+                        border:none;
+                        background:#0095f6;
+                        color:#fff;
+                        padding:9px 14px;
+                        border-radius:10px;
+                        cursor:pointer;
+                    "
+                >
+                    ${status === "private" ? "جعله عامًا" : "جعله خاصًا"}
+                </button>
+
+            </div>
+
+
+            <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:10px;
+            ">
+
+                <button
+                    id="profile-edit-btn"
+                    type="button"
+                    style="
+                        border:none;
+                        background:#0095f6;
+                        color:#fff;
+                        padding:13px;
+                        border-radius:12px;
+                        font-size:15px;
+                        cursor:pointer;
+                    "
+                >
+                    <i class="fa-solid fa-pen"></i>
+                    تعديل الملف
+                </button>
+
+                <button
+                    id="profile-logout-btn"
+                    type="button"
+                    style="
+                        border:none;
+                        background:#fff2f2;
+                        color:#d93025;
+                        padding:13px;
+                        border-radius:12px;
+                        font-size:15px;
+                        cursor:pointer;
+                    "
+                >
+                    تسجيل الخروج
+                </button>
+
+            </div>
+
+        </div>
+        `
+    );
+
+
+    const editButton =
+        document.getElementById(
+            "profile-edit-btn"
+        );
+
+    if (editButton) {
+
+        editButton.addEventListener(
+            "click",
+            function() {
+
+                showEditProfilePanel(
+                    profile
+                );
+
+            }
+        );
+    }
+
+
+    const logoutButton =
+        document.getElementById(
+            "profile-logout-btn"
+        );
+
+    if (logoutButton) {
+
+        logoutButton.addEventListener(
+            "click",
+            logoutUser
+        );
+    }
+
+
+    const privacyButton =
+        document.getElementById(
+            "profile-toggle-status"
+        );
+
+    if (privacyButton) {
+
+        privacyButton.addEventListener(
+            "click",
+            toggleAccountStatus
+        );
+    }
+}
+
+
+/* =========================================================
+   تعديل الملف الشخصي
+========================================================= */
+
+function showEditProfilePanel(profile) {
+
+    const fullName =
+        profile?.full_name || "";
+
+    const username =
+        profile?.username || "";
+
+    const bio =
+        profile?.bio || "";
+
+    const avatarURL =
+        profile?.avatar_url || "";
+
+    showFloatingPanel(
+        "تعديل الملف الشخصي",
+        `
+        <form id="edit-profile-form"
+            style="
+                display:flex;
+                flex-direction:column;
+                gap:12px;
+            ">
+
+            <label style="
+                font-size:14px;
+                color:#444;
+            ">
+                الاسم
+            </label>
+
+            <input
+                id="edit-full-name"
+                type="text"
+                value="${escapeAttribute(fullName)}"
+                placeholder="الاسم الكامل"
+                required
+                style="
+                    padding:13px;
+                    border:1px solid #ddd;
+                    border-radius:10px;
+                    outline:none;
+                    font-size:15px;
+                "
+            >
+
+
+            <label style="
+                font-size:14px;
+                color:#444;
+            ">
+                اسم المستخدم
+            </label>
+
+            <input
+                id="edit-username"
+                type="text"
+                value="${escapeAttribute(username)}"
+                placeholder="username"
+                minlength="3"
+                required
+                style="
+                    padding:13px;
+                    border:1px solid #ddd;
+                    border-radius:10px;
+                    outline:none;
+                    font-size:15px;
+                    direction:ltr;
+                "
+            >
+
+
+            <label style="
+                font-size:14px;
+                color:#444;
+            ">
+                النبذة
+            </label>
+
+            <textarea
+                id="edit-bio"
+                placeholder="اكتب نبذة عنك..."
+                maxlength="200"
+                style="
+                    min-height:90px;
+                    resize:none;
+                    padding:13px;
+                    border:1px solid #ddd;
+                    border-radius:10px;
+                    outline:none;
+                    font-size:15px;
+                "
+            >${escapeHTML(bio)}</textarea>
+
+
+            <label style="
+                font-size:14px;
+                color:#444;
+            ">
+                رابط الصورة الشخصية
+            </label>
+
+            <input
+                id="edit-avatar-url"
+                type="url"
+                value="${escapeAttribute(avatarURL)}"
+                placeholder="https://..."
+                style="
+                    padding:13px;
+                    border:1px solid #ddd;
+                    border-radius:10px;
+                    outline:none;
+                    font-size:15px;
+                    direction:ltr;
+                "
+            >
+
+
+            <button
+                id="save-profile-btn"
+                type="submit"
+                style="
+                    border:none;
+                    background:#0095f6;
+                    color:#fff;
+                    padding:13px;
+                    border-radius:12px;
+                    font-size:16px;
+                    cursor:pointer;
+                    margin-top:5px;
+                "
+            >
+                حفظ التغييرات
+            </button>
+
+
+            <div
+                id="profile-edit-message"
+                style="
+                    text-align:center;
+                    min-height:20px;
+                    font-size:14px;
+                "
+            ></div>
+
+        </form>
+        `
+    );
+
+
+    const form =
+        document.getElementById(
+            "edit-profile-form"
+        );
+
+    if (form) {
+
+        form.addEventListener(
+            "submit",
+            saveProfileChanges
+        );
+    }
+}
+
+
+/* =========================================================
+   حفظ تعديل الملف
+========================================================= */
+
+async function saveProfileChanges(event) {
+
+    event.preventDefault();
+
+    const fullName =
+        document.getElementById(
+            "edit-full-name"
+        )?.value.trim();
+
+    const username =
+        document.getElementById(
+            "edit-username"
+        )?.value.trim();
+
+    const bio =
+        document.getElementById(
+            "edit-bio"
+        )?.value.trim();
+
+    const avatarURL =
+        document.getElementById(
+            "edit-avatar-url"
+        )?.value.trim();
+
+    const message =
+        document.getElementById(
+            "profile-edit-message"
+        );
+
+    if (!fullName || !username) {
+
+        if (message) {
+            message.style.color =
+                "#d93025";
+
+            message.textContent =
+                "الاسم واسم المستخدم مطلوبان.";
+        }
+
+        return;
+    }
+
+    const button =
+        document.getElementById(
+            "save-profile-btn"
+        );
+
+    if (button) {
+
+        button.disabled = true;
+        button.textContent =
+            "جارٍ الحفظ...";
+    }
+
+    try {
+
+        const { data, error } =
+            await supabaseClient.rpc(
+                "update_profile",
+                {
+                    p_full_name: fullName,
+                    p_username: username,
+                    p_bio: bio || "",
+                    p_avatar_url: avatarURL || null
+                }
+            );
+
+        if (error) {
+            throw error;
+        }
+
+        if (data !== "updated") {
+
+            if (data === "username_taken") {
+                throw new Error(
+                    "اسم المستخدم مستخدم بالفعل."
+                );
+            }
+
+            if (data === "invalid_username") {
+                throw new Error(
+                    "اسم المستخدم يجب أن يحتوي على 3 أحرف على الأقل."
+                );
+            }
+
+            throw new Error(
+                "تعذر تحديث الملف الشخصي."
+            );
+        }
+
+        await loadProfile(
+            currentUser.id
+        );
+
+        if (message) {
+
+            message.style.color =
+                "#16803c";
+
+            message.textContent =
+                "تم حفظ التغييرات بنجاح.";
+        }
+
+        setTimeout(
+            function() {
+                showProfilePanel();
+            },
+            700
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Update profile error:",
+            error
+        );
+
+        if (message) {
+
+            message.style.color =
+                "#d93025";
+
+            message.textContent =
+                error?.message ||
+                "تعذر حفظ التغييرات.";
+        }
+
+    } finally {
+
+        if (button) {
+
+            button.disabled = false;
+            button.textContent =
+                "حفظ التغييرات";
+        }
+    }
+}
+
+
+/* =========================================================
+   تبديل الخصوصية
+========================================================= */
+
+async function toggleAccountStatus() {
+
+    if (!currentProfile) {
+        return;
+    }
+
+    const newStatus =
+        currentProfile.account_status === "private"
+            ? "public"
+            : "private";
+
+    try {
+
+        const { data, error } =
+            await supabaseClient.rpc(
+                "set_account_status",
+                {
+                    p_status: newStatus
+                }
+            );
+
+        if (error) {
+            throw error;
+        }
+
+        if (
+            data !== "public" &&
+            data !== "private"
+        ) {
+            throw new Error(
+                "تعذر تغيير خصوصية الحساب."
+            );
+        }
+
+        await loadProfile(
+            currentUser.id
+        );
+
+        showProfilePanel();
+
+    } catch (error) {
+
+        console.error(
+            "Privacy error:",
+            error
+        );
+
+        showFloatingPanel(
+            "خطأ",
+            `
+            <div style="
+                text-align:center;
+                padding:25px 10px;
+                color:#d93025;
+            ">
+                تعذر تغيير خصوصية الحساب حالياً.
+            </div>
+            `
+        );
+    }
+}
+
+
+/* =========================================================
+   حماية HTML
+========================================================= */
+
+function escapeHTML(value) {
+
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function escapeAttribute(value) {
+    return escapeHTML(value);
 }
 
 
@@ -867,10 +1710,6 @@ function openStage(stageName) {
 }
 
 
-/*
- * index.html يستعمل:
- * onclick="openStage(...)"
- */
 window.openStage =
     openStage;
 
@@ -946,99 +1785,34 @@ function openMenu() {
         `
     );
 
-    const profileButton =
-        document.getElementById(
-            "menu-profile-btn"
-        );
 
-    if (profileButton) {
-
-        profileButton.addEventListener(
-            "click",
-            showProfilePanel
-        );
-    }
-
-    const settingsButton =
-        document.getElementById(
-            "menu-settings-btn"
-        );
-
-    if (settingsButton) {
-
-        settingsButton.addEventListener(
-            "click",
-            showSettingsPanel
-        );
-    }
-
-    const logoutButton =
-        document.getElementById(
-            "menu-logout-btn"
-        );
-
-    if (logoutButton) {
-
-        logoutButton.addEventListener(
-            "click",
-            logoutUser
-        );
-    }
-}
+    document.getElementById(
+        "menu-profile-btn"
+    )?.addEventListener(
+        "click",
+        showProfilePanel
+    );
 
 
-/* =========================================================
-   الملف الشخصي العائم
-========================================================= */
+    document.getElementById(
+        "menu-settings-btn"
+    )?.addEventListener(
+        "click",
+        showSettingsPanel
+    );
 
-function showProfilePanel() {
 
-    showFloatingPanel(
-        "الملف الشخصي",
-        `
-        <div style="
-            text-align:center;
-            padding:15px;
-        ">
-
-            <div style="
-                width:85px;
-                height:85px;
-                margin:0 auto 15px;
-                border-radius:50%;
-                background:#eaf5ff;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:38px;
-            ">
-                👤
-            </div>
-
-            <div style="
-                font-size:17px;
-                font-weight:bold;
-                color:#222;
-                margin-bottom:8px;
-            ">
-                ${currentUser?.email || "المستخدم"}
-            </div>
-
-            <div style="
-                color:#777;
-                font-size:14px;
-            ">
-                حساب Student
-            </div>
-
-        </div>
-        `
+    document.getElementById(
+        "menu-logout-btn"
+    )?.addEventListener(
+        "click",
+        logoutUser
     );
 }
 
 
 /* =========================================================
-   الإعدادات العائمة
+   الإعدادات
 ========================================================= */
 
 function showSettingsPanel() {
@@ -1139,7 +1913,7 @@ function openStory(name) {
             font-size:23px;
             font-weight:bold;
         ">
-            ${name || "Story"}
+            ${escapeHTML(name || "Story")}
         </div>
         `
     );
@@ -1190,6 +1964,12 @@ function addStory() {
 
 function openBottomSection(section) {
 
+    if (section === "profile") {
+
+        showProfilePanel();
+        return;
+    }
+
     const sections = {
 
         home: {
@@ -1214,12 +1994,6 @@ function openBottomSection(section) {
             title: "الرسائل",
             icon: "💬",
             text: "ستظهر المحادثات هنا."
-        },
-
-        profile: {
-            title: "الملف الشخصي",
-            icon: "👤",
-            text: currentUser?.email || "المستخدم"
         }
 
     };
@@ -1258,12 +2032,10 @@ function openBottomSection(section) {
 
 
 /* =========================================================
-   ربط عناصر الواجهة
+   ربط الواجهة
 ========================================================= */
 
 function bindInterfaceButtons() {
-
-    /* الجرس */
 
     const bell =
         document.querySelector(
@@ -1287,8 +2059,6 @@ function bindInterfaceButtons() {
     }
 
 
-    /* القائمة */
-
     const menuIcon =
         document.getElementById(
             "menu-icon"
@@ -1311,8 +2081,6 @@ function bindInterfaceButtons() {
     }
 
 
-    /* إضافة ستوري */
-
     const addStoryElement =
         document.querySelector(
             ".add-story"
@@ -1334,8 +2102,6 @@ function bindInterfaceButtons() {
         );
     }
 
-
-    /* القصص */
 
     const stories =
         document.querySelectorAll(
@@ -1369,8 +2135,6 @@ function bindInterfaceButtons() {
         }
     );
 
-
-    /* الشريط السفلي */
 
     const navLinks =
         document.querySelectorAll(
@@ -1473,8 +2237,6 @@ async function initSupabase() {
         );
 
 
-        /* استعادة الجلسة المحفوظة */
-
         const {
             data: {
                 session
@@ -1488,8 +2250,6 @@ async function initSupabase() {
         );
 
 
-        /* مراقبة الجلسة */
-
         supabaseClient.auth.onAuthStateChange(
             async function(
                 event,
@@ -1500,11 +2260,6 @@ async function initSupabase() {
                     "Auth event:",
                     event
                 );
-
-                /*
-                 * لا نعمل شيئًا عشوائيًا عند الأحداث
-                 * غير المهمة للواجهة.
-                 */
 
                 if (
                     event === "SIGNED_IN" ||
@@ -1526,21 +2281,15 @@ async function initSupabase() {
             "Supabase initialization error:",
             error
         );
-
-        /*
-         * لا نحول التطبيق إلى شاشة بيضاء.
-         */
     }
 }
 
 
 /* =========================================================
-   تهيئة واجهة التطبيق
+   تهيئة التطبيق
 ========================================================= */
 
 function initInterface() {
-
-    /* تسجيل الدخول */
 
     const loginForm =
         document.getElementById(
@@ -1556,8 +2305,6 @@ function initInterface() {
     }
 
 
-    /* إنشاء الحساب */
-
     const registerForm =
         document.getElementById(
             "register-form"
@@ -1571,8 +2318,6 @@ function initInterface() {
         );
     }
 
-
-    /* الانتقال إلى التسجيل */
 
     const showRegisterButton =
         document.getElementById(
@@ -1593,8 +2338,6 @@ function initInterface() {
     }
 
 
-    /* العودة لتسجيل الدخول */
-
     const showLoginButton =
         document.getElementById(
             "show-login"
@@ -1614,14 +2357,12 @@ function initInterface() {
     }
 
 
-    /* جميع أزرار الواجهة */
-
     bindInterfaceButtons();
 }
 
 
 /* =========================================================
-   بدء التطبيق
+   تشغيل التطبيق
 ========================================================= */
 
 document.addEventListener(
