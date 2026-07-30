@@ -1,11 +1,16 @@
 let supabaseClient = null;
 
+const CONFIG_URL =
+    "https://raw.githubusercontent.com/hasan2llpm-prog/Student/main/config.json";
+
 async function initApp() {
     try {
-        const response = await fetch("config.json");
+        const response = await fetch(CONFIG_URL, {
+            cache: "no-store"
+        });
 
         if (!response.ok) {
-            throw new Error("تعذر تحميل config.json");
+            throw new Error("تعذر تحميل config.json من GitHub");
         }
 
         const config = await response.json();
@@ -24,6 +29,8 @@ async function initApp() {
         );
 
         console.log("تم تشغيل Supabase بنجاح");
+        console.log("رابط التطبيق:", config.app_url);
+        console.log("الإصدار:", config.version);
 
     } catch (error) {
         console.error("خطأ في تشغيل التطبيق:", error);
