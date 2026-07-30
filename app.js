@@ -47,7 +47,7 @@ function setButtonLoading(buttonId, loading, normalText) {
 
 
 /* =========================================
-   الانتقال بين تسجيل الدخول والتسجيل
+   تسجيل الدخول / إنشاء الحساب
 ========================================= */
 
 function showLogin() {
@@ -89,7 +89,7 @@ function showRegister() {
 
 
 /* =========================================
-   عرض شاشة التطبيق
+   الشاشات
 ========================================= */
 
 function showMainScreen() {
@@ -106,17 +106,15 @@ function showMainScreen() {
     if (mainScreen) {
         mainScreen.classList.remove("hidden");
     }
-
-    createFloatingLogout();
 }
 
 
 function showAuthScreen() {
-    const mainScreen =
-        document.getElementById("main-screen");
-
     const authScreen =
         document.getElementById("auth-screen");
+
+    const mainScreen =
+        document.getElementById("main-screen");
 
     if (mainScreen) {
         mainScreen.classList.add("hidden");
@@ -126,14 +124,12 @@ function showAuthScreen() {
         authScreen.classList.remove("hidden");
     }
 
-    removeFloatingLogout();
-
     showLogin();
 }
 
 
 /* =========================================
-   تحميل الملف الشخصي
+   الملف الشخصي
 ========================================= */
 
 async function loadProfile(userId) {
@@ -147,12 +143,7 @@ async function loadProfile(userId) {
                 .maybeSingle();
 
         if (error) {
-
-            console.error(
-                "خطأ في تحميل profile:",
-                error
-            );
-
+            console.error("Profile error:", error);
             return;
         }
 
@@ -162,33 +153,24 @@ async function loadProfile(userId) {
         if (!welcomeUser) return;
 
         if (data?.full_name) {
-
             welcomeUser.textContent =
                 `مرحباً ${data.full_name}`;
-
         } else if (data?.username) {
-
             welcomeUser.textContent =
                 `مرحباً ${data.username}`;
-
         } else {
-
             welcomeUser.textContent =
                 "مرحباً بك";
         }
 
     } catch (error) {
-
-        console.error(
-            "خطأ غير متوقع في profile:",
-            error
-        );
+        console.error("Profile error:", error);
     }
 }
 
 
 /* =========================================
-   التعامل مع الجلسة
+   الجلسة
 ========================================= */
 
 async function handleSession(session) {
@@ -222,25 +204,17 @@ async function loginUser(event) {
 
     clearMessages();
 
-    const emailElement =
-        document.getElementById(
-            "login-email"
-        );
-
-    const passwordElement =
-        document.getElementById(
-            "login-password"
-        );
-
-    if (!emailElement || !passwordElement) {
-        return;
-    }
-
     const email =
-        emailElement.value.trim();
+        document
+            .getElementById("login-email")
+            .value
+            .trim();
 
     const password =
-        passwordElement.value;
+        document.getElementById(
+            "login-password"
+        ).value;
+
 
     if (!email || !password) {
 
@@ -253,6 +227,7 @@ async function loginUser(event) {
         return;
     }
 
+
     setButtonLoading(
         "login-btn",
         true,
@@ -264,11 +239,8 @@ async function loginUser(event) {
 
         const { data, error } =
             await supabaseClient.auth.signInWithPassword({
-
-                email: email,
-
-                password: password
-
+                email,
+                password
             });
 
 
@@ -287,13 +259,6 @@ async function loginUser(event) {
 
             return;
         }
-
-
-        showMessage(
-            "login-message",
-            "تم تسجيل الدخول بنجاح.",
-            "success"
-        );
 
 
         await handleSession(
@@ -336,55 +301,27 @@ async function registerUser(event) {
     clearMessages();
 
 
-    const nameElement =
-        document.getElementById(
-            "register-name"
-        );
-
-    const emailElement =
-        document.getElementById(
-            "register-email"
-        );
-
-    const passwordElement =
-        document.getElementById(
-            "register-password"
-        );
-
-    const confirmPasswordElement =
-        document.getElementById(
-            "register-password-confirm"
-        );
-
-
-    if (
-        !nameElement ||
-        !emailElement ||
-        !passwordElement ||
-        !confirmPasswordElement
-    ) {
-
-        showMessage(
-            "register-message",
-            "تعذر العثور على حقول التسجيل.",
-            "error"
-        );
-
-        return;
-    }
-
-
     const fullName =
-        nameElement.value.trim();
+        document
+            .getElementById("register-name")
+            .value
+            .trim();
 
     const email =
-        emailElement.value.trim();
+        document
+            .getElementById("register-email")
+            .value
+            .trim();
 
     const password =
-        passwordElement.value;
+        document.getElementById(
+            "register-password"
+        ).value;
 
     const confirmPassword =
-        confirmPasswordElement.value;
+        document.getElementById(
+            "register-password-confirm"
+        ).value;
 
 
     if (!fullName) {
@@ -392,18 +329,6 @@ async function registerUser(event) {
         showMessage(
             "register-message",
             "اكتب الاسم الكامل.",
-            "error"
-        );
-
-        return;
-    }
-
-
-    if (!email) {
-
-        showMessage(
-            "register-message",
-            "اكتب البريد الإلكتروني.",
             "error"
         );
 
@@ -447,16 +372,14 @@ async function registerUser(event) {
         const { data, error } =
             await supabaseClient.auth.signUp({
 
-                email: email,
+                email,
 
-                password: password,
+                password,
 
                 options: {
-
                     data: {
                         full_name: fullName
                     }
-
                 }
 
             });
@@ -483,10 +406,9 @@ async function registerUser(event) {
 
             showMessage(
                 "register-message",
-                "تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب ثم سجّل الدخول.",
+                "تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الحساب.",
                 "success"
             );
-
         }
 
 
@@ -521,25 +443,17 @@ async function registerUser(event) {
 async function logoutUser() {
 
     if (!supabaseClient) {
-
-        console.error(
-            "Supabase غير جاهز."
-        );
-
         return;
     }
-
 
     try {
 
         const { error } =
             await supabaseClient.auth.signOut();
 
-
         if (error) {
             throw error;
         }
-
 
         currentUser = null;
 
@@ -561,7 +475,6 @@ async function logoutUser() {
             loginForm.reset();
         }
 
-
         if (registerForm) {
             registerForm.reset();
         }
@@ -581,102 +494,7 @@ async function logoutUser() {
 
 
 /* =========================================
-   زر الخروج العائم
-========================================= */
-
-function createFloatingLogout() {
-
-    if (
-        document.getElementById(
-            "floating-logout"
-        )
-    ) {
-        return;
-    }
-
-
-    const button =
-        document.createElement(
-            "button"
-        );
-
-
-    button.id =
-        "floating-logout";
-
-
-    button.type =
-        "button";
-
-
-    button.textContent =
-        "تسجيل الخروج";
-
-
-    button.style.position =
-        "fixed";
-
-    button.style.bottom =
-        "85px";
-
-    button.style.left =
-        "20px";
-
-    button.style.zIndex =
-        "99999";
-
-    button.style.border =
-        "none";
-
-    button.style.borderRadius =
-        "50px";
-
-    button.style.padding =
-        "12px 18px";
-
-    button.style.background =
-        "#0095f6";
-
-    button.style.color =
-        "#ffffff";
-
-    button.style.fontSize =
-        "14px";
-
-    button.style.cursor =
-        "pointer";
-
-    button.style.boxShadow =
-        "0 4px 15px rgba(0,0,0,0.15)";
-
-
-    button.addEventListener(
-        "click",
-        logoutUser
-    );
-
-
-    document.body.appendChild(
-        button
-    );
-}
-
-
-function removeFloatingLogout() {
-
-    const button =
-        document.getElementById(
-            "floating-logout"
-        );
-
-    if (button) {
-        button.remove();
-    }
-}
-
-
-/* =========================================
-   ترجمة أخطاء Supabase
+   رسائل الأخطاء
 ========================================= */
 
 function translateAuthError(error) {
@@ -692,10 +510,7 @@ function translateAuthError(error) {
             "invalid login credentials"
         )
     ) {
-
-        return (
-            "البريد الإلكتروني أو كلمة المرور غير صحيحة."
-        );
+        return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
     }
 
 
@@ -704,10 +519,7 @@ function translateAuthError(error) {
             "email not confirmed"
         )
     ) {
-
-        return (
-            "يجب تأكيد البريد الإلكتروني أولاً."
-        );
+        return "يجب تأكيد البريد الإلكتروني أولاً.";
     }
 
 
@@ -716,18 +528,239 @@ function translateAuthError(error) {
             "user already registered"
         )
     ) {
-
-        return (
-            "هذا البريد الإلكتروني مسجل مسبقاً."
-        );
+        return "هذا البريد الإلكتروني مسجل مسبقاً.";
     }
 
 
     if (
         message.includes(
-            "password should be at least"
+            "invalid email"
         )
     ) {
+        return "البريد الإلكتروني غير صالح.";
+    }
 
-        return (
-            "كلمة المرور يجب أن تكون 6 أحرف على الأقل
+
+    if (
+        message.includes(
+            "rate limit"
+        )
+    ) {
+        return "تم تجاوز عدد المحاولات. حاول لاحقاً.";
+    }
+
+
+    return (
+        error?.message ||
+        "حدث خطأ غير متوقع."
+    );
+}
+
+
+/* =========================================
+   فتح المرحلة
+========================================= */
+
+function openStage(stageName) {
+
+    console.log(
+        "فتح المرحلة:",
+        stageName
+    );
+}
+
+
+/* =========================================
+   تهيئة التطبيق
+========================================= */
+
+async function initApp() {
+
+    try {
+
+        const response =
+            await fetch(
+                CONFIG_URL,
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "تعذر تحميل config.json."
+            );
+        }
+
+
+        const config =
+            await response.json();
+
+
+        if (
+            !config.supabase_url ||
+            !config.supabase_key
+        ) {
+
+            throw new Error(
+                "بيانات Supabase ناقصة."
+            );
+        }
+
+
+        if (!window.supabase) {
+
+            throw new Error(
+                "مكتبة Supabase غير محملة."
+            );
+        }
+
+
+        supabaseClient =
+            window.supabase.createClient(
+                config.supabase_url,
+                config.supabase_key
+            );
+
+
+        /* تسجيل الدخول */
+
+        const loginForm =
+            document.getElementById(
+                "login-form"
+            );
+
+        if (loginForm) {
+
+            loginForm.addEventListener(
+                "submit",
+                loginUser
+            );
+        }
+
+
+        /* إنشاء الحساب */
+
+        const registerForm =
+            document.getElementById(
+                "register-form"
+            );
+
+        if (registerForm) {
+
+            registerForm.addEventListener(
+                "submit",
+                registerUser
+            );
+        }
+
+
+        /* الانتقال لإنشاء حساب */
+
+        const showRegisterButton =
+            document.getElementById(
+                "show-register"
+            );
+
+        if (showRegisterButton) {
+
+            showRegisterButton.addEventListener(
+                "click",
+                function () {
+                    showRegister();
+                }
+            );
+        }
+
+
+        /* العودة لتسجيل الدخول */
+
+        const showLoginButton =
+            document.getElementById(
+                "show-login"
+            );
+
+        if (showLoginButton) {
+
+            showLoginButton.addEventListener(
+                "click",
+                function () {
+                    showLogin();
+                }
+            );
+        }
+
+
+        /* الجلسة الحالية */
+
+        const sessionResult =
+            await supabaseClient.auth.getSession();
+
+
+        const session =
+            sessionResult?.data?.session ||
+            null;
+
+
+        await handleSession(
+            session
+        );
+
+
+        /* مراقبة الجلسة */
+
+        supabaseClient.auth.onAuthStateChange(
+            async function (
+                event,
+                session
+            ) {
+
+                if (
+                    event === "SIGNED_IN" ||
+                    event === "SIGNED_OUT" ||
+                    event === "INITIAL_SESSION" ||
+                    event === "TOKEN_REFRESHED"
+                ) {
+
+                    await handleSession(
+                        session
+                    );
+                }
+
+            }
+        );
+
+
+        console.log(
+            "Student App جاهز."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Init error:",
+            error
+        );
+
+
+        showMessage(
+            "login-message",
+            "تعذر تشغيل التطبيق. " +
+            (
+                error?.message ||
+                ""
+            ),
+            "error"
+        );
+    }
+}
+
+
+/* =========================================
+   تشغيل التطبيق
+========================================= */
+
+initApp();
