@@ -1,7 +1,5 @@
 /* =========================================================
    STUDENT - STORIES SYSTEM
-   Text + Image + Video
-   Publish + View + Delete + Edit + Views + Reactions
    ========================================================= */
 
 (function () {
@@ -19,19 +17,13 @@
        ===================================================== */
 
     async function initSupabase() {
-
         try {
-
-            if (
-                window.studentSupabase
-            ) {
+            if (window.studentSupabase) {
                 sb = window.studentSupabase;
                 return true;
             }
 
-            if (
-                window.supabaseClient
-            ) {
+            if (window.supabaseClient) {
                 sb = window.supabaseClient;
                 return true;
             }
@@ -40,19 +32,19 @@
                 !window.supabase ||
                 !window.supabase.createClient
             ) {
-                console.error(
-                    "Supabase library غير موجودة."
+                showToast(
+                    "تعذر تحميل Supabase",
+                    "error"
                 );
                 return false;
             }
 
-            const response =
-                await fetch(
-                    "/config.json",
-                    {
-                        cache: "no-store"
-                    }
-                );
+            const response = await fetch(
+                "/config.json",
+                {
+                    cache: "no-store"
+                }
+            );
 
             if (!response.ok) {
                 throw new Error(
@@ -75,7 +67,7 @@
 
             if (!url || !key) {
                 throw new Error(
-                    "بيانات Supabase غير موجودة في config.json"
+                    "بيانات Supabase غير موجودة"
                 );
             }
 
@@ -91,9 +83,12 @@
 
         } catch (error) {
 
-            console.error(
-                "Supabase error:",
-                error
+            console.error(error);
+
+            showToast(
+                error.message ||
+                "تعذر الاتصال بـ Supabase",
+                "error"
             );
 
             return false;
@@ -105,13 +100,9 @@
        ===================================================== */
 
     async function loadUser() {
-
-        if (!sb) {
-            return null;
-        }
+        if (!sb) return null;
 
         try {
-
             const {
                 data,
                 error
@@ -138,6 +129,114 @@
     }
 
     /* =====================================================
+       TOAST
+       ===================================================== */
+
+    function createToastContainer() {
+
+        if (
+            document.getElementById(
+                "studentToastContainer"
+            )
+        ) {
+            return;
+        }
+
+        const box =
+            document.createElement(
+                "div"
+            );
+
+        box.id =
+            "studentToastContainer";
+
+        box.style.cssText = `
+            position:fixed;
+            top:85px;
+            left:50%;
+            transform:translateX(-50%);
+            z-index:200000;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+            width:min(92%,420px);
+            pointer-events:none;
+        `;
+
+        document.body.appendChild(
+            box
+        );
+    }
+
+    function showToast(
+        message,
+        type = "success"
+    ) {
+
+        createToastContainer();
+
+        const container =
+            document.getElementById(
+                "studentToastContainer"
+            );
+
+        const toast =
+            document.createElement(
+                "div"
+            );
+
+        const success =
+            type === "success";
+
+        toast.style.cssText = `
+            background:${success
+                ? "#16a34a"
+                : "#dc2626"};
+            color:#fff;
+            padding:14px 18px;
+            border-radius:14px;
+            font-size:15px;
+            font-weight:600;
+            text-align:center;
+            box-shadow:0 10px 30px rgba(0,0,0,.22);
+            opacity:0;
+            transform:translateY(-15px);
+            transition:all .25s ease;
+            direction:rtl;
+        `;
+
+        toast.textContent =
+            message;
+
+        container.appendChild(
+            toast
+        );
+
+        requestAnimationFrame(() => {
+
+            toast.style.opacity =
+                "1";
+
+            toast.style.transform =
+                "translateY(0)";
+        });
+
+        setTimeout(() => {
+
+            toast.style.opacity =
+                "0";
+
+            toast.style.transform =
+                "translateY(-15px)";
+
+            setTimeout(() => {
+                toast.remove();
+            }, 250);
+
+        }, 2800);
+    }
+
+    /* =====================================================
        CSS
        ===================================================== */
 
@@ -160,10 +259,6 @@
             "studentStoriesStyles";
 
         style.textContent = `
-
-        /* ===============================
-           Story Container
-        =============================== */
 
         .stories-container {
             display:flex !important;
@@ -196,39 +291,17 @@
                 #d62976,
                 #feda75
             ) !important;
-            display:flex !important;
-            align-items:center !important;
-            justify-content:center !important;
         }
 
         .stories-container .story-ring-inner {
             width:100% !important;
             height:100% !important;
-            background:#fff !important;
             border-radius:50% !important;
+            background:#fff !important;
             display:flex !important;
             align-items:center !important;
             justify-content:center !important;
             overflow:hidden !important;
-        }
-
-        .stories-container .story-placeholder {
-            width:100% !important;
-            height:100% !important;
-            display:flex !important;
-            align-items:center !important;
-            justify-content:center !important;
-            background:#0095f6 !important;
-            color:#fff !important;
-            font-size:22px !important;
-            font-weight:bold !important;
-        }
-
-        .stories-container .story-preview {
-            width:100% !important;
-            height:100% !important;
-            object-fit:cover !important;
-            border-radius:50% !important;
         }
 
         .stories-container .story-name {
@@ -240,19 +313,10 @@
             text-overflow:ellipsis !important;
         }
 
-        /* ===============================
-           Add Story
-        =============================== */
-
         .stories-add-new .story-ring {
-            background:transparent !important;
             border:2px dashed #0095f6 !important;
-            padding:0 !important;
-        }
-
-        .stories-add-new .story-ring-inner {
-            color:#0095f6 !important;
             background:#fff !important;
+            padding:0 !important;
         }
 
         .stories-add-new i {
@@ -260,9 +324,24 @@
             font-size:25px !important;
         }
 
-        /* ===============================
-           Create Modal
-        =============================== */
+        .story-preview {
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            border-radius:50%;
+        }
+
+        .story-placeholder {
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            border-radius:50%;
+            color:#fff;
+            font-size:20px;
+            font-weight:bold;
+        }
 
         #studentStoryCreateModal {
             position:fixed;
@@ -284,8 +363,8 @@
             max-height:92vh;
             overflow:auto;
             background:#fff;
-            border-radius:20px;
-            padding:20px;
+            border-radius:22px;
+            padding:22px;
             direction:rtl;
         }
 
@@ -298,13 +377,13 @@
             display:grid;
             grid-template-columns:1fr 1fr;
             gap:10px;
-            margin-bottom:12px;
+            margin-bottom:14px;
         }
 
         .student-story-types button {
             border:1px solid #ddd;
             background:#f8f8f8;
-            border-radius:12px;
+            border-radius:13px;
             padding:14px 8px;
             font-size:16px;
             cursor:pointer;
@@ -318,7 +397,7 @@
 
         #studentStoryText {
             width:100%;
-            min-height:130px;
+            min-height:135px;
             border:1px solid #ddd;
             border-radius:14px;
             padding:14px;
@@ -326,30 +405,37 @@
             font-size:16px;
             direction:rtl;
             outline:none;
-            margin-bottom:12px;
+            margin-bottom:14px;
         }
 
         #studentStoryFile {
             width:100%;
-            margin-bottom:12px;
+            margin-bottom:14px;
             font-size:15px;
             display:none;
         }
 
-        .student-story-color {
-            width:100%;
-            margin-bottom:10px;
+        .student-color-row {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            margin-bottom:12px;
+            padding:10px 12px;
+            border:1px solid #e5e5e5;
+            border-radius:13px;
         }
 
-        .student-story-color input {
-            width:100%;
-            border:1px solid #ddd;
-            border-radius:12px;
-            padding:13px;
+        .student-color-row span {
             font-size:15px;
-            outline:none;
-            direction:ltr;
-            text-align:left;
+        }
+
+        .student-color-row input[type="color"] {
+            width:48px;
+            height:38px;
+            padding:0;
+            border:none;
+            background:none;
+            cursor:pointer;
         }
 
         .student-story-preview {
@@ -380,7 +466,7 @@
 
         .student-story-buttons button {
             border:none;
-            border-radius:12px;
+            border-radius:13px;
             padding:14px;
             font-size:16px;
             cursor:pointer;
@@ -394,10 +480,6 @@
         #studentStoryCancel {
             background:#eee;
         }
-
-        /* ===============================
-           Viewer
-        =============================== */
 
         #studentStoryViewer {
             position:fixed;
@@ -451,7 +533,6 @@
             z-index:20;
             display:flex;
             justify-content:space-between;
-            align-items:center;
         }
 
         .student-story-top button {
@@ -489,9 +570,9 @@
             justify-content:center;
             text-align:center;
             padding:35px;
-            line-height:1.5;
             font-size:30px;
             font-weight:bold;
+            line-height:1.5;
             word-break:break-word;
         }
 
@@ -548,7 +629,6 @@
             border-radius:12px;
             cursor:pointer;
         }
-
         `;
 
         document.head.appendChild(
@@ -557,7 +637,7 @@
     }
 
     /* =====================================================
-       CREATE HTML
+       MODALS
        ===================================================== */
 
     function createModals() {
@@ -571,13 +651,14 @@
         }
 
         const modal =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         modal.id =
             "studentStoryCreateModal";
 
         modal.innerHTML = `
-
             <div class="student-story-form">
 
                 <h2 id="studentStoryTitle">
@@ -619,26 +700,28 @@
                     id="studentStoryPreview"
                 ></div>
 
-                <div class="student-story-color">
+                <div class="student-color-row">
+                    <span>
+                        لون الخلفية
+                    </span>
 
                     <input
-                        type="text"
+                        type="color"
                         id="studentStoryBackground"
                         value="#1877f2"
-                        placeholder="#1877f2"
                     >
-
                 </div>
 
-                <div class="student-story-color">
+                <div class="student-color-row">
+                    <span>
+                        لون النص
+                    </span>
 
                     <input
-                        type="text"
+                        type="color"
                         id="studentStoryTextColor"
                         value="#ffffff"
-                        placeholder="#ffffff"
                     >
-
                 </div>
 
                 <div class="student-story-buttons">
@@ -667,7 +750,9 @@
         );
 
         const viewer =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         viewer.id =
             "studentStoryViewer";
@@ -773,11 +858,10 @@
     }
 
     /* =====================================================
-       MAIN STORY CONTAINER
+       STORY CONTAINER
        ===================================================== */
 
     function getStoriesContainer() {
-
         return document.querySelector(
             ".stories-container"
         );
@@ -789,13 +873,20 @@
             getStoriesContainer();
 
         if (!container) {
-            console.error(
-                "لم يتم العثور على .stories-container"
-            );
             return;
         }
 
-        container.innerHTML = "";
+        container.innerHTML =
+            "";
+
+        createAddStoryButton(
+            container
+        );
+    }
+
+    function createAddStoryButton(
+        container
+    ) {
 
         const add =
             document.createElement(
@@ -806,15 +897,10 @@
             "story stories-add-new";
 
         add.innerHTML = `
-
             <div class="story-ring">
-
                 <div class="story-ring-inner">
-
                     <i class="fa-solid fa-plus"></i>
-
                 </div>
-
             </div>
 
             <span class="story-name">
@@ -833,60 +919,59 @@
     }
 
     /* =====================================================
-       CREATE MODAL
+       CREATE
        ===================================================== */
 
-    function openCreateModal() {
+    async function openCreateModal() {
 
-        loadUser().then(() => {
+        await loadUser();
 
-            if (!currentUser) {
+        if (!currentUser) {
 
-                alert(
-                    "يجب تسجيل الدخول أولًا."
-                );
-
-                return;
-            }
-
-            editStory = null;
-
-            document.getElementById(
-                "studentStoryTitle"
-            ).textContent =
-                "إضافة ستوري";
-
-            document.getElementById(
-                "studentStoryText"
-            ).value = "";
-
-            document.getElementById(
-                "studentStoryFile"
-            ).value = "";
-
-            document.getElementById(
-                "studentStoryBackground"
-            ).value =
-                "#1877f2";
-
-            document.getElementById(
-                "studentStoryTextColor"
-            ).value =
-                "#ffffff";
-
-            setStoryMode(
-                "text"
+            showToast(
+                "يجب تسجيل الدخول أولًا",
+                "error"
             );
 
-            clearPreview();
+            return;
+        }
 
-            document.getElementById(
-                "studentStoryCreateModal"
-            ).classList.add(
-                "active"
-            );
+        editStory = null;
 
-        });
+        document.getElementById(
+            "studentStoryTitle"
+        ).textContent =
+            "إضافة ستوري";
+
+        document.getElementById(
+            "studentStoryText"
+        ).value = "";
+
+        document.getElementById(
+            "studentStoryFile"
+        ).value = "";
+
+        document.getElementById(
+            "studentStoryBackground"
+        ).value =
+            "#1877f2";
+
+        document.getElementById(
+            "studentStoryTextColor"
+        ).value =
+            "#ffffff";
+
+        setStoryMode(
+            "text"
+        );
+
+        clearPreview();
+
+        document.getElementById(
+            "studentStoryCreateModal"
+        ).classList.add(
+            "active"
+        );
     }
 
     function closeCreateModal() {
@@ -899,7 +984,7 @@
     }
 
     /* =====================================================
-       STORY MODE
+       MODES
        ===================================================== */
 
     function setStoryMode(
@@ -934,21 +1019,11 @@
             mode === "media"
         );
 
-        if (mode === "text") {
-
-            file.style.display =
-                "none";
-
-        } else {
-
-            file.style.display =
-                "block";
-        }
+        file.style.display =
+            mode === "media"
+                ? "block"
+                : "none";
     }
-
-    /* =====================================================
-       FILE PICKER
-       ===================================================== */
 
     function openFilePicker() {
 
@@ -957,7 +1032,8 @@
                 "studentStoryFile"
             );
 
-        input.value = "";
+        input.value =
+            "";
 
         input.click();
     }
@@ -973,7 +1049,8 @@
                 "studentStoryPreview"
             );
 
-        preview.innerHTML = "";
+        preview.innerHTML =
+            "";
 
         preview.style.display =
             "none";
@@ -988,12 +1065,12 @@
                 "studentStoryPreview"
             );
 
-        preview.innerHTML = "";
+        preview.innerHTML =
+            "";
 
         if (!file) {
 
-            preview.style.display =
-                "none";
+            clearPreview();
 
             return;
         }
@@ -1009,16 +1086,16 @@
             )
         ) {
 
-            const img =
+            const image =
                 document.createElement(
                     "img"
                 );
 
-            img.src =
+            image.src =
                 url;
 
             preview.appendChild(
-                img
+                image
             );
 
         } else if (
@@ -1047,9 +1124,12 @@
 
         } else {
 
-            alert(
-                "يرجى اختيار صورة أو فيديو فقط."
+            showToast(
+                "اختر صورة أو فيديو فقط",
+                "error"
             );
+
+            clearPreview();
 
             return;
         }
@@ -1066,12 +1146,6 @@
         file
     ) {
 
-        if (!currentUser) {
-            throw new Error(
-                "المستخدم غير مسجل الدخول."
-            );
-        }
-
         const extension =
             file.name
                 .split(".")
@@ -1081,30 +1155,24 @@
         const random =
             Math.random()
                 .toString(36)
-                .substring(2, 10);
+                .substring(2,10);
 
-        const fileName =
-            `${Date.now()}_${random}.${extension}`;
-
-        const path =
-            `${currentUser.id}/${fileName}`;
+        const filePath =
+            `${currentUser.id}/${Date.now()}_${random}.${extension}`;
 
         const {
             error
-        } =
-            await sb.storage
-                .from("stories")
-                .upload(
-                    path,
-                    file,
-                    {
-                        cacheControl:
-                            "3600",
-                        contentType:
-                            file.type,
-                        upsert:false
-                    }
-                );
+        } = await sb.storage
+            .from("stories")
+            .upload(
+                filePath,
+                file,
+                {
+                    cacheControl:"3600",
+                    contentType:file.type,
+                    upsert:false
+                }
+            );
 
         if (error) {
             throw error;
@@ -1112,34 +1180,25 @@
 
         const {
             data
-        } =
-            sb.storage
-                .from("stories")
-                .getPublicUrl(
-                    path
-                );
-
-        if (
-            !data ||
-            !data.publicUrl
-        ) {
-            throw new Error(
-                "تعذر إنشاء رابط الملف."
+        } = sb.storage
+            .from("stories")
+            .getPublicUrl(
+                filePath
             );
-        }
 
-        return {
-            url:
-                data.publicUrl,
-            path
-        };
+        return data.publicUrl;
     }
 
     /* =====================================================
-       PUBLISH
+       SAVE STORY
        ===================================================== */
 
     async function saveStory() {
+
+        const button =
+            document.getElementById(
+                "studentStoryPublish"
+            );
 
         try {
 
@@ -1147,23 +1206,13 @@
 
             if (!currentUser) {
 
-                alert(
-                    "يجب تسجيل الدخول أولًا."
+                showToast(
+                    "يجب تسجيل الدخول أولًا",
+                    "error"
                 );
 
                 return;
             }
-
-            const publish =
-                document.getElementById(
-                    "studentStoryPublish"
-                );
-
-            publish.disabled =
-                true;
-
-            publish.textContent =
-                "جاري الحفظ...";
 
             const text =
                 document.getElementById(
@@ -1173,19 +1222,23 @@
             const background =
                 document.getElementById(
                     "studentStoryBackground"
-                ).value.trim() ||
-                "#1877f2";
+                ).value;
 
             const textColor =
                 document.getElementById(
                     "studentStoryTextColor"
-                ).value.trim() ||
-                "#ffffff";
+                ).value;
 
             const file =
                 document.getElementById(
                     "studentStoryFile"
                 ).files[0] || null;
+
+            button.disabled =
+                true;
+
+            button.textContent =
+                "جاري الحفظ...";
 
             let type =
                 "text";
@@ -1195,45 +1248,21 @@
                     ? editStory.media_url
                     : null;
 
-            /* =========================
-               Media
-            ========================= */
+            /* ==================
+               MEDIA
+            ================== */
 
-            if (storyMode === "media") {
+            if (
+                storyMode ===
+                "media"
+            ) {
 
                 if (!file) {
 
-                    alert(
-                        "اختر صورة أو فيديو أولًا."
+                    showToast(
+                        "اختر صورة أو فيديو أولًا",
+                        "error"
                     );
-
-                    publish.disabled =
-                        false;
-
-                    publish.textContent =
-                        "نشر";
-
-                    return;
-                }
-
-                if (
-                    !file.type.startsWith(
-                        "image/"
-                    ) &&
-                    !file.type.startsWith(
-                        "video/"
-                    )
-                ) {
-
-                    alert(
-                        "الملف يجب أن يكون صورة أو فيديو."
-                    );
-
-                    publish.disabled =
-                        false;
-
-                    publish.textContent =
-                        "نشر";
 
                     return;
                 }
@@ -1245,146 +1274,124 @@
                         ? "video"
                         : "image";
 
-                const uploaded =
+                mediaUrl =
                     await uploadStoryFile(
                         file
                     );
+            }
+
+            /* ==================
+               TEXT
+            ================== */
+
+            else {
+
+                if (!text) {
+
+                    showToast(
+                        "اكتب نص الستوري أولًا",
+                        "error"
+                    );
+
+                    return;
+                }
+
+                type =
+                    "text";
 
                 mediaUrl =
-                    uploaded.url;
+                    null;
             }
 
-            /* =========================
-               Text Story
-            ========================= */
-
-            if (
-                storyMode === "text" &&
-                !text
-            ) {
-
-                alert(
-                    "اكتب نص الستوري أولًا."
-                );
-
-                publish.disabled =
-                    false;
-
-                publish.textContent =
-                    "نشر";
-
-                return;
-            }
-
-            /* =========================
+            /* ==================
                UPDATE
-            ========================= */
+            ================== */
 
             if (editStory) {
 
                 const {
-                    data,
                     error
-                } =
-                    await sb
-                        .from("stories")
-                        .update({
-                            type,
-                            content:
-                                text,
-
-                            media_url:
-                                mediaUrl,
-
-                            background_color:
-                                background,
-
-                            text_color:
-                                textColor
-                        })
-                        .eq(
-                            "id",
-                            editStory.id
-                        )
-                        .eq(
-                            "user_id",
-                            currentUser.id
-                        )
-                        .select()
-                        .single();
+                } = await sb
+                    .from("stories")
+                    .update({
+                        type:type,
+                        content:text,
+                        media_url:mediaUrl,
+                        background_color:background,
+                        text_color:textColor
+                    })
+                    .eq(
+                        "id",
+                        editStory.id
+                    )
+                    .eq(
+                        "user_id",
+                        currentUser.id
+                    );
 
                 if (error) {
                     throw error;
                 }
 
-                console.log(
-                    "Story updated:",
-                    data
-                );
-
-                alert(
-                    "تم تعديل الستوري بنجاح."
+                showToast(
+                    "تم تعديل الستوري بنجاح"
                 );
 
             }
 
-            /* =========================
+            /* ==================
                INSERT
-            ========================= */
+            ================== */
 
             else {
 
+                const now =
+                    new Date();
+
+                const expires =
+                    new Date(
+                        now.getTime() +
+                        24 *
+                        60 *
+                        60 *
+                        1000
+                    );
+
                 const {
-                    data,
                     error
-                } =
-                    await sb
-                        .from("stories")
-                        .insert({
-                            user_id:
-                                currentUser.id,
+                } = await sb
+                    .from("stories")
+                    .insert({
+                        user_id:
+                            currentUser.id,
 
-                            type,
+                        type:type,
 
-                            content:
-                                text,
+                        content:
+                            text,
 
-                            media_url:
-                                mediaUrl,
+                        media_url:
+                            mediaUrl,
 
-                            background_color:
-                                background,
+                        background_color:
+                            background,
 
-                            text_color:
-                                textColor,
+                        text_color:
+                            textColor,
 
-                            created_at:
-                                new Date()
-                                    .toISOString(),
+                        created_at:
+                            now.toISOString(),
 
-                            expires_at:
-                                new Date(
-                                    Date.now() +
-                                    24 *
-                                    60 *
-                                    60 *
-                                    1000
-                                ).toISOString()
-                        })
-                        .select()
-                        .single();
+                        expires_at:
+                            expires.toISOString()
+                    });
 
                 if (error) {
                     throw error;
                 }
 
-                console.log(
-                    "Story created:",
-                    data
-                );
-
-                alert(
-                    "تم نشر الستوري بنجاح."
+                showToast(
+                    "تم نشر الستوري بنجاح"
                 );
             }
 
@@ -1398,26 +1405,22 @@
         } catch (error) {
 
             console.error(
-                "SAVE STORY ERROR:",
+                "STORY ERROR:",
                 error
             );
 
-            alert(
+            showToast(
                 error.message ||
-                "حدث خطأ أثناء حفظ الستوري."
+                "حدث خطأ أثناء نشر الستوري",
+                "error"
             );
 
         } finally {
 
-            const publish =
-                document.getElementById(
-                    "studentStoryPublish"
-                );
-
-            publish.disabled =
+            button.disabled =
                 false;
 
-            publish.textContent =
+            button.textContent =
                 "نشر";
         }
     }
@@ -1428,145 +1431,77 @@
 
     async function loadStories() {
 
-        if (!sb) {
-            return;
-        }
+        if (!sb) return;
 
         const container =
             getStoriesContainer();
 
-        if (!container) {
-            return;
-        }
+        if (!container) return;
 
         await loadUser();
-
-        const oldAdd =
-            container.querySelector(
-                ".stories-add-new"
-            );
 
         container.innerHTML =
             "";
 
-        /* Add button */
-
-        const add =
-            document.createElement(
-                "div"
-            );
-
-        add.className =
-            "story stories-add-new";
-
-        add.innerHTML = `
-
-            <div class="story-ring">
-
-                <div class="story-ring-inner">
-
-                    <i class="fa-solid fa-plus"></i>
-
-                </div>
-
-            </div>
-
-            <span class="story-name">
-                إضافة ستوري
-            </span>
-        `;
-
-        add.addEventListener(
-            "click",
-            openCreateModal
+        createAddStoryButton(
+            container
         );
-
-        container.appendChild(
-            add
-        );
-
-        /* =========================
-           Query
-        ========================= */
 
         const {
             data,
             error
-        } =
-            await sb
-                .from("stories")
-                .select("*")
-                .gt(
-                    "expires_at",
-                    new Date().toISOString()
-                )
-                .order(
-                    "created_at",
-                    {
-                        ascending:false
-                    }
-                );
+        } = await sb
+            .from("stories")
+            .select("*")
+            .gt(
+                "expires_at",
+                new Date().toISOString()
+            )
+            .order(
+                "created_at",
+                {
+                    ascending:false
+                }
+            );
 
         if (error) {
 
             console.error(
-                "LOAD STORIES ERROR:",
                 error
             );
 
-            const message =
-                document.createElement(
-                    "div"
-                );
-
-            message.style.padding =
-                "10px";
-
-            message.style.color =
-                "#777";
-
-            message.textContent =
-                "تعذر تحميل القصص.";
-
-            container.appendChild(
-                message
+            showToast(
+                "تعذر تحميل القصص",
+                "error"
             );
 
             return;
         }
 
-        if (
-            !data ||
-            data.length === 0
-        ) {
+        if (!data || !data.length) {
             return;
         }
 
-        /* =========================
-           One first story per user
-        ========================= */
-
-        const firstStories =
+        const first =
             new Map();
 
         data.forEach(
             story => {
 
                 if (
-                    !firstStories.has(
+                    !first.has(
                         story.user_id
                     )
                 ) {
-                    firstStories.set(
+                    first.set(
                         story.user_id,
                         story
                     );
                 }
-
             }
         );
 
-        firstStories.forEach(
+        first.forEach(
             story => {
 
                 const item =
@@ -1615,12 +1550,9 @@
         inner.className =
             "story-ring-inner";
 
-        /* Preview */
-
         if (
             story.type ===
-            "image"
-            &&
+            "image" &&
             story.media_url
         ) {
 
@@ -1635,46 +1567,11 @@
             img.src =
                 story.media_url;
 
-            img.alt =
-                "Story";
-
             inner.appendChild(
                 img
             );
 
-        }
-
-        else if (
-            story.type ===
-            "video"
-            &&
-            story.media_url
-        ) {
-
-            const video =
-                document.createElement(
-                    "video"
-                );
-
-            video.className =
-                "story-preview";
-
-            video.src =
-                story.media_url;
-
-            video.muted =
-                true;
-
-            video.playsInline =
-                true;
-
-            inner.appendChild(
-                video
-            );
-
-        }
-
-        else {
+        } else {
 
             const placeholder =
                 document.createElement(
@@ -1733,7 +1630,7 @@
             "click",
             () => {
 
-                const userStories =
+                const group =
                     allStories.filter(
                         s =>
                             s.user_id ===
@@ -1741,10 +1638,9 @@
                     );
 
                 openStory(
-                    userStories[0],
-                    userStories
+                    group[0],
+                    group
                 );
-
             }
         );
 
@@ -1760,9 +1656,7 @@
         group
     ) {
 
-        if (!story) {
-            return;
-        }
+        if (!story) return;
 
         currentViewingStory =
             story;
@@ -1782,11 +1676,6 @@
                 "studentStoryOwnerMenu"
             );
 
-        const progress =
-            viewer.querySelector(
-                ".student-story-progress span"
-            );
-
         viewer.classList.add(
             "active"
         );
@@ -1795,18 +1684,8 @@
             "show"
         );
 
-        progress.style.width =
-            "100%";
-
         content.innerHTML =
             "";
-
-        content.style.background =
-            "#111";
-
-        /* =========================
-           Text
-        ========================= */
 
         if (
             story.type ===
@@ -1836,13 +1715,8 @@
             content.appendChild(
                 text
             );
-        }
 
-        /* =========================
-           Image
-        ========================= */
-
-        else if (
+        } else if (
             story.type ===
             "image"
         ) {
@@ -1855,19 +1729,11 @@
             img.src =
                 story.media_url;
 
-            img.alt =
-                "Story";
-
             content.appendChild(
                 img
             );
-        }
 
-        /* =========================
-           Video
-        ========================= */
-
-        else if (
+        } else if (
             story.type ===
             "video"
         ) {
@@ -1894,25 +1760,16 @@
             );
         }
 
-        /* Owner */
+        const menu =
+            document.getElementById(
+                "studentStoryMenu"
+            );
 
-        if (
+        menu.style.display =
             story.user_id ===
             currentUser?.id
-        ) {
-
-            document.getElementById(
-                "studentStoryMenu"
-            ).style.display =
-                "block";
-
-        } else {
-
-            document.getElementById(
-                "studentStoryMenu"
-            ).style.display =
-                "none";
-        }
+                ? "block"
+                : "none";
 
         await registerView(
             story.id
@@ -1924,7 +1781,7 @@
     }
 
     /* =====================================================
-       REGISTER VIEW
+       VIEWS
        ===================================================== */
 
     async function registerView(
@@ -1938,24 +1795,23 @@
         try {
 
             const {
-                data: existing
-            } =
-                await sb
-                    .from(
-                        "story_views"
-                    )
-                    .select("id")
-                    .eq(
-                        "story_id",
-                        storyId
-                    )
-                    .eq(
-                        "user_id",
-                        currentUser.id
-                    )
-                    .maybeSingle();
+                data
+            } = await sb
+                .from(
+                    "story_views"
+                )
+                .select("id")
+                .eq(
+                    "story_id",
+                    storyId
+                )
+                .eq(
+                    "user_id",
+                    currentUser.id
+                )
+                .maybeSingle();
 
-            if (existing) {
+            if (data) {
                 return;
             }
 
@@ -1974,15 +1830,10 @@
         } catch (error) {
 
             console.error(
-                "VIEW ERROR:",
                 error
             );
         }
     }
-
-    /* =====================================================
-       VIEW COUNT
-       ===================================================== */
 
     async function loadViewCount(
         storyId
@@ -1991,31 +1842,23 @@
         const {
             count,
             error
-        } =
-            await sb
-                .from(
-                    "story_views"
-                )
-                .select(
-                    "*",
-                    {
-                        count:
-                            "exact",
-                        head:
-                            true
-                    }
-                )
-                .eq(
-                    "story_id",
-                    storyId
-                );
-
-        if (error) {
-
-            console.error(
-                error
+        } = await sb
+            .from(
+                "story_views"
+            )
+            .select(
+                "*",
+                {
+                    count:"exact",
+                    head:true
+                }
+            )
+            .eq(
+                "story_id",
+                storyId
             );
 
+        if (error) {
             return;
         }
 
@@ -2038,40 +1881,23 @@
             return;
         }
 
-        if (
-            currentViewingStory.user_id !==
-            currentUser.id
-        ) {
-            return;
-        }
-
-        const ok =
-            confirm(
-                "هل تريد حذف هذه الستوري؟"
-            );
-
-        if (!ok) {
-            return;
-        }
-
         try {
 
             const {
                 error
-            } =
-                await sb
-                    .from(
-                        "stories"
-                    )
-                    .delete()
-                    .eq(
-                        "id",
-                        currentViewingStory.id
-                    )
-                    .eq(
-                        "user_id",
-                        currentUser.id
-                    );
+            } = await sb
+                .from(
+                    "stories"
+                )
+                .delete()
+                .eq(
+                    "id",
+                    currentViewingStory.id
+                )
+                .eq(
+                    "user_id",
+                    currentUser.id
+                );
 
             if (error) {
                 throw error;
@@ -2088,17 +1914,16 @@
 
             await loadStories();
 
-            alert(
-                "تم حذف الستوري."
+            showToast(
+                "تم حذف الستوري"
             );
 
         } catch (error) {
 
-            console.error(error);
-
-            alert(
+            showToast(
                 error.message ||
-                "تعذر حذف الستوري."
+                "تعذر حذف الستوري",
+                "error"
             );
         }
     }
@@ -2112,13 +1937,6 @@
         if (
             !currentViewingStory ||
             !currentUser
-        ) {
-            return;
-        }
-
-        if (
-            currentViewingStory.user_id !==
-            currentUser.id
         ) {
             return;
         }
@@ -2148,11 +1966,6 @@
         ).value =
             currentViewingStory.text_color ||
             "#ffffff";
-
-        document.getElementById(
-            "studentStoryFile"
-        ).value =
-            "";
 
         if (
             currentViewingStory.type ===
@@ -2184,7 +1997,7 @@
     }
 
     /* =====================================================
-       REACTION
+       REACTIONS
        ===================================================== */
 
     async function reactToStory(
@@ -2192,19 +2005,9 @@
     ) {
 
         if (
-            !currentViewingStory
+            !currentViewingStory ||
+            !currentUser
         ) {
-            return;
-        }
-
-        await loadUser();
-
-        if (!currentUser) {
-
-            alert(
-                "يجب تسجيل الدخول أولًا."
-            );
-
             return;
         }
 
@@ -2212,40 +2015,41 @@
 
             const {
                 error
-            } =
-                await sb
-                    .from(
-                        "story_reactions"
-                    )
-                    .upsert(
-                        {
-                            story_id:
-                                currentViewingStory.id,
+            } = await sb
+                .from(
+                    "story_reactions"
+                )
+                .upsert(
+                    {
+                        story_id:
+                            currentViewingStory.id,
 
-                            user_id:
-                                currentUser.id,
+                        user_id:
+                            currentUser.id,
 
+                        reaction:
                             reaction
-                        },
-                        {
-                            onConflict:
-                                "story_id,user_id"
-                        }
-                    );
+                    },
+                    {
+                        onConflict:
+                            "story_id,user_id"
+                    }
+                );
 
             if (error) {
                 throw error;
             }
 
-        } catch (error) {
-
-            console.error(
-                error
+            showToast(
+                "تم تسجيل التفاعل"
             );
 
-            alert(
+        } catch (error) {
+
+            showToast(
                 error.message ||
-                "تعذر تسجيل التفاعل."
+                "تعذر تسجيل التفاعل",
+                "error"
             );
         }
     }
@@ -2276,14 +2080,10 @@
             .addEventListener(
                 "click",
                 () => {
-
                     setStoryMode(
                         "media"
                     );
 
-                    /*
-                     * افتح معرض الهاتف مباشرة
-                     */
                     openFilePicker();
                 }
             );
@@ -2296,11 +2096,8 @@
                 "change",
                 event => {
 
-                    const file =
-                        event.target.files[0];
-
                     showFilePreview(
-                        file
+                        event.target.files[0]
                     );
                 }
             );
@@ -2338,7 +2135,6 @@
                         .classList.remove(
                             "active"
                         );
-
                 }
             );
 
@@ -2357,7 +2153,6 @@
                         .classList.toggle(
                             "show"
                         );
-
                 }
             );
 
@@ -2394,65 +2189,19 @@
                                 button.dataset
                                     .reaction
                             );
-
                         }
                     );
-                }
-            );
-
-        document
-            .getElementById(
-                "studentStoryViewer"
-            )
-            .addEventListener(
-                "click",
-                event => {
-
-                    if (
-                        event.target.id ===
-                        "studentStoryViewer"
-                    ) {
-
-                        event.currentTarget
-                            .classList
-                            .remove(
-                                "active"
-                            );
-                    }
-
-                }
-            );
-
-        document
-            .getElementById(
-                "studentStoryCreateModal"
-            )
-            .addEventListener(
-                "click",
-                event => {
-
-                    if (
-                        event.target.id ===
-                        "studentStoryCreateModal"
-                    ) {
-
-                        closeCreateModal();
-
-                    }
-
                 }
             );
     }
 
     /* =====================================================
-       AUTH STATE
+       AUTH
        ===================================================== */
 
     function watchAuth() {
 
-        if (!sb) {
-            return;
-        }
+        if (!sb) return;
 
         sb.auth.onAuthStateChange(
             async (
@@ -2465,19 +2214,19 @@
                     null;
 
                 if (currentUser) {
-
                     await loadStories();
-
                 }
             }
         );
     }
 
     /* =====================================================
-       INITIALIZE
+       INIT
        ===================================================== */
 
     async function initialize() {
+
+        createToastContainer();
 
         const ready =
             await initSupabase();
@@ -2501,12 +2250,7 @@
         if (currentUser) {
             await loadStories();
         }
-
     }
-
-    /* =====================================================
-       START
-       ===================================================== */
 
     if (
         document.readyState ===
@@ -2521,7 +2265,6 @@
     } else {
 
         initialize();
-
     }
 
 })();
