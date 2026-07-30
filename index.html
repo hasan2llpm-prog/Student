@@ -3,82 +3,511 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Student</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0095f6">
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* =========================
+           شاشة المصادقة
+        ========================= */
+
+        #auth-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #ffffff;
+        }
+
+        .auth-box {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border: 1px solid #dbdbdb;
+            border-radius: 16px;
+            padding: 28px 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.06);
+        }
+
+        .auth-logo {
+            text-align: center;
+            font-size: 34px;
+            font-weight: bold;
+            color: #0095f6;
+            font-style: italic;
+            font-family: cursive;
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: #777;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .auth-title {
+            text-align: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #262626;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .auth-form input {
+            width: 100%;
+            padding: 13px 14px;
+            border: 1px solid #d5d5d5;
+            border-radius: 10px;
+            outline: none;
+            font-size: 15px;
+            direction: rtl;
+        }
+
+        .auth-form input:focus {
+            border-color: #0095f6;
+        }
+
+        .auth-button {
+            border: none;
+            background: #0095f6;
+            color: #fff;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .auth-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .auth-switch {
+            margin-top: 16px;
+            text-align: center;
+            color: #0095f6;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .auth-message {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.6;
+            min-height: 22px;
+        }
+
+        .auth-message.error {
+            color: #d93025;
+        }
+
+        .auth-message.success {
+            color: #16803c;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* =========================
+           اسم المستخدم
+        ========================= */
+
+        .welcome-user {
+            font-size: 13px;
+            color: #666;
+            margin-top: 3px;
+            text-align: right;
+        }
+    </style>
 </head>
+
 <body>
 
-    <!-- الهيدر العلوي -->
-    <header>
-        <div class="header-icons">
-            <i class="fa-regular fa-bell"></i>
-            <span class="badge">3</span>
-        </div>
-        <div class="logo">Student</div>
-        <div class="header-icons">
-            <i class="fa-solid fa-bars"></i>
-        </div>
-    </header>
+    <!-- =========================================
+         شاشة تسجيل الدخول / إنشاء الحساب
+    ========================================== -->
 
-    <!-- شريط الستوريات -->
-    <div class="stories-container">
-        <div class="story add-story">
-            <div class="story-ring"><i class="fa-solid fa-plus" style="color: #0095f6;"></i></div>
-            <span class="story-name">إضافة ستوري</span>
-        </div>
-        <div class="story">
-            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')"></div></div>
-            <span class="story-name">قصتي</span>
-        </div>
-        <div class="story">
-            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1519681393784-d120267933ba')"></div></div>
-            <span class="story-name">Ahmed</span>
-        </div>
-        <div class="story">
-            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05')"></div></div>
-            <span class="story-name">Sara</span>
-        </div>
-        <div class="story">
-            <div class="story-ring"><div class="story-img" style="background-image: url('https://images.unsplash.com/photo-1426604966848-d7adacbd02bff')"></div></div>
-            <span class="story-name">Khalid</span>
-        </div>
-    </div>
+    <section id="auth-screen">
 
-    <!-- البطاقات الأربع الرئيسية -->
-    <div class="main-content">
-        <div class="cards-grid">
-            <div class="card" onclick="openStage('primary')">
-                <div class="card-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-                <div class="card-title">الابتدائي</div>
-            </div>
-            <div class="card" onclick="openStage('middle')">
-                <div class="card-icon"><i class="fa-solid fa-school"></i></div>
-                <div class="card-title">الإعدادي</div>
-            </div>
-            <div class="card" onclick="openStage('secondary')">
-                <div class="card-icon"><i class="fa-solid fa-building-columns"></i></div>
-                <div class="card-title">الثانوي</div>
-            </div>
-            <div class="card" onclick="openStage('university')">
-                <div class="card-icon"><i class="fa-solid fa-university"></i></div>
-                <div class="card-title">الجامعة</div>
-            </div>
-        </div>
-    </div>
+        <div class="auth-box">
 
-    <!-- شريط التنقل السفلي -->
-    <nav>
-        <a href="#" class="active"><i class="fa-solid fa-house"></i></a>
-        <a href="#"><i class="fa-solid fa-magnifying-glass"></i></a>
-        <a href="#"><i class="fa-regular fa-square-plus"></i></a>
-        <a href="#"><i class="fa-regular fa-paper-plane"></i></a>
-        <a href="#"><i class="fa-regular fa-user"></i></a>
-    </nav>
+            <div class="auth-logo">Student</div>
+
+            <div class="auth-subtitle">
+                منصة تعليمية للطلاب العراقيين
+            </div>
+
+            <!-- تسجيل الدخول -->
+            <div id="login-section">
+
+                <h2 class="auth-title">تسجيل الدخول</h2>
+
+                <form id="login-form" class="auth-form">
+
+                    <input
+                        type="email"
+                        id="login-email"
+                        placeholder="البريد الإلكتروني"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="login-password"
+                        placeholder="كلمة المرور"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button
+                        type="submit"
+                        id="login-btn"
+                        class="auth-button"
+                    >
+                        دخول
+                    </button>
+
+                </form>
+
+                <div
+                    id="login-message"
+                    class="auth-message"
+                ></div>
+
+                <div
+                    id="show-register"
+                    class="auth-switch"
+                >
+                    ليس لديك حساب؟ إنشاء حساب
+                </div>
+
+            </div>
+
+            <!-- إنشاء حساب -->
+            <div id="register-section" class="hidden">
+
+                <h2 class="auth-title">إنشاء حساب جديد</h2>
+
+                <form id="register-form" class="auth-form">
+
+                    <input
+                        type="text"
+                        id="register-name"
+                        placeholder="الاسم الكامل"
+                        autocomplete="name"
+                        required
+                    >
+
+                    <input
+                        type="email"
+                        id="register-email"
+                        placeholder="البريد الإلكتروني"
+                        autocomplete="email"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="register-password"
+                        placeholder="كلمة المرور"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                    <input
+                        type="password"
+                        id="register-password-confirm"
+                        placeholder="تأكيد كلمة المرور"
+                        autocomplete="new-password"
+                        minlength="6"
+                        required
+                    >
+
+                    <button
+                        type="submit"
+                        id="register-btn"
+                        class="auth-button"
+                    >
+                        إنشاء الحساب
+                    </button>
+
+                </form>
+
+                <div
+                    id="register-message"
+                    class="auth-message"
+                ></div>
+
+                <div
+                    id="show-login"
+                    class="auth-switch"
+                >
+                    لديك حساب؟ تسجيل الدخول
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================================
+         التطبيق الرئيسي
+    ========================================== -->
+
+    <section id="main-screen" class="hidden">
+
+        <!-- الهيدر -->
+        <header>
+
+            <div class="header-icons">
+                <i class="fa-regular fa-bell"></i>
+                <span class="badge">0</span>
+            </div>
+
+            <div>
+                <div class="logo">Student</div>
+                <div id="welcome-user" class="welcome-user"></div>
+            </div>
+
+            <div class="header-icons">
+                <i
+                    id="menu-icon"
+                    class="fa-solid fa-bars"
+                ></i>
+            </div>
+
+        </header>
+
+
+        <!-- الستوريات -->
+        <div class="stories-container">
+
+            <div class="story add-story">
+
+                <div class="story-ring">
+
+                    <i
+                        class="fa-solid fa-plus"
+                        style="color:#0095f6;"
+                    ></i>
+
+                </div>
+
+                <span class="story-name">
+                    إضافة ستوري
+                </span>
+
+            </div>
+
+
+            <div class="story">
+
+                <div class="story-ring">
+
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e')"
+                    ></div>
+
+                </div>
+
+                <span class="story-name">
+                    قصتي
+                </span>
+
+            </div>
+
+
+            <div class="story">
+
+                <div class="story-ring">
+
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1519681393784-d120267933ba')"
+                    ></div>
+
+                </div>
+
+                <span class="story-name">
+                    Ahmed
+                </span>
+
+            </div>
+
+
+            <div class="story">
+
+                <div class="story-ring">
+
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05')"
+                    ></div>
+
+                </div>
+
+                <span class="story-name">
+                    Sara
+                </span>
+
+            </div>
+
+
+            <div class="story">
+
+                <div class="story-ring">
+
+                    <div
+                        class="story-img"
+                        style="background-image:url('https://images.unsplash.com/photo-1426604966848-d7adacbd02bff')"
+                    ></div>
+
+                </div>
+
+                <span class="story-name">
+                    Khalid
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- البطاقات -->
+        <div class="main-content">
+
+            <div class="cards-grid">
+
+                <div
+                    class="card"
+                    onclick="openStage('primary')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الابتدائي
+                    </div>
+                </div>
+
+
+                <div
+                    class="card"
+                    onclick="openStage('middle')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-school"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الإعدادي
+                    </div>
+                </div>
+
+
+                <div
+                    class="card"
+                    onclick="openStage('secondary')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-building-columns"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الثانوي
+                    </div>
+                </div>
+
+
+                <div
+                    class="card"
+                    onclick="openStage('university')"
+                >
+                    <div class="card-icon">
+                        <i class="fa-solid fa-university"></i>
+                    </div>
+
+                    <div class="card-title">
+                        الجامعة
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- التنقل السفلي -->
+        <nav>
+
+            <a
+                href="#"
+                class="active"
+                onclick="return false;"
+            >
+                <i class="fa-solid fa-house"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-square-plus"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-paper-plane"></i>
+            </a>
+
+            <a
+                href="#"
+                onclick="return false;"
+            >
+                <i class="fa-regular fa-user"></i>
+            </a>
+
+        </nav>
+
+    </section>
+
+
+    <!-- =========================================
+         JavaScript
+    ========================================== -->
 
     <script src="app.js"></script>
+
 </body>
 </html>
