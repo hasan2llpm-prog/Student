@@ -1,108 +1,190 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          content="width=device-width,
+                   initial-scale=1.0,
+                   maximum-scale=1.0,
+                   user-scalable=no">
 
     <meta name="theme-color" content="#2563eb">
 
-    <meta name="description" content="تطبيق Student">
+    <meta name="description"
+          content="تطبيق Student">
 
     <title>Student</title>
 
-    <!-- CSS -->
+
+    <!-- =========================================================
+         CSS
+         ========================================================= -->
+
     <link rel="stylesheet" href="style.css">
 
-    <!-- Supabase -->
+
+    <!-- =========================================================
+         Supabase
+         ========================================================= -->
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+
+    <!-- =========================================================
+         شاشة التشخيص
+         ========================================================= -->
+
     <style>
-        /* شاشة التشخيص */
+
         #boot-status {
+
             position: fixed;
+
             top: 0;
             left: 0;
             right: 0;
+
             z-index: 999999999;
-            padding: 16px;
+
+            padding: 14px 16px;
+
             background: #fff3cd;
+
             color: #222;
+
             font-family: Arial, sans-serif;
-            font-size: 16px;
+
+            font-size: 15px;
+
             line-height: 1.7;
+
             direction: rtl;
+
             text-align: right;
-            display: block !important;
+
             box-sizing: border-box;
+
         }
+
 
         #boot-status.success {
+
             background: #d1e7dd;
+
             color: #0f5132;
+
         }
+
 
         #boot-status.error {
+
             background: #f8d7da;
+
             color: #721c24;
+
         }
 
+
         #boot-status.hidden {
+
             display: none !important;
+
         }
+
     </style>
+
 </head>
+
 
 <body>
 
+
     <!-- =========================================================
-         شاشة تشخيص مؤقتة للشاشة البيضاء
+         رسالة التشغيل
          ========================================================= -->
+
     <div id="boot-status">
         جاري تشغيل تطبيق Student...
     </div>
 
 
+
     <!-- =========================================================
-         التطبيق
+         لا نحصر التطبيق داخل #app
+         لأن app.js قد ينشئ عناصره مباشرة داخل body
          ========================================================= -->
-    <div id="app">
-        <!-- سيتم تحميل محتوى التطبيق من app.js -->
-    </div>
+
 
 
     <script>
+
         /*
         ============================================================
-        حماية من الشاشة البيضاء
+        عناصر التشخيص
         ============================================================
         */
 
-        const bootStatus = document.getElementById("boot-status");
+        const bootStatus =
+            document.getElementById("boot-status");
+
+
+
+        /*
+        ============================================================
+        إظهار خطأ
+        ============================================================
+        */
 
         function showBootError(title, message, details = "") {
+
             if (!bootStatus) return;
 
             bootStatus.className = "error";
 
-            bootStatus.innerHTML = `
-                <strong>${title}</strong><br>
-                ${message}
-                ${details ? `<br><small>${details}</small>` : ""}
-            `;
+            bootStatus.innerHTML =
+
+                "<strong>" +
+                title +
+                "</strong><br>" +
+
+                message +
+
+                (
+                    details
+                    ?
+                    "<br><small>" +
+                    details +
+                    "</small>"
+                    :
+                    ""
+                );
+
         }
 
+
+
+        /*
+        ============================================================
+        إظهار نجاح
+        ============================================================
+        */
+
         function showBootSuccess(message) {
+
             if (!bootStatus) return;
 
             bootStatus.className = "success";
 
-            bootStatus.innerHTML = `
-                <strong>تم تشغيل الصفحة بنجاح</strong><br>
-                ${message}
-            `;
+            bootStatus.innerHTML =
+
+                "<strong>تم تشغيل التطبيق</strong><br>" +
+                message;
+
         }
+
 
 
         /*
@@ -111,21 +193,34 @@
         ============================================================
         */
 
-        window.addEventListener("error", function(event) {
+        window.addEventListener(
+            "error",
+            function(event) {
 
-            console.error("JavaScript Error:", event.error || event.message);
+                console.error(
+                    "JavaScript Error:",
+                    event.error || event.message
+                );
 
-            showBootError(
-                "حدث خطأ في التطبيق",
-                event.message || "خطأ JavaScript غير معروف",
-                `
-                الملف: ${event.filename || "غير معروف"}<br>
-                السطر: ${event.lineno || "غير معروف"}<br>
-                العمود: ${event.colno || "غير معروف"}
-                `
-            );
+                showBootError(
 
-        });
+                    "حدث خطأ في JavaScript",
+
+                    event.message ||
+                    "خطأ غير معروف",
+
+                    "الملف: " +
+                    (event.filename || "غير معروف") +
+                    "<br>السطر: " +
+                    (event.lineno || "غير معروف") +
+                    "<br>العمود: " +
+                    (event.colno || "غير معروف")
+
+                );
+
+            }
+        );
+
 
 
         /*
@@ -134,41 +229,63 @@
         ============================================================
         */
 
-        window.addEventListener("unhandledrejection", function(event) {
+        window.addEventListener(
+            "unhandledrejection",
+            function(event) {
 
-            console.error(
-                "Unhandled Promise Rejection:",
-                event.reason
-            );
+                console.error(
+                    "Unhandled Promise Rejection:",
+                    event.reason
+                );
 
-            let reason = event.reason;
+                let reason =
+                    event.reason;
 
-            if (reason && reason.message) {
-                reason = reason.message;
+                if (
+                    reason &&
+                    reason.message
+                ) {
+
+                    reason =
+                        reason.message;
+
+                }
+
+                showBootError(
+
+                    "خطأ في التطبيق",
+
+                    reason ||
+                    "حدث خطأ غير معروف"
+
+                );
+
             }
+        );
 
-            showBootError(
-                "خطأ JavaScript",
-                reason || "حدث خطأ غير معروف"
-            );
-
-        });
 
 
         /*
         ============================================================
-        اختبار Supabase
+        التحقق من Supabase
         ============================================================
         */
 
-        if (typeof window.supabase === "undefined") {
+        if (
+            typeof window.supabase ===
+            "undefined"
+        ) {
 
             showBootError(
+
                 "فشل تحميل Supabase",
-                "مكتبة Supabase لم يتم تحميلها."
+
+                "لم يتم تحميل مكتبة Supabase."
+
             );
 
         }
+
 
 
         /*
@@ -181,71 +298,93 @@
 
             try {
 
-                const response = await fetch(
-                    "config.json",
-                    {
-                        cache: "no-store"
-                    }
-                );
+                const response =
+                    await fetch(
+                        "config.json",
+                        {
+                            cache: "no-store"
+                        }
+                    );
+
 
                 if (!response.ok) {
 
                     throw new Error(
-                        "تعذر تحميل config.json. رمز الاستجابة: "
-                        + response.status
+
+                        "تعذر تحميل config.json." +
+                        " رمز الاستجابة: " +
+                        response.status
+
                     );
 
                 }
 
-                const config = await response.json();
+
+                const config =
+                    await response.json();
+
+
 
                 /*
-                ----------------------------------------------------
-                التحقق من بيانات Supabase
-                ----------------------------------------------------
+                ====================================================
+                التحقق من الإعدادات
+                ====================================================
                 */
 
-                if (!config.supabase_url) {
+                if (
+                    !config.supabase_url
+                ) {
 
                     throw new Error(
+
                         "supabase_url غير موجود داخل config.json"
+
                     );
 
                 }
 
-                if (!config.supabase_key) {
+
+                if (
+                    !config.supabase_key
+                ) {
 
                     throw new Error(
+
                         "supabase_key غير موجود داخل config.json"
+
                     );
 
                 }
+
 
 
                 /*
-                ----------------------------------------------------
-                إنشاء اتصال Supabase
-                ----------------------------------------------------
+                ====================================================
+                إنشاء عميل Supabase
+                ====================================================
                 */
 
-                if (typeof window.supabase !== "undefined") {
+                window.APP_CONFIG =
+                    config;
+
+
+                if (
+                    typeof window.supabase !==
+                    "undefined"
+                ) {
 
                     window.supabaseClient =
+
                         window.supabase.createClient(
+
                             config.supabase_url,
+
                             config.supabase_key
+
                         );
 
                 }
 
-
-                /*
-                ----------------------------------------------------
-                حفظ الإعدادات
-                ----------------------------------------------------
-                */
-
-                window.APP_CONFIG = config;
 
 
                 console.log(
@@ -253,34 +392,43 @@
                 );
 
                 console.log(
-                    "Supabase URL:",
+                    "Supabase:",
                     config.supabase_url
                 );
 
 
+
                 /*
-                ----------------------------------------------------
-                تحميل app.js بعد نجاح config
-                ----------------------------------------------------
+                ====================================================
+                تحميل app.js
+                ====================================================
                 */
 
                 loadAppScript();
 
-            } catch (error) {
+            }
+
+            catch (error) {
 
                 console.error(
                     "Config Error:",
                     error
                 );
 
+
                 showBootError(
+
                     "فشل تشغيل التطبيق",
-                    error.message || "تعذر تحميل الإعدادات."
+
+                    error.message ||
+                    "تعذر تحميل config.json"
+
                 );
 
             }
 
         }
+
 
 
         /*
@@ -291,130 +439,179 @@
 
         function loadAppScript() {
 
-            const script = document.createElement("script");
-
-            script.src = "app.js";
-
-            script.async = false;
-
-            script.onload = function() {
-
-                console.log(
-                    "تم تحميل app.js بنجاح"
-                );
+            const script =
+                document.createElement("script");
 
 
-                /*
-                ----------------------------------------------------
-                ننتظر قليلًا حتى يبدأ التطبيق
-                ----------------------------------------------------
-                */
+            script.src =
+                "app.js";
 
-                setTimeout(function() {
 
-                    const app =
-                        document.getElementById("app");
+            script.async =
+                false;
+
+
+
+            /*
+            ========================================================
+            تم تحميل app.js
+            ========================================================
+            */
+
+            script.onload =
+                function() {
+
+                    console.log(
+                        "تم تحميل app.js بنجاح"
+                    );
+
 
                     /*
                     ------------------------------------------------
-                    إذا ظهر شيء داخل التطبيق
+                    لا نفحص #app
+                    لأن التطبيق قد يستخدم body مباشرة
                     ------------------------------------------------
                     */
 
-                    if (
-                        app &&
-                        app.children.length > 0
-                    ) {
+                    setTimeout(
 
-                        showBootSuccess(
-                            "تم تشغيل تطبيق Student بنجاح."
-                        );
+                        function() {
 
-                        setTimeout(function() {
+                            showBootSuccess(
 
-                            bootStatus.className =
-                                "hidden";
+                                "تم تحميل ملفات التطبيق بنجاح."
 
-                        }, 1200);
-
-                    }
-
-                    /*
-                    ------------------------------------------------
-                    إذا بقي التطبيق فارغًا
-                    ------------------------------------------------
-                    */
-
-                    else {
-
-                        showBootError(
-                            "التطبيق لم يعرض المحتوى",
-                            "تم تحميل app.js ولكن لم يتم إنشاء واجهة التطبيق.",
-                            "تحقق من app.js."
-                        );
-
-                    }
-
-                }, 1500);
-
-            };
+                            );
 
 
-            script.onerror = function() {
+                            /*
+                            ----------------------------------------
+                            إخفاء الرسالة بعد ثانية
+                            ----------------------------------------
+                            */
 
-                console.error(
-                    "تعذر تحميل app.js"
-                );
+                            setTimeout(
 
-                showBootError(
-                    "تعذر تحميل app.js",
-                    "ملف app.js غير موجود أو لم يتم تحميله.",
-                    "تأكد أن اسم الملف هو app.js وأنه في نفس مجلد index.html."
-                );
+                                function() {
 
-            };
+                                    if (
+                                        bootStatus
+                                    ) {
+
+                                        bootStatus.className =
+                                            "hidden";
+
+                                    }
+
+                                },
+
+                                1000
+
+                            );
+
+                        },
+
+                        1000
+
+                    );
+
+                };
 
 
-            document.body.appendChild(script);
+
+            /*
+            ========================================================
+            فشل تحميل app.js
+            ========================================================
+            */
+
+            script.onerror =
+                function() {
+
+                    console.error(
+                        "تعذر تحميل app.js"
+                    );
+
+
+                    showBootError(
+
+                        "تعذر تحميل app.js",
+
+                        "ملف app.js لم يتم تحميله.",
+
+                        "تأكد من وجود app.js في نفس مجلد index.html."
+
+                    );
+
+                };
+
+
+
+            /*
+            ========================================================
+            إضافة script إلى الصفحة
+            ========================================================
+            */
+
+            document.body.appendChild(
+                script
+            );
 
         }
 
 
+
         /*
         ============================================================
-        بدء التشغيل
+        بدء التطبيق
         ============================================================
         */
 
         loadConfig();
 
 
+
         /*
         ============================================================
-        حماية إضافية من بقاء شاشة التشغيل
+        حماية من توقف التشغيل
         ============================================================
         */
 
-        setTimeout(function() {
+        setTimeout(
 
-            if (
-                bootStatus &&
-                bootStatus.innerHTML.includes(
-                    "جاري تشغيل تطبيق Student"
-                )
-            ) {
+            function() {
 
-                showBootError(
-                    "التطبيق توقف أثناء التشغيل",
-                    "لم يكتمل تشغيل التطبيق خلال الوقت المتوقع.",
-                    "تحقق من config.json وapp.js."
-                );
+                if (
+                    bootStatus &&
+                    !bootStatus.classList.contains(
+                        "hidden"
+                    ) &&
+                    bootStatus.innerHTML.includes(
+                        "جاري تشغيل تطبيق Student"
+                    )
+                ) {
 
-            }
+                    showBootError(
 
-        }, 8000);
+                        "توقف تشغيل التطبيق",
+
+                        "لم يكتمل تشغيل الملفات.",
+
+                        "تحقق من config.json و app.js."
+
+                    );
+
+                }
+
+            },
+
+            10000
+
+        );
 
     </script>
 
+
 </body>
+
 </html>
