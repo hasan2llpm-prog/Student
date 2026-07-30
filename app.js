@@ -1,9 +1,7 @@
 let supabaseClient = null;
 
 const CONFIG_URL =
-    "https://raw.githubusercontent.com/hasan2llpm-prog/Student/main/config.json";
-
-let currentUser = null;
+    "https://raw.githubusercontent.com/hasan2llpm-pro0entUser = null;
 
 
 /* =========================================
@@ -89,7 +87,7 @@ function showRegister() {
 
 
 /* =========================================
-   الشاشات
+   الشاشة الرئيسية
 ========================================= */
 
 function showMainScreen() {
@@ -106,15 +104,17 @@ function showMainScreen() {
     if (mainScreen) {
         mainScreen.classList.remove("hidden");
     }
+
+    createFloatingLogout();
 }
 
 
 function showAuthScreen() {
-    const authScreen =
-        document.getElementById("auth-screen");
-
     const mainScreen =
         document.getElementById("main-screen");
+
+    const authScreen =
+        document.getElementById("auth-screen");
 
     if (mainScreen) {
         mainScreen.classList.add("hidden");
@@ -123,6 +123,8 @@ function showAuthScreen() {
     if (authScreen) {
         authScreen.classList.remove("hidden");
     }
+
+    removeFloatingLogout();
 
     showLogin();
 }
@@ -133,6 +135,9 @@ function showAuthScreen() {
 ========================================= */
 
 async function loadProfile(userId) {
+
+    if (!supabaseClient || !userId) return;
+
     try {
 
         const { data, error } =
@@ -170,7 +175,7 @@ async function loadProfile(userId) {
 
 
 /* =========================================
-   الجلسة
+   التعامل مع الجلسة
 ========================================= */
 
 async function handleSession(session) {
@@ -204,17 +209,32 @@ async function loginUser(event) {
 
     clearMessages();
 
+    if (!supabaseClient) {
+
+        showMessage(
+            "login-message",
+            "خدمة تسجيل الدخول غير جاهزة حالياً.",
+            "error"
+        );
+
+        return;
+    }
+
+    const emailElement =
+        document.getElementById("login-email");
+
+    const passwordElement =
+        document.getElementById("login-password");
+
+    if (!emailElement || !passwordElement) {
+        return;
+    }
+
     const email =
-        document
-            .getElementById("login-email")
-            .value
-            .trim();
+        emailElement.value.trim();
 
     const password =
-        document.getElementById(
-            "login-password"
-        ).value;
-
+        passwordElement.value;
 
     if (!email || !password) {
 
@@ -227,13 +247,11 @@ async function loginUser(event) {
         return;
     }
 
-
     setButtonLoading(
         "login-btn",
         true,
         "دخول"
     );
-
 
     try {
 
@@ -243,28 +261,13 @@ async function loginUser(event) {
                 password
             });
 
-
         if (error) {
             throw error;
         }
 
-
-        if (!data?.session) {
-
-            showMessage(
-                "login-message",
-                "تعذر إنشاء جلسة تسجيل الدخول.",
-                "error"
-            );
-
-            return;
-        }
-
-
         await handleSession(
-            data.session
+            data?.session || null
         );
-
 
     } catch (error) {
 
@@ -300,29 +303,58 @@ async function registerUser(event) {
 
     clearMessages();
 
+    if (!supabaseClient) {
 
-    const fullName =
-        document
-            .getElementById("register-name")
-            .value
-            .trim();
+        showMessage(
+            "register-message",
+            "خدمة التسجيل غير جاهزة حالياً.",
+            "error"
+        );
 
-    const email =
-        document
-            .getElementById("register-email")
-            .value
-            .trim();
+        return;
+    }
 
-    const password =
-        document.getElementById(
-            "register-password"
-        ).value;
+    const nameElement =
+        document.getElementById("register-name");
 
-    const confirmPassword =
+    const emailElement =
+        document.getElementById("register-email");
+
+    const passwordElement =
+        document.getElementById("register-password");
+
+    const confirmPasswordElement =
         document.getElementById(
             "register-password-confirm"
-        ).value;
+        );
 
+    if (
+        !nameElement ||
+        !emailElement ||
+        !passwordElement ||
+        !confirmPasswordElement
+    ) {
+
+        showMessage(
+            "register-message",
+            "حقول التسجيل غير مكتملة.",
+            "error"
+        );
+
+        return;
+    }
+
+    const fullName =
+        nameElement.value.trim();
+
+    const email =
+        emailElement.value.trim();
+
+    const password =
+        passwordElement.value;
+
+    const confirmPassword =
+        confirmPasswordElement.value;
 
     if (!fullName) {
 
@@ -335,6 +367,16 @@ async function registerUser(event) {
         return;
     }
 
+    if (!email) {
+
+        showMessage(
+            "register-message",
+            "اكتب البريد الإلكتروني.",
+            "error"
+        );
+
+        return;
+    }
 
     if (password.length < 6) {
 
@@ -347,7 +389,6 @@ async function registerUser(event) {
         return;
     }
 
-
     if (password !== confirmPassword) {
 
         showMessage(
@@ -359,13 +400,11 @@ async function registerUser(event) {
         return;
     }
 
-
     setButtonLoading(
         "register-btn",
         true,
         "إنشاء الحساب"
     );
-
 
     try {
 
@@ -373,7 +412,6 @@ async function registerUser(event) {
             await supabaseClient.auth.signUp({
 
                 email,
-
                 password,
 
                 options: {
@@ -381,22 +419,13 @@ async function registerUser(event) {
                         full_name: fullName
                     }
                 }
-
             });
-
 
         if (error) {
             throw error;
         }
 
-
         if (data?.session) {
-
-            showMessage(
-                "register-message",
-                "تم إنشاء الحساب بنجاح.",
-                "success"
-            );
 
             await handleSession(
                 data.session
@@ -410,7 +439,6 @@ async function registerUser(event) {
                 "success"
             );
         }
-
 
     } catch (error) {
 
@@ -459,30 +487,6 @@ async function logoutUser() {
 
         showAuthScreen();
 
-
-        const loginForm =
-            document.getElementById(
-                "login-form"
-            );
-
-        const registerForm =
-            document.getElementById(
-                "register-form"
-            );
-
-
-        if (loginForm) {
-            loginForm.reset();
-        }
-
-        if (registerForm) {
-            registerForm.reset();
-        }
-
-
-        clearMessages();
-
-
     } catch (error) {
 
         console.error(
@@ -494,7 +498,93 @@ async function logoutUser() {
 
 
 /* =========================================
-   رسائل الأخطاء
+   زر الخروج العائم
+========================================= */
+
+function createFloatingLogout() {
+
+    if (
+        document.getElementById(
+            "floating-logout"
+        )
+    ) {
+        return;
+    }
+
+    const button =
+        document.createElement("button");
+
+    button.id =
+        "floating-logout";
+
+    button.type =
+        "button";
+
+    button.textContent =
+        "تسجيل الخروج";
+
+    button.style.position =
+        "fixed";
+
+    button.style.bottom =
+        "85px";
+
+    button.style.left =
+        "20px";
+
+    button.style.zIndex =
+        "99999";
+
+    button.style.border =
+        "none";
+
+    button.style.borderRadius =
+        "50px";
+
+    button.style.padding =
+        "12px 18px";
+
+    button.style.background =
+        "#0095f6";
+
+    button.style.color =
+        "#ffffff";
+
+    button.style.fontSize =
+        "14px";
+
+    button.style.cursor =
+        "pointer";
+
+    button.style.boxShadow =
+        "0 4px 15px rgba(0,0,0,0.15)";
+
+    button.addEventListener(
+        "click",
+        logoutUser
+    );
+
+    document.body.appendChild(
+        button
+    );
+}
+
+
+function removeFloatingLogout() {
+
+    const button =
+        document.getElementById(
+            "floating-logout"
+        );
+
+    if (button) {
+        button.remove();
+    }
+}
+
+
+/* =========================================
+   أخطاء المصادقة
 ========================================= */
 
 function translateAuthError(error) {
@@ -504,7 +594,6 @@ function translateAuthError(error) {
             error?.message || ""
         ).toLowerCase();
 
-
     if (
         message.includes(
             "invalid login credentials"
@@ -512,7 +601,6 @@ function translateAuthError(error) {
     ) {
         return "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
     }
-
 
     if (
         message.includes(
@@ -522,7 +610,6 @@ function translateAuthError(error) {
         return "يجب تأكيد البريد الإلكتروني أولاً.";
     }
 
-
     if (
         message.includes(
             "user already registered"
@@ -530,7 +617,6 @@ function translateAuthError(error) {
     ) {
         return "هذا البريد الإلكتروني مسجل مسبقاً.";
     }
-
 
     if (
         message.includes(
@@ -540,7 +626,6 @@ function translateAuthError(error) {
         return "البريد الإلكتروني غير صالح.";
     }
 
-
     if (
         message.includes(
             "rate limit"
@@ -549,6 +634,13 @@ function translateAuthError(error) {
         return "تم تجاوز عدد المحاولات. حاول لاحقاً.";
     }
 
+    if (
+        message.includes(
+            "password should be at least"
+        )
+    ) {
+        return "كلمة المرور يجب أن تكون 6 أحرف على الأقل.";
+    }
 
     return (
         error?.message ||
@@ -558,25 +650,394 @@ function translateAuthError(error) {
 
 
 /* =========================================
-   فتح المرحلة
+   فتح المرحلة الدراسية
 ========================================= */
 
 function openStage(stageName) {
 
-    console.log(
-        "فتح المرحلة:",
-        stageName
+    const names = {
+        primary: "المرحلة الابتدائية",
+        middle: "المرحلة الإعدادية",
+        secondary: "المرحلة الثانوية",
+        university: "الجامعة"
+    };
+
+    const title =
+        names[stageName] || "المرحلة الدراسية";
+
+    showStageModal(title);
+}
+
+
+/* مهم لأن index.html يستخدم onclick */
+window.openStage = openStage;
+
+
+/* =========================================
+   نافذة المرحلة
+========================================= */
+
+function showStageModal(title) {
+
+    const oldModal =
+        document.getElementById(
+            "stage-modal"
+        );
+
+    if (oldModal) {
+        oldModal.remove();
+    }
+
+    const modal =
+        document.createElement("div");
+
+    modal.id =
+        "stage-modal";
+
+    modal.style.position =
+        "fixed";
+
+    modal.style.inset =
+        "0";
+
+    modal.style.zIndex =
+        "100000";
+
+    modal.style.background =
+        "rgba(0,0,0,0.45)";
+
+    modal.style.display =
+        "flex";
+
+    modal.style.alignItems =
+        "center";
+
+    modal.style.justifyContent =
+        "center";
+
+    modal.style.padding =
+        "20px";
+
+    modal.innerHTML = `
+        <div style="
+            width:100%;
+            max-width:420px;
+            background:#fff;
+            border-radius:20px;
+            padding:25px;
+            text-align:center;
+            box-sizing:border-box;
+            box-shadow:0 15px 40px rgba(0,0,0,.2);
+            direction:rtl;
+        ">
+
+            <div style="
+                font-size:24px;
+                font-weight:bold;
+                color:#0095f6;
+                margin-bottom:12px;
+            ">
+                ${title}
+            </div>
+
+            <p style="
+                color:#666;
+                line-height:1.8;
+                margin:0 0 20px;
+            ">
+                سيتم إضافة محتوى هذه المرحلة هنا.
+            </p>
+
+            <button
+                id="close-stage-modal"
+                style="
+                    border:none;
+                    background:#0095f6;
+                    color:#fff;
+                    padding:12px 28px;
+                    border-radius:12px;
+                    font-size:15px;
+                    cursor:pointer;
+                "
+            >
+                إغلاق
+            </button>
+
+        </div>
+    `;
+
+    document.body.appendChild(
+        modal
+    );
+
+    document
+        .getElementById(
+            "close-stage-modal"
+        )
+        .addEventListener(
+            "click",
+            function () {
+                modal.remove();
+            }
+        );
+
+    modal.addEventListener(
+        "click",
+        function(event) {
+
+            if (event.target === modal) {
+                modal.remove();
+            }
+
+        }
     );
 }
 
 
 /* =========================================
-   تهيئة التطبيق
+   أزرار الهيدر والستوريات
 ========================================= */
 
-async function initApp() {
+function bindHeaderButtons() {
+
+    const menuIcon =
+        document.getElementById(
+            "menu-icon"
+        );
+
+    if (menuIcon) {
+
+        menuIcon.addEventListener(
+            "click",
+            function () {
+
+                showSimpleNotice(
+                    "القائمة",
+                    "قائمة التطبيق ستُضاف هنا."
+                );
+
+            }
+        );
+    }
+
+
+    const bell =
+        document.querySelector(
+            ".fa-bell"
+        );
+
+    if (bell) {
+
+        bell.addEventListener(
+            "click",
+            function () {
+
+                showSimpleNotice(
+                    "الإشعارات",
+                    "لا توجد إشعارات جديدة."
+                );
+
+            }
+        );
+    }
+
+
+    const addStory =
+        document.querySelector(
+            ".add-story"
+        );
+
+    if (addStory) {
+
+        addStory.addEventListener(
+            "click",
+            function () {
+
+                showSimpleNotice(
+                    "إضافة ستوري",
+                    "سيتم إضافة نشر الستوري هنا."
+                );
+
+            }
+        );
+    }
+}
+
+
+/* =========================================
+   أزرار شريط التنقل السفلي
+========================================= */
+
+function bindBottomNavigation() {
+
+    const navLinks =
+        document.querySelectorAll(
+            "nav a"
+        );
+
+    navLinks.forEach(
+        function(link, index) {
+
+            link.addEventListener(
+                "click",
+                function(event) {
+
+                    event.preventDefault();
+
+                    navLinks.forEach(
+                        function(item) {
+                            item.classList.remove(
+                                "active"
+                            );
+                        }
+                    );
+
+                    link.classList.add(
+                        "active"
+                    );
+
+
+                    const titles = [
+                        "الرئيسية",
+                        "البحث",
+                        "إضافة",
+                        "الرسائل",
+                        "الملف الشخصي"
+                    ];
+
+
+                    showSimpleNotice(
+                        titles[index] ||
+                        "القسم",
+                        "سيتم تفعيل هذا القسم لاحقًا."
+                    );
+
+                }
+            );
+
+        }
+    );
+}
+
+
+/* =========================================
+   رسالة بسيطة داخل التطبيق
+========================================= */
+
+function showSimpleNotice(title, message) {
+
+    const old =
+        document.getElementById(
+            "simple-notice"
+        );
+
+    if (old) {
+        old.remove();
+    }
+
+    const notice =
+        document.createElement(
+            "div"
+        );
+
+    notice.id =
+        "simple-notice";
+
+    notice.style.position =
+        "fixed";
+
+    notice.style.top =
+        "20px";
+
+    notice.style.left =
+        "20px";
+
+    notice.style.right =
+        "20px";
+
+    notice.style.zIndex =
+        "100001";
+
+    notice.style.background =
+        "#ffffff";
+
+    notice.style.border =
+        "1px solid #ddd";
+
+    notice.style.borderRadius =
+        "15px";
+
+    notice.style.padding =
+        "16px";
+
+    notice.style.boxShadow =
+        "0 8px 25px rgba(0,0,0,.15)";
+
+    notice.style.direction =
+        "rtl";
+
+    notice.innerHTML = `
+        <strong style="
+            display:block;
+            color:#0095f6;
+            margin-bottom:5px;
+        ">
+            ${title}
+        </strong>
+
+        <span style="
+            color:#555;
+        ">
+            ${message}
+        </span>
+    `;
+
+    document.body.appendChild(
+        notice
+    );
+
+    setTimeout(
+        function () {
+
+            if (notice) {
+                notice.remove();
+            }
+
+        },
+        2500
+    );
+}
+
+
+/* =========================================
+   تهيئة أزرار التطبيق
+========================================= */
+
+function bindAppButtons() {
+
+    bindHeaderButtons();
+
+    bindBottomNavigation();
+}
+
+
+/* =========================================
+   تشغيل Supabase
+========================================= */
+
+async function initSupabase() {
 
     try {
+
+        if (!window.supabase) {
+
+            console.warn(
+                "Supabase library unavailable."
+            );
+
+            return;
+        }
+
 
         const response =
             await fetch(
@@ -610,14 +1071,6 @@ async function initApp() {
         }
 
 
-        if (!window.supabase) {
-
-            throw new Error(
-                "مكتبة Supabase غير محملة."
-            );
-        }
-
-
         supabaseClient =
             window.supabase.createClient(
                 config.supabase_url,
@@ -625,83 +1078,17 @@ async function initApp() {
             );
 
 
-        /* تسجيل الدخول */
-
-        const loginForm =
-            document.getElementById(
-                "login-form"
-            );
-
-        if (loginForm) {
-
-            loginForm.addEventListener(
-                "submit",
-                loginUser
-            );
-        }
+        console.log(
+            "Supabase connected."
+        );
 
 
-        /* إنشاء الحساب */
-
-        const registerForm =
-            document.getElementById(
-                "register-form"
-            );
-
-        if (registerForm) {
-
-            registerForm.addEventListener(
-                "submit",
-                registerUser
-            );
-        }
-
-
-        /* الانتقال لإنشاء حساب */
-
-        const showRegisterButton =
-            document.getElementById(
-                "show-register"
-            );
-
-        if (showRegisterButton) {
-
-            showRegisterButton.addEventListener(
-                "click",
-                function () {
-                    showRegister();
-                }
-            );
-        }
-
-
-        /* العودة لتسجيل الدخول */
-
-        const showLoginButton =
-            document.getElementById(
-                "show-login"
-            );
-
-        if (showLoginButton) {
-
-            showLoginButton.addEventListener(
-                "click",
-                function () {
-                    showLogin();
-                }
-            );
-        }
-
-
-        /* الجلسة الحالية */
-
-        const sessionResult =
+        const {
+            data: {
+                session
+            }
+        } =
             await supabaseClient.auth.getSession();
-
-
-        const session =
-            sessionResult?.data?.session ||
-            null;
 
 
         await handleSession(
@@ -709,13 +1096,16 @@ async function initApp() {
         );
 
 
-        /* مراقبة الجلسة */
-
         supabaseClient.auth.onAuthStateChange(
             async function (
                 event,
                 session
             ) {
+
+                console.log(
+                    "Auth event:",
+                    event
+                );
 
                 if (
                     event === "SIGNED_IN" ||
@@ -732,35 +1122,34 @@ async function initApp() {
             }
         );
 
-
-        console.log(
-            "Student App جاهز."
-        );
-
-
     } catch (error) {
 
         console.error(
-            "Init error:",
+            "Supabase initialization error:",
             error
         );
 
+        /*
+         * حتى لو فشل Supabase،
+         * التطبيق نفسه يبقى مفتوحًا.
+         */
 
-        showMessage(
-            "login-message",
-            "تعذر تشغيل التطبيق. " +
-            (
-                error?.message ||
-                ""
-            ),
-            "error"
-        );
+        showMainScreen();
     }
 }
 
 
 /* =========================================
-   تشغيل التطبيق
+   بدء التطبيق
 ========================================= */
 
-initApp();
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        bindAppButtons();
+
+        initSupabase();
+
+    }
+);
