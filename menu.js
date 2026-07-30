@@ -1,7 +1,7 @@
 /* =========================================================
    Student - Menu System
    القائمة الرئيسية ☰
-   جميع عناصر القائمة هنا فقط
+   إصدار سريع - طلب Supabase واحد فقط
 ========================================================= */
 
 (function () {
@@ -12,79 +12,119 @@
 
     let featureCache = {};
 
+
     /* =====================================================
-       التحقق من حالة الميزة
+       جلب جميع الميزات دفعة واحدة
     ===================================================== */
 
-    async function isFeatureEnabled(featureKey) {
+    async function loadMenuFeatures() {
 
         if (
             typeof supabaseClient === "undefined" ||
-            !supabaseClient ||
-            !featureKey
+            !supabaseClient
         ) {
             return false;
-        }
-
-        if (
-            Object.prototype.hasOwnProperty.call(
-                featureCache,
-                featureKey
-            )
-        ) {
-            return featureCache[featureKey];
         }
 
         try {
 
-            const { data, error } =
-                await supabaseClient
-                    .from("feature_flags")
-                    .select("enabled, release_at")
-                    .eq("feature_key", featureKey)
-                    .maybeSingle();
+            const keys = [
+                "menu",
+                "profile",
+                "settings",
+                "notifications",
+                "saved",
+                "contact_us",
+                "about"
+            ];
 
-            if (error || !data) {
-                featureCache[featureKey] = false;
+            const {
+                data,
+                error
+            } = await supabaseClient
+                .from("feature_flags")
+                .select(
+                    "feature_key, enabled, release_at"
+                )
+                .in(
+                    "feature_key",
+                    keys
+                );
+
+            if (error) {
+
+                console.error(
+                    "Menu feature loading error:",
+                    error
+                );
+
                 return false;
             }
 
-            let enabled =
-                data.enabled === true;
 
-            if (
-                enabled &&
-                data.release_at
-            ) {
+            featureCache = {};
 
-                const releaseDate =
-                    new Date(data.release_at);
 
-                if (
-                    !isNaN(releaseDate.getTime()) &&
-                    releaseDate > new Date()
-                ) {
-                    enabled = false;
+            (data || []).forEach(
+                function (feature) {
+
+                    let enabled =
+                        feature.enabled === true;
+
+
+                    if (
+                        enabled &&
+                        feature.release_at
+                    ) {
+
+                        const releaseDate =
+                            new Date(
+                                feature.release_at
+                            );
+
+                        if (
+                            !isNaN(
+                                releaseDate.getTime()
+                            ) &&
+                            releaseDate > new Date()
+                        ) {
+                            enabled = false;
+                        }
+                    }
+
+
+                    featureCache[
+                        feature.feature_key
+                    ] = enabled;
                 }
-            }
+            );
 
-            featureCache[featureKey] =
-                enabled;
 
-            return enabled;
+            return true;
 
         } catch (error) {
 
             console.error(
-                "Menu feature error:",
+                "Menu features error:",
                 error
             );
 
-            featureCache[featureKey] =
-                false;
-
             return false;
         }
+    }
+
+
+    /* =====================================================
+       حالة الميزة
+    ===================================================== */
+
+    function isFeatureEnabled(
+        featureKey
+    ) {
+
+        return (
+            featureCache[featureKey] === true
+        );
     }
 
 
@@ -93,162 +133,8 @@
     ===================================================== */
 
     function clearMenuFeatureCache() {
+
         featureCache = {};
-    }
-
-
-    /* =====================================================
-       عناصر القائمة
-    ===================================================== */
-
-    async function buildMenuItems() {
-
-        const items = [];
-
-
-        /* الملف الشخصي */
-
-        if (
-            await isFeatureEnabled("profile")
-        ) {
-
-            items.push({
-                id: "menu-profile",
-                icon: "fa-regular fa-user",
-                text: "الملف الشخصي",
-                action: function () {
-
-                    if (
-                        typeof window.showProfilePanel ===
-                        "function"
-                    ) {
-                        window.showProfilePanel();
-                    }
-                }
-            });
-        }
-
-
-        /* الإعدادات */
-
-        if (
-            await isFeatureEnabled("settings")
-        ) {
-
-            items.push({
-                id: "menu-settings",
-                icon: "fa-solid fa-gear",
-                text: "الإعدادات",
-                action: function () {
-
-                    if (
-                        typeof window.showSettingsPanel ===
-                        "function"
-                    ) {
-                        window.showSettingsPanel();
-                    }
-                }
-            });
-        }
-
-
-        /* الإشعارات */
-
-        if (
-            await isFeatureEnabled("notifications")
-        ) {
-
-            items.push({
-                id: "menu-notifications",
-                icon: "fa-regular fa-bell",
-                text: "الإشعارات",
-                action: function () {
-
-                    if (
-                        typeof window.openNotifications ===
-                        "function"
-                    ) {
-                        window.openNotifications();
-                    }
-                }
-            });
-        }
-
-
-        /* المحفوظات */
-
-        if (
-            await isFeatureEnabled("saved")
-        ) {
-
-            items.push({
-                id: "menu-saved",
-                icon: "fa-regular fa-bookmark",
-                text: "المحفوظات",
-                action: function () {
-
-                    openSaved();
-                }
-            });
-        }
-
-
-        /* تواصل معنا */
-
-        if (
-            await isFeatureEnabled("contact_us")
-        ) {
-
-            items.push({
-                id: "menu-contact",
-                icon: "fa-regular fa-comment",
-                text: "تواصل معنا",
-                action: function () {
-
-                    openContact();
-                }
-            });
-        }
-
-
-        /* حول Student */
-
-        if (
-            await isFeatureEnabled("about")
-        ) {
-
-            items.push({
-                id: "menu-about",
-                icon: "fa-solid fa-circle-info",
-                text: "حول Student",
-                action: function () {
-
-                    openAbout();
-                }
-            });
-        }
-
-
-        /* تسجيل الخروج دائمًا */
-
-        items.push({
-            id: "menu-logout",
-            icon: "fa-solid fa-right-from-bracket",
-            text: "تسجيل الخروج",
-            danger: true,
-            action: function () {
-
-                if (
-                    typeof window.logoutUser ===
-                    "function"
-                ) {
-                    window.logoutUser();
-                }
-            }
-        });
-
-
-        return items;
     }
 
 
@@ -386,14 +272,12 @@
             `
         );
 
-        const button =
-            document.getElementById(
+
+        document
+            .getElementById(
                 "student-contact-whatsapp"
-            );
-
-        if (button) {
-
-            button.addEventListener(
+            )
+            ?.addEventListener(
                 "click",
                 function () {
 
@@ -405,12 +289,11 @@
 
                 }
             );
-        }
     }
 
 
     /* =====================================================
-       حول التطبيق
+       حول Student
     ===================================================== */
 
     function openAbout() {
@@ -489,83 +372,261 @@
 
 
     /* =====================================================
-       إنشاء القائمة
+       إنشاء عناصر القائمة
+    ===================================================== */
+
+    function buildMenuItems() {
+
+        const items = [];
+
+
+        /* الملف الشخصي */
+
+        if (
+            isFeatureEnabled("profile")
+        ) {
+
+            items.push({
+                id: "menu-profile",
+                icon: "fa-regular fa-user",
+                text: "الملف الشخصي",
+                action: function () {
+
+                    if (
+                        typeof window.showProfilePanel ===
+                        "function"
+                    ) {
+                        window.showProfilePanel();
+                    }
+                }
+            });
+        }
+
+
+        /* الإعدادات */
+
+        if (
+            isFeatureEnabled("settings")
+        ) {
+
+            items.push({
+                id: "menu-settings",
+                icon: "fa-solid fa-gear",
+                text: "الإعدادات",
+                action: function () {
+
+                    if (
+                        typeof window.showSettingsPanel ===
+                        "function"
+                    ) {
+                        window.showSettingsPanel();
+                    }
+                }
+            });
+        }
+
+
+        /* الإشعارات */
+
+        if (
+            isFeatureEnabled(
+                "notifications"
+            )
+        ) {
+
+            items.push({
+                id: "menu-notifications",
+                icon: "fa-regular fa-bell",
+                text: "الإشعارات",
+                action: function () {
+
+                    if (
+                        typeof window.openNotifications ===
+                        "function"
+                    ) {
+                        window.openNotifications();
+                    }
+                }
+            });
+        }
+
+
+        /* المحفوظات */
+
+        if (
+            isFeatureEnabled("saved")
+        ) {
+
+            items.push({
+                id: "menu-saved",
+                icon: "fa-regular fa-bookmark",
+                text: "المحفوظات",
+                action: openSaved
+            });
+        }
+
+
+        /* تواصل معنا */
+
+        if (
+            isFeatureEnabled("contact_us")
+        ) {
+
+            items.push({
+                id: "menu-contact",
+                icon: "fa-regular fa-comment",
+                text: "تواصل معنا",
+                action: openContact
+            });
+        }
+
+
+        /* حول Student */
+
+        if (
+            isFeatureEnabled("about")
+        ) {
+
+            items.push({
+                id: "menu-about",
+                icon: "fa-solid fa-circle-info",
+                text: "حول Student",
+                action: openAbout
+            });
+        }
+
+
+        /* تسجيل الخروج */
+
+        items.push({
+            id: "menu-logout",
+            icon: "fa-solid fa-right-from-bracket",
+            text: "تسجيل الخروج",
+            danger: true,
+            action: function () {
+
+                if (
+                    typeof window.logoutUser ===
+                    "function"
+                ) {
+                    window.logoutUser();
+                }
+            }
+        });
+
+
+        return items;
+    }
+
+
+    /* =====================================================
+       فتح القائمة
     ===================================================== */
 
     async function openMenu() {
-
-        clearMenuFeatureCache();
-
-        if (
-            !(await isFeatureEnabled("menu"))
-        ) {
-            return;
-        }
-
-        const items =
-            await buildMenuItems();
 
         if (
             typeof window.showFloatingPanel !==
             "function"
         ) {
-            console.error(
-                "showFloatingPanel غير متاح."
-            );
             return;
         }
 
-        const buttons =
-            items.map(function (item) {
 
-                return `
-                    <button
-                        type="button"
-                        data-student-menu-id="${item.id}"
-                        style="
-                            width:100%;
-                            border:none;
-                            background:${
-                                item.danger
-                                    ? "#fff2f2"
-                                    : "#f7f8fa"
-                            };
-                            color:${
-                                item.danger
-                                    ? "#d93025"
-                                    : "#222"
-                            };
-                            padding:15px;
-                            border-radius:14px;
-                            text-align:right;
-                            font-size:15px;
-                            cursor:pointer;
-                            display:flex;
-                            align-items:center;
-                            gap:12px;
-                            direction:rtl;
-                        "
-                    >
-                        <i
-                            class="${item.icon}"
+        /* عرض سريع للقائمة */
+
+        const existing =
+            document.getElementById(
+                "floating-panel"
+            );
+
+        if (existing) {
+            existing.remove();
+        }
+
+
+        /*
+           نجلب جميع الصلاحيات بطلب واحد.
+        */
+
+        await loadMenuFeatures();
+
+
+        /*
+           إذا كانت القائمة نفسها مغلقة
+           نخرج فورًا.
+        */
+
+        if (
+            !isFeatureEnabled("menu")
+        ) {
+            return;
+        }
+
+
+        const items =
+            buildMenuItems();
+
+
+        if (!items.length) {
+            return;
+        }
+
+
+        const buttons =
+            items.map(
+                function (item) {
+
+                    return `
+                        <button
+                            type="button"
+                            data-student-menu-id="${item.id}"
                             style="
-                                width:22px;
-                                text-align:center;
+                                width:100%;
+                                border:none;
+                                background:${
+                                    item.danger
+                                        ? "#fff2f2"
+                                        : "#f7f8fa"
+                                };
                                 color:${
                                     item.danger
                                         ? "#d93025"
-                                        : "#0095f6"
+                                        : "#222"
                                 };
+                                padding:15px;
+                                border-radius:14px;
+                                text-align:right;
+                                font-size:15px;
+                                cursor:pointer;
+                                display:flex;
+                                align-items:center;
+                                gap:12px;
+                                direction:rtl;
                             "
-                        ></i>
+                        >
 
-                        <span>
-                            ${item.text}
-                        </span>
-                    </button>
-                `;
-            })
-            .join("");
+                            <i
+                                class="${item.icon}"
+                                style="
+                                    width:22px;
+                                    text-align:center;
+                                    color:${
+                                        item.danger
+                                            ? "#d93025"
+                                            : "#0095f6"
+                                    };
+                                "
+                            ></i>
+
+                            <span>
+                                ${item.text}
+                            </span>
+
+                        </button>
+                    `;
+                }
+            ).join("");
 
 
         window.showFloatingPanel(
@@ -582,30 +643,32 @@
         );
 
 
-        items.forEach(function (item) {
+        items.forEach(
+            function (item) {
 
-            const button =
-                document.querySelector(
-                    `[data-student-menu-id="${item.id}"]`
-                );
+                const button =
+                    document.querySelector(
+                        `[data-student-menu-id="${item.id}"]`
+                    );
 
-            if (button) {
+                if (button) {
 
-                button.addEventListener(
-                    "click",
-                    function () {
+                    button.addEventListener(
+                        "click",
+                        function () {
 
-                        item.action();
+                            item.action();
 
-                    }
-                );
+                        }
+                    );
+                }
             }
-        });
+        );
     }
 
 
     /* =====================================================
-       ربط زر الثلاثة خطوط
+       ربط زر ☰
     ===================================================== */
 
     function bindMenuButton() {
@@ -619,6 +682,7 @@
             return;
         }
 
+
         if (
             menuIcon.dataset.studentMenuBound ===
             "true"
@@ -626,11 +690,13 @@
             return;
         }
 
+
         menuIcon.dataset.studentMenuBound =
             "true";
 
         menuIcon.style.cursor =
             "pointer";
+
 
         menuIcon.addEventListener(
             "click",
@@ -647,7 +713,7 @@
 
 
     /* =====================================================
-       الانتظار حتى تكون واجهة التطبيق جاهزة
+       بدء النظام
     ===================================================== */
 
     function startMenu() {
@@ -656,12 +722,7 @@
 
         setTimeout(
             bindMenuButton,
-            500
-        );
-
-        setTimeout(
-            bindMenuButton,
-            1500
+            300
         );
     }
 
