@@ -1715,103 +1715,6 @@ window.openStage =
 
 
 /* =========================================================
-   القائمة العائمة
-========================================================= */
-
-function openMenu() {
-
-    showFloatingPanel(
-        "القائمة",
-        `
-        <div style="
-            display:flex;
-            flex-direction:column;
-            gap:10px;
-        ">
-
-            <button
-                id="menu-profile-btn"
-                type="button"
-                style="
-                    width:100%;
-                    border:none;
-                    background:#f7f8fa;
-                    padding:15px;
-                    border-radius:14px;
-                    text-align:right;
-                    font-size:15px;
-                    cursor:pointer;
-                "
-            >
-                👤 الملف الشخصي
-            </button>
-
-            <button
-                id="menu-settings-btn"
-                type="button"
-                style="
-                    width:100%;
-                    border:none;
-                    background:#f7f8fa;
-                    padding:15px;
-                    border-radius:14px;
-                    text-align:right;
-                    font-size:15px;
-                    cursor:pointer;
-                "
-            >
-                ⚙️ الإعدادات
-            </button>
-
-            <button
-                id="menu-logout-btn"
-                type="button"
-                style="
-                    width:100%;
-                    border:none;
-                    background:#fff2f2;
-                    color:#d93025;
-                    padding:15px;
-                    border-radius:14px;
-                    text-align:right;
-                    font-size:15px;
-                    cursor:pointer;
-                "
-            >
-                🚪 تسجيل الخروج
-            </button>
-
-        </div>
-        `
-    );
-
-
-    document.getElementById(
-        "menu-profile-btn"
-    )?.addEventListener(
-        "click",
-        showProfilePanel
-    );
-
-
-    document.getElementById(
-        "menu-settings-btn"
-    )?.addEventListener(
-        "click",
-        showSettingsPanel
-    );
-
-
-    document.getElementById(
-        "menu-logout-btn"
-    )?.addEventListener(
-        "click",
-        logoutUser
-    );
-}
-
-
-/* =========================================================
    الإعدادات
 ========================================================= */
 
@@ -2059,26 +1962,11 @@ function bindInterfaceButtons() {
     }
 
 
-    const menuIcon =
-        document.getElementById(
-            "menu-icon"
-        );
-
-    if (menuIcon) {
-
-        menuIcon.style.cursor =
-            "pointer";
-
-        menuIcon.addEventListener(
-            "click",
-            function(event) {
-
-                event.preventDefault();
-
-                openMenu();
-            }
-        );
-    }
+    /*
+       مهم:
+       تم حذف ربط زر menu-icon من هنا.
+       menu.js أصبح المسؤول عن زر ☰.
+    */
 
 
     const addStoryElement =
@@ -2380,7 +2268,8 @@ function loadAdminSystem() {
 
     script.src = "admin.js";
 
-    script.dataset.studentAdmin = "true";
+    script.dataset.studentAdmin =
+        "true";
 
     script.async = true;
 
@@ -2407,6 +2296,52 @@ function loadAdminSystem() {
 
 
 /* =========================================================
+   تحميل نظام قائمة الثلاثة خطوط
+========================================================= */
+
+function loadMenuSystem() {
+
+    if (
+        document.querySelector(
+            'script[data-student-menu="true"]'
+        )
+    ) {
+        return;
+    }
+
+    const script =
+        document.createElement("script");
+
+    script.src = "menu.js";
+
+    script.dataset.studentMenu =
+        "true";
+
+    script.async = true;
+
+    script.onload = function () {
+
+        console.log(
+            "Student Menu loaded."
+        );
+
+    };
+
+    script.onerror = function () {
+
+        console.error(
+            "تعذر تحميل menu.js"
+        );
+
+    };
+
+    document.body.appendChild(
+        script
+    );
+}
+
+
+/* =========================================================
    تشغيل التطبيق
 ========================================================= */
 
@@ -2419,6 +2354,8 @@ document.addEventListener(
         initSupabase();
 
         loadAdminSystem();
+
+        loadMenuSystem();
 
     }
 );
