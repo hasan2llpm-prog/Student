@@ -1135,52 +1135,30 @@ async function showProfilePanel() {
     );
 
 
-    const editButton =
-        document.getElementById(
-            "profile-edit-btn"
-        );
-
-    if (editButton) {
-
-        editButton.addEventListener(
-            "click",
-            function() {
-
-                showEditProfilePanel(
-                    profile
-                );
-
-            }
-        );
-    }
+    document.getElementById(
+        "profile-edit-btn"
+    )?.addEventListener(
+        "click",
+        function() {
+            showEditProfilePanel(profile);
+        }
+    );
 
 
-    const logoutButton =
-        document.getElementById(
-            "profile-logout-btn"
-        );
-
-    if (logoutButton) {
-
-        logoutButton.addEventListener(
-            "click",
-            logoutUser
-        );
-    }
+    document.getElementById(
+        "profile-logout-btn"
+    )?.addEventListener(
+        "click",
+        logoutUser
+    );
 
 
-    const privacyButton =
-        document.getElementById(
-            "profile-toggle-status"
-        );
-
-    if (privacyButton) {
-
-        privacyButton.addEventListener(
-            "click",
-            toggleAccountStatus
-        );
-    }
+    document.getElementById(
+        "profile-toggle-status"
+    )?.addEventListener(
+        "click",
+        toggleAccountStatus
+    );
 }
 
 
@@ -1212,12 +1190,7 @@ function showEditProfilePanel(profile) {
                 gap:12px;
             ">
 
-            <label style="
-                font-size:14px;
-                color:#444;
-            ">
-                الاسم
-            </label>
+            <label>الاسم</label>
 
             <input
                 id="edit-full-name"
@@ -1235,12 +1208,7 @@ function showEditProfilePanel(profile) {
             >
 
 
-            <label style="
-                font-size:14px;
-                color:#444;
-            ">
-                اسم المستخدم
-            </label>
+            <label>اسم المستخدم</label>
 
             <input
                 id="edit-username"
@@ -1260,12 +1228,7 @@ function showEditProfilePanel(profile) {
             >
 
 
-            <label style="
-                font-size:14px;
-                color:#444;
-            ">
-                النبذة
-            </label>
+            <label>النبذة</label>
 
             <textarea
                 id="edit-bio"
@@ -1283,12 +1246,7 @@ function showEditProfilePanel(profile) {
             >${escapeHTML(bio)}</textarea>
 
 
-            <label style="
-                font-size:14px;
-                color:#444;
-            ">
-                رابط الصورة الشخصية
-            </label>
+            <label>رابط الصورة الشخصية</label>
 
             <input
                 id="edit-avatar-url"
@@ -1317,7 +1275,6 @@ function showEditProfilePanel(profile) {
                     border-radius:12px;
                     font-size:16px;
                     cursor:pointer;
-                    margin-top:5px;
                 "
             >
                 حفظ التغييرات
@@ -1338,18 +1295,12 @@ function showEditProfilePanel(profile) {
     );
 
 
-    const form =
-        document.getElementById(
-            "edit-profile-form"
-        );
-
-    if (form) {
-
-        form.addEventListener(
-            "submit",
-            saveProfileChanges
-        );
-    }
+    document.getElementById(
+        "edit-profile-form"
+    )?.addEventListener(
+        "submit",
+        saveProfileChanges
+    );
 }
 
 
@@ -1389,9 +1340,7 @@ async function saveProfileChanges(event) {
     if (!fullName || !username) {
 
         if (message) {
-            message.style.color =
-                "#d93025";
-
+            message.style.color = "#d93025";
             message.textContent =
                 "الاسم واسم المستخدم مطلوبان.";
         }
@@ -1405,7 +1354,6 @@ async function saveProfileChanges(event) {
         );
 
     if (button) {
-
         button.disabled = true;
         button.textContent =
             "جارٍ الحفظ...";
@@ -1452,10 +1400,7 @@ async function saveProfileChanges(event) {
         );
 
         if (message) {
-
-            message.style.color =
-                "#16803c";
-
+            message.style.color = "#16803c";
             message.textContent =
                 "تم حفظ التغييرات بنجاح.";
         }
@@ -1475,10 +1420,7 @@ async function saveProfileChanges(event) {
         );
 
         if (message) {
-
-            message.style.color =
-                "#d93025";
-
+            message.style.color = "#d93025";
             message.textContent =
                 error?.message ||
                 "تعذر حفظ التغييرات.";
@@ -1487,7 +1429,6 @@ async function saveProfileChanges(event) {
     } finally {
 
         if (button) {
-
             button.disabled = false;
             button.textContent =
                 "حفظ التغييرات";
@@ -1667,46 +1608,39 @@ function openStage(stageName) {
         `
     );
 
-    const enterButton =
-        document.getElementById(
-            "stage-enter-btn"
-        );
+    document.getElementById(
+        "stage-enter-btn"
+    )?.addEventListener(
+        "click",
+        function() {
 
-    if (enterButton) {
+            showFloatingPanel(
+                stage.title,
+                `
+                <div style="
+                    text-align:center;
+                    padding:25px 10px;
+                ">
 
-        enterButton.addEventListener(
-            "click",
-            function() {
-
-                showFloatingPanel(
-                    stage.title,
-                    `
                     <div style="
-                        text-align:center;
-                        padding:25px 10px;
+                        font-size:50px;
                     ">
-
-                        <div style="
-                            font-size:50px;
-                        ">
-                            📚
-                        </div>
-
-                        <p style="
-                            color:#666;
-                            line-height:1.8;
-                        ">
-                            سيتم إضافة محتوى
-                            هذه المرحلة هنا.
-                        </p>
-
+                        📚
                     </div>
-                    `
-                );
 
-            }
-        );
-    }
+                    <p style="
+                        color:#666;
+                        line-height:1.8;
+                    ">
+                        سيتم إضافة محتوى
+                        هذه المرحلة هنا.
+                    </p>
+
+                </div>
+                `
+            );
+        }
+    );
 }
 
 
@@ -1715,7 +1649,8 @@ window.openStage =
 
 
 /* =========================================================
-   الإعدادات
+   الإعدادات القديمة الاحتياطية
+   settings.js يستلم الإعدادات الفعلية بعد تحميله
 ========================================================= */
 
 function showSettingsPanel() {
@@ -1724,33 +1659,23 @@ function showSettingsPanel() {
         "الإعدادات",
         `
         <div style="
-            display:flex;
-            flex-direction:column;
-            gap:10px;
+            text-align:center;
+            padding:25px;
         ">
-
             <div style="
-                display:flex;
-                justify-content:space-between;
-                padding:15px;
-                background:#f7f8fa;
-                border-radius:14px;
+                font-size:45px;
+                margin-bottom:12px;
             ">
-                <span>اللغة</span>
-                <strong>العربية</strong>
+                ⚙️
             </div>
 
-            <div style="
-                display:flex;
-                justify-content:space-between;
-                padding:15px;
-                background:#f7f8fa;
-                border-radius:14px;
+            <p style="
+                color:#666;
+                line-height:1.8;
+                margin:0;
             ">
-                <span>الإشعارات</span>
-                <strong>مفعلة</strong>
-            </div>
-
+                جاري تحميل الإعدادات...
+            </p>
         </div>
         `
     );
@@ -1963,9 +1888,8 @@ function bindInterfaceButtons() {
 
 
     /*
-       مهم:
-       تم حذف ربط زر menu-icon من هنا.
-       menu.js أصبح المسؤول عن زر ☰.
+       زر ☰ تمت إزالته من هنا.
+       menu.js هو المسؤول عنه.
     */
 
 
@@ -2342,6 +2266,52 @@ function loadMenuSystem() {
 
 
 /* =========================================================
+   تحميل نظام الإعدادات
+========================================================= */
+
+function loadSettingsSystem() {
+
+    if (
+        document.querySelector(
+            'script[data-student-settings="true"]'
+        )
+    ) {
+        return;
+    }
+
+    const script =
+        document.createElement("script");
+
+    script.src = "settings.js";
+
+    script.dataset.studentSettings =
+        "true";
+
+    script.async = true;
+
+    script.onload = function () {
+
+        console.log(
+            "Student Settings loaded."
+        );
+
+    };
+
+    script.onerror = function () {
+
+        console.error(
+            "تعذر تحميل settings.js"
+        );
+
+    };
+
+    document.body.appendChild(
+        script
+    );
+}
+
+
+/* =========================================================
    تشغيل التطبيق
 ========================================================= */
 
@@ -2356,6 +2326,8 @@ document.addEventListener(
         loadAdminSystem();
 
         loadMenuSystem();
+
+        loadSettingsSystem();
 
     }
 );
