@@ -1,466 +1,658 @@
 /* =========================================================
-   STORIES SYSTEM
+   STUDENT - STORIES SYSTEM
    Text + Image + Video
    Publish + View + Delete + Edit + Views + Reactions
    ========================================================= */
 
-(async function () {
+(function () {
     "use strict";
 
-    /* =========================
-       Supabase
-       ========================= */
+    let sb = null;
+    let currentUser = null;
 
-    let sb = window.studentSupabase || window.supabaseClient || null;
+    let storyMode = "text";
+    let editStory = null;
+    let currentViewingStory = null;
 
-    if (!sb) {
-        if (!window.supabase || !window.supabase.createClient) {
-            alert("Supabase لم يتم تحميله.");
-            return;
-        }
+    /* =====================================================
+       SUPABASE
+       ===================================================== */
+
+    async function initSupabase() {
 
         try {
-            const response = await fetch("/config.json", {
-                cache: "no-store"
-            });
+
+            if (
+                window.studentSupabase
+            ) {
+                sb = window.studentSupabase;
+                return true;
+            }
+
+            if (
+                window.supabaseClient
+            ) {
+                sb = window.supabaseClient;
+                return true;
+            }
+
+            if (
+                !window.supabase ||
+                !window.supabase.createClient
+            ) {
+                console.error(
+                    "Supabase library غير موجودة."
+                );
+                return false;
+            }
+
+            const response =
+                await fetch(
+                    "/config.json",
+                    {
+                        cache: "no-store"
+                    }
+                );
 
             if (!response.ok) {
-                throw new Error("لم يتم العثور على config.json");
+                throw new Error(
+                    "لم يتم العثور على config.json"
+                );
             }
 
-            const config = await response.json();
+            const config =
+                await response.json();
 
-            if (!config.supabase_url || !config.supabase_key) {
-                throw new Error("بيانات Supabase غير صحيحة.");
+            const url =
+                config.supabase_url ||
+                config.url ||
+                config.SUPABASE_URL;
+
+            const key =
+                config.supabase_key ||
+                config.anon_key ||
+                config.SUPABASE_ANON_KEY;
+
+            if (!url || !key) {
+                throw new Error(
+                    "بيانات Supabase غير موجودة في config.json"
+                );
             }
 
-            sb = window.supabase.createClient(
-                config.supabase_url,
-                config.supabase_key
-            );
+            sb =
+                window.supabase.createClient(
+                    url,
+                    key
+                );
 
             window.studentSupabase = sb;
 
+            return true;
+
         } catch (error) {
-            console.error(error);
-            alert("تعذر الاتصال بـ Supabase.");
-            return;
+
+            console.error(
+                "Supabase error:",
+                error
+            );
+
+            return false;
         }
     }
 
-    /* =========================
-       Current User
-       ========================= */
-
-    let currentUser = null;
+    /* =====================================================
+       USER
+       ===================================================== */
 
     async function loadUser() {
-        const {
-            data,
-            error
-        } = await sb.auth.getUser();
 
-        if (error) {
-            console.error(error);
+        if (!sb) {
             return null;
         }
 
-        currentUser = data.user || null;
-        return currentUser;
+        try {
+
+            const {
+                data,
+                error
+            } = await sb.auth.getUser();
+
+            if (error) {
+                currentUser = null;
+                return null;
+            }
+
+            currentUser =
+                data.user || null;
+
+            return currentUser;
+
+        } catch (error) {
+
+            console.error(error);
+
+            currentUser = null;
+
+            return null;
+        }
     }
 
-    await loadUser();
-
-    /* =========================
+    /* =====================================================
        CSS
-       ========================= */
+       ===================================================== */
 
-    const style = document.createElement("style");
+    function addStyles() {
 
-    style.textContent = `
-        .stories-system * {
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
+        if (
+            document.getElementById(
+                "studentStoriesStyles"
+            )
+        ) {
+            return;
         }
 
-        .stories-floating-btn {
-            position: fixed;
-            left: 18px;
-            bottom: 85px;
-            width: 58px;
-            height: 58px;
-            border-radius: 50%;
-            border: none;
-            background: #1877f2;
-            color: #fff;
-            font-size: 30px;
-            cursor: pointer;
-            z-index: 9998;
-            box-shadow: 0 7px 24px rgba(0,0,0,.20);
+        const style =
+            document.createElement(
+                "style"
+            );
+
+        style.id =
+            "studentStoriesStyles";
+
+        style.textContent = `
+
+        /* ===============================
+           Story Container
+        =============================== */
+
+        .stories-container {
+            display:flex !important;
+            overflow-x:auto !important;
+            gap:14px !important;
+            padding:14px !important;
+            scrollbar-width:none !important;
+            align-items:flex-start !important;
         }
 
-        .stories-floating-btn:active {
-            transform: scale(.95);
+        .stories-container::-webkit-scrollbar {
+            display:none !important;
         }
 
-        .stories-strip {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            padding: 12px 4px;
-            margin-bottom: 10px;
-            scrollbar-width: none;
+        .stories-container .story {
+            flex:0 0 auto !important;
+            width:74px !important;
+            cursor:pointer !important;
+            text-align:center !important;
         }
 
-        .stories-strip::-webkit-scrollbar {
-            display: none;
+        .stories-container .story-ring {
+            width:68px !important;
+            height:68px !important;
+            border-radius:50% !important;
+            padding:3px !important;
+            background:linear-gradient(
+                135deg,
+                #0095f6,
+                #d62976,
+                #feda75
+            ) !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
         }
 
-        .story-circle {
-            min-width: 72px;
-            width: 72px;
-            text-align: center;
-            cursor: pointer;
+        .stories-container .story-ring-inner {
+            width:100% !important;
+            height:100% !important;
+            background:#fff !important;
+            border-radius:50% !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            overflow:hidden !important;
         }
 
-        .story-avatar {
-            width: 62px;
-            height: 62px;
-            border-radius: 50%;
-            padding: 3px;
-            margin: auto;
-            background: linear-gradient(135deg,#1877f2,#00a8ff);
+        .stories-container .story-placeholder {
+            width:100% !important;
+            height:100% !important;
+            display:flex !important;
+            align-items:center !important;
+            justify-content:center !important;
+            background:#0095f6 !important;
+            color:#fff !important;
+            font-size:22px !important;
+            font-weight:bold !important;
         }
 
-        .story-avatar-inner {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1877f2;
-            font-weight: bold;
+        .stories-container .story-preview {
+            width:100% !important;
+            height:100% !important;
+            object-fit:cover !important;
+            border-radius:50% !important;
         }
 
-        .story-circle small {
-            display: block;
-            margin-top: 5px;
-            font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .stories-container .story-name {
+            display:block !important;
+            margin-top:6px !important;
+            font-size:11px !important;
+            white-space:nowrap !important;
+            overflow:hidden !important;
+            text-overflow:ellipsis !important;
         }
 
-        .stories-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,.88);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99999;
-            padding: 15px;
+        /* ===============================
+           Add Story
+        =============================== */
+
+        .stories-add-new .story-ring {
+            background:transparent !important;
+            border:2px dashed #0095f6 !important;
+            padding:0 !important;
         }
 
-        .stories-overlay.active {
-            display: flex;
+        .stories-add-new .story-ring-inner {
+            color:#0095f6 !important;
+            background:#fff !important;
         }
 
-        .story-viewer {
-            width: min(430px,100%);
-            height: min(760px,94vh);
-            background: #111;
-            border-radius: 18px;
-            overflow: hidden;
-            position: relative;
-            color: #fff;
+        .stories-add-new i {
+            color:#0095f6 !important;
+            font-size:25px !important;
         }
 
-        .story-progress {
-            position: absolute;
-            top: 9px;
-            left: 10px;
-            right: 10px;
-            height: 3px;
-            background: rgba(255,255,255,.35);
-            border-radius: 10px;
-            z-index: 5;
+        /* ===============================
+           Create Modal
+        =============================== */
+
+        #studentStoryCreateModal {
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.60);
+            display:none;
+            align-items:center;
+            justify-content:center;
+            z-index:100000;
+            padding:15px;
         }
 
-        .story-progress span {
-            display: block;
-            height: 100%;
-            width: 100%;
-            background: #fff;
-            border-radius: 10px;
+        #studentStoryCreateModal.active {
+            display:flex;
         }
 
-        .story-top {
-            position: absolute;
-            top: 17px;
-            left: 12px;
-            right: 12px;
-            z-index: 6;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .student-story-form {
+            width:min(450px,100%);
+            max-height:92vh;
+            overflow:auto;
+            background:#fff;
+            border-radius:20px;
+            padding:20px;
+            direction:rtl;
         }
 
-        .story-close,
-        .story-menu {
-            border: none;
-            background: rgba(0,0,0,.35);
-            color: #fff;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 20px;
+        .student-story-form h2 {
+            margin:0 0 18px;
+            font-size:25px;
         }
 
-        .story-content-area {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+        .student-story-types {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+            margin-bottom:12px;
         }
 
-        .story-content-area img,
-        .story-content-area video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+        .student-story-types button {
+            border:1px solid #ddd;
+            background:#f8f8f8;
+            border-radius:12px;
+            padding:14px 8px;
+            font-size:16px;
+            cursor:pointer;
         }
 
-        .story-text-content {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 30px;
-            font-size: 30px;
-            font-weight: bold;
-            line-height: 1.4;
-            word-break: break-word;
+        .student-story-types button.active {
+            background:#0095f6;
+            color:#fff;
+            border-color:#0095f6;
         }
 
-        .story-footer {
-            position: absolute;
-            bottom: 14px;
-            left: 12px;
-            right: 12px;
-            z-index: 8;
-            display: flex;
-            gap: 8px;
-            align-items: center;
+        #studentStoryText {
+            width:100%;
+            min-height:130px;
+            border:1px solid #ddd;
+            border-radius:14px;
+            padding:14px;
+            resize:vertical;
+            font-size:16px;
+            direction:rtl;
+            outline:none;
+            margin-bottom:12px;
         }
 
-        .story-reaction-btn {
-            flex: 1;
-            border: none;
-            background: rgba(255,255,255,.15);
-            color: #fff;
-            border-radius: 20px;
-            padding: 10px;
-            cursor: pointer;
+        #studentStoryFile {
+            width:100%;
+            margin-bottom:12px;
+            font-size:15px;
+            display:none;
         }
 
-        .story-actions-row {
-            position: absolute;
-            bottom: 65px;
-            left: 12px;
-            right: 12px;
-            display: none;
-            z-index: 10;
-            gap: 7px;
+        .student-story-color {
+            width:100%;
+            margin-bottom:10px;
         }
 
-        .story-actions-row button {
-            flex: 1;
-            border: none;
-            border-radius: 12px;
-            padding: 9px;
-            cursor: pointer;
+        .student-story-color input {
+            width:100%;
+            border:1px solid #ddd;
+            border-radius:12px;
+            padding:13px;
+            font-size:15px;
+            outline:none;
+            direction:ltr;
+            text-align:left;
         }
 
-        .story-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,.55);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 99998;
-            padding: 15px;
+        .student-story-preview {
+            display:none;
+            width:100%;
+            height:220px;
+            border-radius:15px;
+            overflow:hidden;
+            background:#111;
+            margin-bottom:12px;
+            align-items:center;
+            justify-content:center;
         }
 
-        .story-modal.active {
-            display: flex;
+        .student-story-preview img,
+        .student-story-preview video {
+            width:100%;
+            height:100%;
+            object-fit:contain;
         }
 
-        .story-form {
-            width: min(440px,100%);
-            background: #fff;
-            border-radius: 20px;
-            padding: 20px;
-            direction: rtl;
+        .student-story-buttons {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:10px;
+            margin-top:14px;
         }
 
-        .story-form h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
+        .student-story-buttons button {
+            border:none;
+            border-radius:12px;
+            padding:14px;
+            font-size:16px;
+            cursor:pointer;
         }
 
-        .story-form textarea,
-        .story-form input {
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
-            font-size: 15px;
+        #studentStoryPublish {
+            background:#0095f6;
+            color:#fff;
         }
 
-        .story-form textarea {
-            resize: vertical;
-            min-height: 120px;
+        #studentStoryCancel {
+            background:#eee;
         }
 
-        .story-type-buttons {
-            display: flex;
-            gap: 7px;
-            margin-bottom: 10px;
+        /* ===============================
+           Viewer
+        =============================== */
+
+        #studentStoryViewer {
+            position:fixed;
+            inset:0;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,.90);
+            z-index:100001;
+            padding:10px;
         }
 
-        .story-type-buttons button {
-            flex: 1;
-            border: 1px solid #ddd;
-            background: #f7f7f7;
-            padding: 10px;
-            border-radius: 10px;
-            cursor: pointer;
+        #studentStoryViewer.active {
+            display:flex;
         }
 
-        .story-form-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
+        .student-story-view-box {
+            width:min(440px,100%);
+            height:min(780px,94vh);
+            background:#111;
+            border-radius:20px;
+            overflow:hidden;
+            position:relative;
+            color:#fff;
         }
 
-        .story-form-actions button {
-            flex: 1;
-            border: none;
-            border-radius: 12px;
-            padding: 12px;
-            cursor: pointer;
+        .student-story-progress {
+            position:absolute;
+            top:9px;
+            left:10px;
+            right:10px;
+            height:3px;
+            background:rgba(255,255,255,.30);
+            z-index:10;
+            border-radius:10px;
         }
 
-        .story-publish {
-            background: #1877f2;
-            color: #fff;
+        .student-story-progress span {
+            display:block;
+            width:100%;
+            height:100%;
+            background:#fff;
+            border-radius:10px;
         }
 
-        .story-cancel {
-            background: #eee;
+        .student-story-top {
+            position:absolute;
+            top:18px;
+            left:12px;
+            right:12px;
+            z-index:20;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
         }
 
-        .story-loading {
-            text-align: center;
-            padding: 15px;
-            color: #777;
+        .student-story-top button {
+            width:40px;
+            height:40px;
+            border:none;
+            border-radius:50%;
+            background:rgba(0,0,0,.40);
+            color:#fff;
+            font-size:22px;
+            cursor:pointer;
         }
 
-        .story-view-count {
-            position: absolute;
-            top: 65px;
-            right: 12px;
-            z-index: 7;
-            background: rgba(0,0,0,.4);
-            padding: 6px 10px;
-            border-radius: 15px;
-            font-size: 12px;
+        .student-story-view-content {
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            overflow:hidden;
         }
-    `;
 
-    document.head.appendChild(style);
+        .student-story-view-content img,
+        .student-story-view-content video {
+            width:100%;
+            height:100%;
+            object-fit:contain;
+        }
 
-    /* =========================
-       HTML
-       ========================= */
+        .student-story-text-view {
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            text-align:center;
+            padding:35px;
+            line-height:1.5;
+            font-size:30px;
+            font-weight:bold;
+            word-break:break-word;
+        }
 
-    const root = document.createElement("div");
-    root.className = "stories-system";
+        .student-story-view-count {
+            position:absolute;
+            top:68px;
+            right:12px;
+            z-index:20;
+            padding:7px 12px;
+            border-radius:20px;
+            background:rgba(0,0,0,.40);
+            font-size:13px;
+        }
 
-    root.innerHTML = `
-        <button class="stories-floating-btn" id="storiesAddBtn">+</button>
+        .student-story-footer {
+            position:absolute;
+            left:12px;
+            right:12px;
+            bottom:14px;
+            z-index:20;
+            display:flex;
+            gap:8px;
+        }
 
-        <div class="stories-strip" id="storiesStrip">
-            <div class="story-loading">
-                جاري تحميل القصص...
-            </div>
-        </div>
+        .student-story-reaction {
+            flex:1;
+            border:none;
+            border-radius:20px;
+            padding:10px;
+            background:rgba(255,255,255,.15);
+            color:#fff;
+            cursor:pointer;
+            font-size:18px;
+        }
 
-        <div class="story-modal" id="storyCreateModal">
-            <div class="story-form">
+        .student-story-owner-menu {
+            position:absolute;
+            left:12px;
+            right:12px;
+            bottom:67px;
+            display:none;
+            gap:8px;
+            z-index:30;
+        }
 
-                <h3 id="storyFormTitle">
+        .student-story-owner-menu.show {
+            display:flex;
+        }
+
+        .student-story-owner-menu button {
+            flex:1;
+            padding:10px;
+            border:none;
+            border-radius:12px;
+            cursor:pointer;
+        }
+
+        `;
+
+        document.head.appendChild(
+            style
+        );
+    }
+
+    /* =====================================================
+       CREATE HTML
+       ===================================================== */
+
+    function createModals() {
+
+        if (
+            document.getElementById(
+                "studentStoryCreateModal"
+            )
+        ) {
+            return;
+        }
+
+        const modal =
+            document.createElement("div");
+
+        modal.id =
+            "studentStoryCreateModal";
+
+        modal.innerHTML = `
+
+            <div class="student-story-form">
+
+                <h2 id="studentStoryTitle">
                     إضافة ستوري
-                </h3>
+                </h2>
 
-                <div class="story-type-buttons">
-                    <button type="button" id="storyTextType">
+                <div class="student-story-types">
+
+                    <button
+                        type="button"
+                        id="studentStoryTextMode"
+                        class="active"
+                    >
                         نص
                     </button>
 
-                    <button type="button" id="storyMediaType">
+                    <button
+                        type="button"
+                        id="studentStoryMediaMode"
+                    >
                         صورة / فيديو
                     </button>
+
                 </div>
 
                 <textarea
-                    id="storyText"
+                    id="studentStoryText"
                     placeholder="اكتب شيئًا..."
                 ></textarea>
 
                 <input
-                    id="storyMedia"
                     type="file"
+                    id="studentStoryFile"
                     accept="image/*,video/*"
-                    style="display:none"
                 >
 
-                <input
-                    id="storyBackground"
-                    type="text"
-                    value="#1877f2"
-                    placeholder="لون الخلفية"
-                >
+                <div
+                    class="student-story-preview"
+                    id="studentStoryPreview"
+                ></div>
 
-                <input
-                    id="storyTextColor"
-                    type="text"
-                    value="#ffffff"
-                    placeholder="لون النص"
-                >
+                <div class="student-story-color">
 
-                <div class="story-form-actions">
+                    <input
+                        type="text"
+                        id="studentStoryBackground"
+                        value="#1877f2"
+                        placeholder="#1877f2"
+                    >
+
+                </div>
+
+                <div class="student-story-color">
+
+                    <input
+                        type="text"
+                        id="studentStoryTextColor"
+                        value="#ffffff"
+                        placeholder="#ffffff"
+                    >
+
+                </div>
+
+                <div class="student-story-buttons">
 
                     <button
-                        class="story-cancel"
-                        id="storyCancelBtn"
+                        type="button"
+                        id="studentStoryCancel"
                     >
                         إلغاء
                     </button>
 
                     <button
-                        class="story-publish"
-                        id="storyPublishBtn"
+                        type="button"
+                        id="studentStoryPublish"
                     >
                         نشر
                     </button>
@@ -468,31 +660,38 @@
                 </div>
 
             </div>
-        </div>
+        `;
 
-        <div
-            class="stories-overlay"
-            id="storyViewerOverlay"
-        >
+        document.body.appendChild(
+            modal
+        );
 
-            <div class="story-viewer">
+        const viewer =
+            document.createElement("div");
 
-                <div class="story-progress">
+        viewer.id =
+            "studentStoryViewer";
+
+        viewer.innerHTML = `
+
+            <div class="student-story-view-box">
+
+                <div class="student-story-progress">
                     <span></span>
                 </div>
 
-                <div class="story-top">
+                <div class="student-story-top">
 
                     <button
-                        class="story-close"
-                        id="storyCloseBtn"
+                        type="button"
+                        id="studentStoryClose"
                     >
                         ×
                     </button>
 
                     <button
-                        class="story-menu"
-                        id="storyMenuBtn"
+                        type="button"
+                        id="studentStoryMenu"
                     >
                         ⋮
                     </button>
@@ -500,60 +699,64 @@
                 </div>
 
                 <div
-                    class="story-view-count"
-                    id="storyViewCount"
+                    class="student-story-view-count"
+                    id="studentStoryViewCount"
                 >
                     👁 0
                 </div>
 
                 <div
-                    class="story-content-area"
-                    id="storyContentArea"
+                    class="student-story-view-content"
+                    id="studentStoryViewContent"
                 ></div>
 
                 <div
-                    class="story-actions-row"
-                    id="storyActionsRow"
+                    class="student-story-owner-menu"
+                    id="studentStoryOwnerMenu"
                 >
 
-                    <button id="storyEditBtn">
+                    <button
+                        type="button"
+                        id="studentStoryEdit"
+                    >
                         تعديل
                     </button>
 
                     <button
-                        id="storyDeleteBtn"
-                        style="color:#d00"
+                        type="button"
+                        id="studentStoryDelete"
+                        style="color:#c00;"
                     >
                         حذف
                     </button>
 
                 </div>
 
-                <div class="story-footer">
+                <div class="student-story-footer">
 
                     <button
-                        class="story-reaction-btn"
+                        class="student-story-reaction"
                         data-reaction="❤️"
                     >
                         ❤️
                     </button>
 
                     <button
-                        class="story-reaction-btn"
+                        class="student-story-reaction"
                         data-reaction="😂"
                     >
                         😂
                     </button>
 
                     <button
-                        class="story-reaction-btn"
+                        class="student-story-reaction"
                         data-reaction="🔥"
                     >
                         🔥
                     </button>
 
                     <button
-                        class="story-reaction-btn"
+                        class="student-story-reaction"
                         data-reaction="👏"
                     >
                         👏
@@ -562,160 +765,312 @@
                 </div>
 
             </div>
+        `;
 
-        </div>
-    `;
+        document.body.appendChild(
+            viewer
+        );
+    }
 
-    document.body.appendChild(root);
+    /* =====================================================
+       MAIN STORY CONTAINER
+       ===================================================== */
 
-    /* =========================
-       Elements
-       ========================= */
+    function getStoriesContainer() {
 
-    const addBtn =
-        document.getElementById("storiesAddBtn");
+        return document.querySelector(
+            ".stories-container"
+        );
+    }
 
-    const strip =
-        document.getElementById("storiesStrip");
+    function setupStoryContainer() {
 
-    const createModal =
-        document.getElementById("storyCreateModal");
+        const container =
+            getStoriesContainer();
 
-    const viewerOverlay =
-        document.getElementById("storyViewerOverlay");
-
-    const cancelBtn =
-        document.getElementById("storyCancelBtn");
-
-    const publishBtn =
-        document.getElementById("storyPublishBtn");
-
-    const textType =
-        document.getElementById("storyTextType");
-
-    const mediaType =
-        document.getElementById("storyMediaType");
-
-    const textInput =
-        document.getElementById("storyText");
-
-    const mediaInput =
-        document.getElementById("storyMedia");
-
-    const backgroundInput =
-        document.getElementById("storyBackground");
-
-    const textColorInput =
-        document.getElementById("storyTextColor");
-
-    const formTitle =
-        document.getElementById("storyFormTitle");
-
-    const viewerContent =
-        document.getElementById("storyContentArea");
-
-    const closeViewerBtn =
-        document.getElementById("storyCloseBtn");
-
-    const menuBtn =
-        document.getElementById("storyMenuBtn");
-
-    const actionsRow =
-        document.getElementById("storyActionsRow");
-
-    const editBtn =
-        document.getElementById("storyEditBtn");
-
-    const deleteBtn =
-        document.getElementById("storyDeleteBtn");
-
-    const viewCount =
-        document.getElementById("storyViewCount");
-
-    let storyMode = "text";
-    let editStory = null;
-    let currentViewingStory = null;
-
-    /* =========================
-       Story Type
-       ========================= */
-
-    textType.addEventListener("click", () => {
-
-        storyMode = "text";
-
-        mediaInput.style.display = "none";
-        textInput.style.display = "block";
-
-    });
-
-    mediaType.addEventListener("click", () => {
-
-        storyMode = "media";
-
-        mediaInput.style.display = "block";
-        textInput.style.display = "block";
-
-    });
-
-    /* =========================
-       Open Create Modal
-       ========================= */
-
-    addBtn.addEventListener("click", async () => {
-
-        await loadUser();
-
-        if (!currentUser) {
-            alert("يجب تسجيل الدخول أولًا.");
+        if (!container) {
+            console.error(
+                "لم يتم العثور على .stories-container"
+            );
             return;
         }
 
-        editStory = null;
+        container.innerHTML = "";
 
-        formTitle.textContent =
-            "إضافة ستوري";
+        const add =
+            document.createElement(
+                "div"
+            );
 
-        textInput.value = "";
-        mediaInput.value = "";
+        add.className =
+            "story stories-add-new";
 
-        backgroundInput.value =
-            "#1877f2";
+        add.innerHTML = `
 
-        textColorInput.value =
-            "#ffffff";
+            <div class="story-ring">
 
-        storyMode = "text";
+                <div class="story-ring-inner">
 
-        mediaInput.style.display =
+                    <i class="fa-solid fa-plus"></i>
+
+                </div>
+
+            </div>
+
+            <span class="story-name">
+                إضافة ستوري
+            </span>
+        `;
+
+        add.addEventListener(
+            "click",
+            openCreateModal
+        );
+
+        container.appendChild(
+            add
+        );
+    }
+
+    /* =====================================================
+       CREATE MODAL
+       ===================================================== */
+
+    function openCreateModal() {
+
+        loadUser().then(() => {
+
+            if (!currentUser) {
+
+                alert(
+                    "يجب تسجيل الدخول أولًا."
+                );
+
+                return;
+            }
+
+            editStory = null;
+
+            document.getElementById(
+                "studentStoryTitle"
+            ).textContent =
+                "إضافة ستوري";
+
+            document.getElementById(
+                "studentStoryText"
+            ).value = "";
+
+            document.getElementById(
+                "studentStoryFile"
+            ).value = "";
+
+            document.getElementById(
+                "studentStoryBackground"
+            ).value =
+                "#1877f2";
+
+            document.getElementById(
+                "studentStoryTextColor"
+            ).value =
+                "#ffffff";
+
+            setStoryMode(
+                "text"
+            );
+
+            clearPreview();
+
+            document.getElementById(
+                "studentStoryCreateModal"
+            ).classList.add(
+                "active"
+            );
+
+        });
+    }
+
+    function closeCreateModal() {
+
+        document.getElementById(
+            "studentStoryCreateModal"
+        ).classList.remove(
+            "active"
+        );
+    }
+
+    /* =====================================================
+       STORY MODE
+       ===================================================== */
+
+    function setStoryMode(
+        mode
+    ) {
+
+        storyMode =
+            mode;
+
+        const textButton =
+            document.getElementById(
+                "studentStoryTextMode"
+            );
+
+        const mediaButton =
+            document.getElementById(
+                "studentStoryMediaMode"
+            );
+
+        const file =
+            document.getElementById(
+                "studentStoryFile"
+            );
+
+        textButton.classList.toggle(
+            "active",
+            mode === "text"
+        );
+
+        mediaButton.classList.toggle(
+            "active",
+            mode === "media"
+        );
+
+        if (mode === "text") {
+
+            file.style.display =
+                "none";
+
+        } else {
+
+            file.style.display =
+                "block";
+        }
+    }
+
+    /* =====================================================
+       FILE PICKER
+       ===================================================== */
+
+    function openFilePicker() {
+
+        const input =
+            document.getElementById(
+                "studentStoryFile"
+            );
+
+        input.value = "";
+
+        input.click();
+    }
+
+    /* =====================================================
+       PREVIEW
+       ===================================================== */
+
+    function clearPreview() {
+
+        const preview =
+            document.getElementById(
+                "studentStoryPreview"
+            );
+
+        preview.innerHTML = "";
+
+        preview.style.display =
             "none";
+    }
 
-        createModal.classList.add(
-            "active"
-        );
+    function showFilePreview(
+        file
+    ) {
 
-    });
+        const preview =
+            document.getElementById(
+                "studentStoryPreview"
+            );
 
-    /* =========================
-       Cancel
-       ========================= */
+        preview.innerHTML = "";
 
-    cancelBtn.addEventListener("click", () => {
+        if (!file) {
 
-        createModal.classList.remove(
-            "active"
-        );
+            preview.style.display =
+                "none";
 
-    });
+            return;
+        }
 
-    /* =========================
-       Upload File
-       ========================= */
+        const url =
+            URL.createObjectURL(
+                file
+            );
+
+        if (
+            file.type.startsWith(
+                "image/"
+            )
+        ) {
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+            img.src =
+                url;
+
+            preview.appendChild(
+                img
+            );
+
+        } else if (
+            file.type.startsWith(
+                "video/"
+            )
+        ) {
+
+            const video =
+                document.createElement(
+                    "video"
+                );
+
+            video.src =
+                url;
+
+            video.controls =
+                true;
+
+            video.playsInline =
+                true;
+
+            preview.appendChild(
+                video
+            );
+
+        } else {
+
+            alert(
+                "يرجى اختيار صورة أو فيديو فقط."
+            );
+
+            return;
+        }
+
+        preview.style.display =
+            "flex";
+    }
+
+    /* =====================================================
+       UPLOAD
+       ===================================================== */
 
     async function uploadStoryFile(
-        file,
-        userId
+        file
     ) {
+
+        if (!currentUser) {
+            throw new Error(
+                "المستخدم غير مسجل الدخول."
+            );
+        }
 
         const extension =
             file.name
@@ -723,27 +1078,33 @@
                 .pop()
                 .toLowerCase();
 
-        const fileName =
-            `${Date.now()}_${Math.random()
+        const random =
+            Math.random()
                 .toString(36)
-                .substring(2)}.${extension}`;
+                .substring(2, 10);
 
-        const filePath =
-            `${userId}/${fileName}`;
+        const fileName =
+            `${Date.now()}_${random}.${extension}`;
+
+        const path =
+            `${currentUser.id}/${fileName}`;
 
         const {
             error
-        } = await sb.storage
-            .from("stories")
-            .upload(
-                filePath,
-                file,
-                {
-                    cacheControl: "3600",
-                    contentType: file.type,
-                    upsert: false
-                }
-            );
+        } =
+            await sb.storage
+                .from("stories")
+                .upload(
+                    path,
+                    file,
+                    {
+                        cacheControl:
+                            "3600",
+                        contentType:
+                            file.type,
+                        upsert:false
+                    }
+                );
 
         if (error) {
             throw error;
@@ -751,120 +1112,195 @@
 
         const {
             data
-        } = sb.storage
-            .from("stories")
-            .getPublicUrl(
-                filePath
+        } =
+            sb.storage
+                .from("stories")
+                .getPublicUrl(
+                    path
+                );
+
+        if (
+            !data ||
+            !data.publicUrl
+        ) {
+            throw new Error(
+                "تعذر إنشاء رابط الملف."
             );
+        }
 
         return {
-            url: data.publicUrl,
-            path: filePath
+            url:
+                data.publicUrl,
+            path
         };
     }
 
-    /* =========================
-       Publish / Update
-       ========================= */
+    /* =====================================================
+       PUBLISH
+       ===================================================== */
 
-    publishBtn.addEventListener(
-        "click",
-        async () => {
+    async function saveStory() {
 
-            try {
+        try {
 
-                await loadUser();
+            await loadUser();
 
-                if (!currentUser) {
+            if (!currentUser) {
+
+                alert(
+                    "يجب تسجيل الدخول أولًا."
+                );
+
+                return;
+            }
+
+            const publish =
+                document.getElementById(
+                    "studentStoryPublish"
+                );
+
+            publish.disabled =
+                true;
+
+            publish.textContent =
+                "جاري الحفظ...";
+
+            const text =
+                document.getElementById(
+                    "studentStoryText"
+                ).value.trim();
+
+            const background =
+                document.getElementById(
+                    "studentStoryBackground"
+                ).value.trim() ||
+                "#1877f2";
+
+            const textColor =
+                document.getElementById(
+                    "studentStoryTextColor"
+                ).value.trim() ||
+                "#ffffff";
+
+            const file =
+                document.getElementById(
+                    "studentStoryFile"
+                ).files[0] || null;
+
+            let type =
+                "text";
+
+            let mediaUrl =
+                editStory
+                    ? editStory.media_url
+                    : null;
+
+            /* =========================
+               Media
+            ========================= */
+
+            if (storyMode === "media") {
+
+                if (!file) {
+
                     alert(
-                        "يجب تسجيل الدخول أولًا."
+                        "اختر صورة أو فيديو أولًا."
                     );
+
+                    publish.disabled =
+                        false;
+
+                    publish.textContent =
+                        "نشر";
+
                     return;
                 }
 
-                publishBtn.disabled =
-                    true;
-
-                publishBtn.textContent =
-                    "جاري الحفظ...";
-
-                let mediaUrl =
-                    editStory
-                        ? editStory.media_url
-                        : null;
-
-                let type =
-                    editStory
-                        ? editStory.type
-                        : "text";
-
-                /* Media */
-
                 if (
-                    mediaInput.files &&
-                    mediaInput.files.length > 0
+                    !file.type.startsWith(
+                        "image/"
+                    ) &&
+                    !file.type.startsWith(
+                        "video/"
+                    )
                 ) {
 
-                    const file =
-                        mediaInput.files[0];
+                    alert(
+                        "الملف يجب أن يكون صورة أو فيديو."
+                    );
 
-                    if (
-                        !file.type.startsWith(
-                            "image/"
-                        ) &&
-                        !file.type.startsWith(
-                            "video/"
-                        )
-                    ) {
-                        throw new Error(
-                            "نوع الملف غير مدعوم."
-                        );
-                    }
+                    publish.disabled =
+                        false;
 
-                    const uploaded =
-                        await uploadStoryFile(
-                            file,
-                            currentUser.id
-                        );
+                    publish.textContent =
+                        "نشر";
 
-                    mediaUrl =
-                        uploaded.url;
-
-                    type =
-                        file.type.startsWith(
-                            "video/"
-                        )
-                            ? "video"
-                            : "image";
+                    return;
                 }
 
-                /* Update */
+                type =
+                    file.type.startsWith(
+                        "video/"
+                    )
+                        ? "video"
+                        : "image";
 
-                if (editStory) {
+                const uploaded =
+                    await uploadStoryFile(
+                        file
+                    );
 
-                    const {
-                        error
-                    } = await sb
+                mediaUrl =
+                    uploaded.url;
+            }
+
+            /* =========================
+               Text Story
+            ========================= */
+
+            if (
+                storyMode === "text" &&
+                !text
+            ) {
+
+                alert(
+                    "اكتب نص الستوري أولًا."
+                );
+
+                publish.disabled =
+                    false;
+
+                publish.textContent =
+                    "نشر";
+
+                return;
+            }
+
+            /* =========================
+               UPDATE
+            ========================= */
+
+            if (editStory) {
+
+                const {
+                    data,
+                    error
+                } =
+                    await sb
                         .from("stories")
                         .update({
                             type,
                             content:
-                                textInput
-                                    .value
-                                    .trim(),
+                                text,
 
                             media_url:
                                 mediaUrl,
 
                             background_color:
-                                backgroundInput
-                                    .value
-                                    .trim(),
+                                background,
 
                             text_color:
-                                textColorInput
-                                    .value
-                                    .trim()
+                                textColor
                         })
                         .eq(
                             "id",
@@ -873,25 +1309,36 @@
                         .eq(
                             "user_id",
                             currentUser.id
-                        );
+                        )
+                        .select()
+                        .single();
 
-                    if (error) {
-                        throw error;
-                    }
-
-                    alert(
-                        "تم تعديل الستوري."
-                    );
-
+                if (error) {
+                    throw error;
                 }
 
-                /* Insert */
+                console.log(
+                    "Story updated:",
+                    data
+                );
 
-                else {
+                alert(
+                    "تم تعديل الستوري بنجاح."
+                );
 
-                    const {
-                        error
-                    } = await sb
+            }
+
+            /* =========================
+               INSERT
+            ========================= */
+
+            else {
+
+                const {
+                    data,
+                    error
+                } =
+                    await sb
                         .from("stories")
                         .insert({
                             user_id:
@@ -900,102 +1347,190 @@
                             type,
 
                             content:
-                                textInput
-                                    .value
-                                    .trim(),
+                                text,
 
                             media_url:
                                 mediaUrl,
 
                             background_color:
-                                backgroundInput
-                                    .value
-                                    .trim(),
+                                background,
 
                             text_color:
-                                textColorInput
-                                    .value
-                                    .trim()
-                        });
+                                textColor,
 
-                    if (error) {
-                        throw error;
-                    }
+                            created_at:
+                                new Date()
+                                    .toISOString(),
 
-                    alert(
-                        "تم نشر الستوري."
-                    );
+                            expires_at:
+                                new Date(
+                                    Date.now() +
+                                    24 *
+                                    60 *
+                                    60 *
+                                    1000
+                                ).toISOString()
+                        })
+                        .select()
+                        .single();
+
+                if (error) {
+                    throw error;
                 }
 
-                createModal.classList.remove(
-                    "active"
+                console.log(
+                    "Story created:",
+                    data
                 );
-
-                editStory = null;
-
-                await loadStories();
-
-            } catch (error) {
-
-                console.error(error);
 
                 alert(
-                    error.message ||
-                    "حدث خطأ أثناء حفظ الستوري."
+                    "تم نشر الستوري بنجاح."
                 );
-
-            } finally {
-
-                publishBtn.disabled =
-                    false;
-
-                publishBtn.textContent =
-                    "نشر";
             }
 
-        }
-    );
+            editStory =
+                null;
 
-    /* =========================
-       Load Stories
-       ========================= */
+            closeCreateModal();
+
+            await loadStories();
+
+        } catch (error) {
+
+            console.error(
+                "SAVE STORY ERROR:",
+                error
+            );
+
+            alert(
+                error.message ||
+                "حدث خطأ أثناء حفظ الستوري."
+            );
+
+        } finally {
+
+            const publish =
+                document.getElementById(
+                    "studentStoryPublish"
+                );
+
+            publish.disabled =
+                false;
+
+            publish.textContent =
+                "نشر";
+        }
+    }
+
+    /* =====================================================
+       LOAD STORIES
+       ===================================================== */
 
     async function loadStories() {
 
-        strip.innerHTML =
-            `
-            <div class="story-loading">
-                جاري تحميل القصص...
+        if (!sb) {
+            return;
+        }
+
+        const container =
+            getStoriesContainer();
+
+        if (!container) {
+            return;
+        }
+
+        await loadUser();
+
+        const oldAdd =
+            container.querySelector(
+                ".stories-add-new"
+            );
+
+        container.innerHTML =
+            "";
+
+        /* Add button */
+
+        const add =
+            document.createElement(
+                "div"
+            );
+
+        add.className =
+            "story stories-add-new";
+
+        add.innerHTML = `
+
+            <div class="story-ring">
+
+                <div class="story-ring-inner">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                </div>
+
             </div>
-            `;
+
+            <span class="story-name">
+                إضافة ستوري
+            </span>
+        `;
+
+        add.addEventListener(
+            "click",
+            openCreateModal
+        );
+
+        container.appendChild(
+            add
+        );
+
+        /* =========================
+           Query
+        ========================= */
 
         const {
             data,
             error
-        } = await sb
-            .from("stories")
-            .select("*")
-            .gt(
-                "expires_at",
-                new Date().toISOString()
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
+        } =
+            await sb
+                .from("stories")
+                .select("*")
+                .gt(
+                    "expires_at",
+                    new Date().toISOString()
+                )
+                .order(
+                    "created_at",
+                    {
+                        ascending:false
+                    }
+                );
 
         if (error) {
 
-            console.error(error);
+            console.error(
+                "LOAD STORIES ERROR:",
+                error
+            );
 
-            strip.innerHTML =
-                `
-                <div class="story-loading">
-                    تعذر تحميل القصص
-                </div>
-                `;
+            const message =
+                document.createElement(
+                    "div"
+                );
+
+            message.style.padding =
+                "10px";
+
+            message.style.color =
+                "#777";
+
+            message.textContent =
+                "تعذر تحميل القصص.";
+
+            container.appendChild(
+                message
+            );
 
             return;
         }
@@ -1004,173 +1539,281 @@
             !data ||
             data.length === 0
         ) {
-
-            strip.innerHTML =
-                `
-                <div class="story-loading">
-                    لا توجد قصص حاليًا
-                </div>
-                `;
-
             return;
         }
 
-        strip.innerHTML = "";
+        /* =========================
+           One first story per user
+        ========================= */
 
-        const grouped =
+        const firstStories =
             new Map();
 
-        data.forEach(story => {
+        data.forEach(
+            story => {
 
-            if (
-                !grouped.has(
-                    story.user_id
-                )
-            ) {
-                grouped.set(
-                    story.user_id,
-                    story
+                if (
+                    !firstStories.has(
+                        story.user_id
+                    )
+                ) {
+                    firstStories.set(
+                        story.user_id,
+                        story
+                    );
+                }
+
+            }
+        );
+
+        firstStories.forEach(
+            story => {
+
+                const item =
+                    createStoryItem(
+                        story,
+                        data
+                    );
+
+                container.appendChild(
+                    item
                 );
             }
+        );
+    }
 
-        });
+    /* =====================================================
+       STORY ITEM
+       ===================================================== */
 
-        grouped.forEach(story => {
+    function createStoryItem(
+        story,
+        allStories
+    ) {
 
-            const item =
+        const item =
+            document.createElement(
+                "div"
+            );
+
+        item.className =
+            "story";
+
+        const ring =
+            document.createElement(
+                "div"
+            );
+
+        ring.className =
+            "story-ring";
+
+        const inner =
+            document.createElement(
+                "div"
+            );
+
+        inner.className =
+            "story-ring-inner";
+
+        /* Preview */
+
+        if (
+            story.type ===
+            "image"
+            &&
+            story.media_url
+        ) {
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+            img.className =
+                "story-preview";
+
+            img.src =
+                story.media_url;
+
+            img.alt =
+                "Story";
+
+            inner.appendChild(
+                img
+            );
+
+        }
+
+        else if (
+            story.type ===
+            "video"
+            &&
+            story.media_url
+        ) {
+
+            const video =
+                document.createElement(
+                    "video"
+                );
+
+            video.className =
+                "story-preview";
+
+            video.src =
+                story.media_url;
+
+            video.muted =
+                true;
+
+            video.playsInline =
+                true;
+
+            inner.appendChild(
+                video
+            );
+
+        }
+
+        else {
+
+            const placeholder =
                 document.createElement(
                     "div"
                 );
 
-            item.className =
-                "story-circle";
+            placeholder.className =
+                "story-placeholder";
 
-            const avatar =
-                document.createElement(
-                    "div"
-                );
+            placeholder.style.background =
+                story.background_color ||
+                "#1877f2";
 
-            avatar.className =
-                "story-avatar";
+            placeholder.style.color =
+                story.text_color ||
+                "#ffffff";
 
-            const avatarInner =
-                document.createElement(
-                    "div"
-                );
-
-            avatarInner.className =
-                "story-avatar-inner";
-
-            avatarInner.textContent =
+            placeholder.textContent =
                 story.user_id ===
                 currentUser?.id
                     ? "أنت"
                     : "S";
 
-            avatar.appendChild(
-                avatarInner
+            inner.appendChild(
+                placeholder
             );
-
-            const name =
-                document.createElement(
-                    "small"
-                );
-
-            name.textContent =
-                story.user_id ===
-                currentUser?.id
-                    ? "قصتي"
-                    : "ستوري";
-
-            item.appendChild(
-                avatar
-            );
-
-            item.appendChild(
-                name
-            );
-
-            item.addEventListener(
-                "click",
-                () =>
-                    openStoryGroup(
-                        story.user_id,
-                        data
-                    )
-            );
-
-            strip.appendChild(
-                item
-            );
-
-        });
-
-    }
-
-    /* =========================
-       Open Group
-       ========================= */
-
-    async function openStoryGroup(
-        userId,
-        allStories
-    ) {
-
-        const stories =
-            allStories.filter(
-                story =>
-                    story.user_id ===
-                    userId
-            );
-
-        if (!stories.length) {
-            return;
         }
 
-        await openStory(
-            stories[0],
-            stories
+        ring.appendChild(
+            inner
         );
+
+        item.appendChild(
+            ring
+        );
+
+        const name =
+            document.createElement(
+                "span"
+            );
+
+        name.className =
+            "story-name";
+
+        name.textContent =
+            story.user_id ===
+            currentUser?.id
+                ? "قصتي"
+                : "ستوري";
+
+        item.appendChild(
+            name
+        );
+
+        item.addEventListener(
+            "click",
+            () => {
+
+                const userStories =
+                    allStories.filter(
+                        s =>
+                            s.user_id ===
+                            story.user_id
+                    );
+
+                openStory(
+                    userStories[0],
+                    userStories
+                );
+
+            }
+        );
+
+        return item;
     }
 
-    /* =========================
-       Open Story
-       ========================= */
+    /* =====================================================
+       OPEN STORY
+       ===================================================== */
 
     async function openStory(
         story,
         group
     ) {
 
+        if (!story) {
+            return;
+        }
+
         currentViewingStory =
             story;
 
-        viewerOverlay.classList.add(
+        const viewer =
+            document.getElementById(
+                "studentStoryViewer"
+            );
+
+        const content =
+            document.getElementById(
+                "studentStoryViewContent"
+            );
+
+        const ownerMenu =
+            document.getElementById(
+                "studentStoryOwnerMenu"
+            );
+
+        const progress =
+            viewer.querySelector(
+                ".student-story-progress span"
+            );
+
+        viewer.classList.add(
             "active"
         );
 
-        const progress =
-            document.querySelector(
-                ".story-progress span"
-            );
+        ownerMenu.classList.remove(
+            "show"
+        );
 
         progress.style.width =
             "100%";
 
-        actionsRow.style.display =
-            "none";
-
-        viewerContent.innerHTML =
+        content.innerHTML =
             "";
 
-        /* Text */
+        content.style.background =
+            "#111";
+
+        /* =========================
+           Text
+        ========================= */
 
         if (
             story.type ===
             "text"
         ) {
 
-            viewerContent.style.background =
+            content.style.background =
                 story.background_color ||
                 "#1877f2";
 
@@ -1180,7 +1823,7 @@
                 );
 
             text.className =
-                "story-text-content";
+                "student-story-text-view";
 
             text.style.color =
                 story.text_color ||
@@ -1190,48 +1833,44 @@
                 story.content ||
                 "";
 
-            viewerContent.appendChild(
+            content.appendChild(
                 text
             );
-
         }
 
-        /* Image */
+        /* =========================
+           Image
+        ========================= */
 
         else if (
             story.type ===
             "image"
         ) {
 
-            viewerContent.style.background =
-                "#000";
-
-            const image =
+            const img =
                 document.createElement(
                     "img"
                 );
 
-            image.src =
+            img.src =
                 story.media_url;
 
-            image.alt =
+            img.alt =
                 "Story";
 
-            viewerContent.appendChild(
-                image
+            content.appendChild(
+                img
             );
-
         }
 
-        /* Video */
+        /* =========================
+           Video
+        ========================= */
 
         else if (
             story.type ===
             "video"
         ) {
-
-            viewerContent.style.background =
-                "#000";
 
             const video =
                 document.createElement(
@@ -1250,9 +1889,29 @@
             video.playsInline =
                 true;
 
-            viewerContent.appendChild(
+            content.appendChild(
                 video
             );
+        }
+
+        /* Owner */
+
+        if (
+            story.user_id ===
+            currentUser?.id
+        ) {
+
+            document.getElementById(
+                "studentStoryMenu"
+            ).style.display =
+                "block";
+
+        } else {
+
+            document.getElementById(
+                "studentStoryMenu"
+            ).style.display =
+                "none";
         }
 
         await registerView(
@@ -1262,87 +1921,68 @@
         await loadViewCount(
             story.id
         );
-
-        menuBtn.onclick = () => {
-
-            if (
-                story.user_id ===
-                currentUser?.id
-            ) {
-
-                actionsRow.style.display =
-                    actionsRow.style.display ===
-                    "flex"
-                        ? "none"
-                        : "flex";
-            }
-
-        };
-
     }
 
-    /* =========================
-       Register View
-       ========================= */
+    /* =====================================================
+       REGISTER VIEW
+       ===================================================== */
 
     async function registerView(
         storyId
     ) {
 
-        await loadUser();
-
         if (!currentUser) {
             return;
         }
 
-        const {
-            data: existing,
-            error: selectError
-        } = await sb
-            .from("story_views")
-            .select("id")
-            .eq(
-                "story_id",
-                storyId
-            )
-            .eq(
-                "user_id",
-                currentUser.id
-            )
-            .maybeSingle();
+        try {
 
-        if (selectError) {
+            const {
+                data: existing
+            } =
+                await sb
+                    .from(
+                        "story_views"
+                    )
+                    .select("id")
+                    .eq(
+                        "story_id",
+                        storyId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUser.id
+                    )
+                    .maybeSingle();
+
+            if (existing) {
+                return;
+            }
+
+            await sb
+                .from(
+                    "story_views"
+                )
+                .insert({
+                    story_id:
+                        storyId,
+
+                    user_id:
+                        currentUser.id
+                });
+
+        } catch (error) {
+
             console.error(
-                selectError
+                "VIEW ERROR:",
+                error
             );
-            return;
         }
-
-        if (existing) {
-            return;
-        }
-
-        const {
-            error
-        } = await sb
-            .from("story_views")
-            .insert({
-                story_id:
-                    storyId,
-
-                user_id:
-                    currentUser.id
-            });
-
-        if (error) {
-            console.error(error);
-        }
-
     }
 
-    /* =========================
-       View Count
-       ========================= */
+    /* =====================================================
+       VIEW COUNT
+       ===================================================== */
 
     async function loadViewCount(
         storyId
@@ -1351,286 +1991,537 @@
         const {
             count,
             error
-        } = await sb
-            .from("story_views")
-            .select("*", {
-                count: "exact",
-                head: true
-            })
-            .eq(
-                "story_id",
-                storyId
-            );
+        } =
+            await sb
+                .from(
+                    "story_views"
+                )
+                .select(
+                    "*",
+                    {
+                        count:
+                            "exact",
+                        head:
+                            true
+                    }
+                )
+                .eq(
+                    "story_id",
+                    storyId
+                );
 
         if (error) {
-            console.error(error);
+
+            console.error(
+                error
+            );
+
             return;
         }
 
-        viewCount.textContent =
+        document.getElementById(
+            "studentStoryViewCount"
+        ).textContent =
             `👁 ${count || 0}`;
     }
 
-    /* =========================
-       Delete
-       ========================= */
+    /* =====================================================
+       DELETE
+       ===================================================== */
 
-    deleteBtn.addEventListener(
-        "click",
-        async () => {
+    async function deleteStory() {
 
-            if (!currentViewingStory) {
-                return;
-            }
+        if (
+            !currentViewingStory ||
+            !currentUser
+        ) {
+            return;
+        }
 
-            if (
-                currentViewingStory.user_id !==
-                currentUser?.id
-            ) {
-                return;
-            }
+        if (
+            currentViewingStory.user_id !==
+            currentUser.id
+        ) {
+            return;
+        }
 
-            const confirmed =
-                confirm(
-                    "هل تريد حذف هذه الستوري؟"
-                );
+        const ok =
+            confirm(
+                "هل تريد حذف هذه الستوري؟"
+            );
 
-            if (!confirmed) {
-                return;
-            }
+        if (!ok) {
+            return;
+        }
+
+        try {
 
             const {
                 error
-            } = await sb
-                .from("stories")
-                .delete()
-                .eq(
-                    "id",
-                    currentViewingStory.id
-                )
-                .eq(
-                    "user_id",
-                    currentUser.id
-                );
+            } =
+                await sb
+                    .from(
+                        "stories"
+                    )
+                    .delete()
+                    .eq(
+                        "id",
+                        currentViewingStory.id
+                    )
+                    .eq(
+                        "user_id",
+                        currentUser.id
+                    );
 
             if (error) {
-
-                console.error(
-                    error
-                );
-
-                alert(
-                    error.message ||
-                    "تعذر حذف الستوري."
-                );
-
-                return;
+                throw error;
             }
 
-            viewerOverlay.classList.remove(
+            document.getElementById(
+                "studentStoryViewer"
+            ).classList.remove(
                 "active"
             );
+
+            currentViewingStory =
+                null;
 
             await loadStories();
 
             alert(
                 "تم حذف الستوري."
             );
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                error.message ||
+                "تعذر حذف الستوري."
+            );
         }
-    );
+    }
 
-    /* =========================
-       Edit
-       ========================= */
+    /* =====================================================
+       EDIT
+       ===================================================== */
 
-    editBtn.addEventListener(
-        "click",
-        () => {
+    function editCurrentStory() {
 
-            if (!currentViewingStory) {
-                return;
-            }
+        if (
+            !currentViewingStory ||
+            !currentUser
+        ) {
+            return;
+        }
 
-            if (
-                currentViewingStory.user_id !==
-                currentUser?.id
-            ) {
-                return;
-            }
+        if (
+            currentViewingStory.user_id !==
+            currentUser.id
+        ) {
+            return;
+        }
 
-            editStory =
-                currentViewingStory;
+        editStory =
+            currentViewingStory;
 
-            formTitle.textContent =
-                "تعديل الستوري";
+        document.getElementById(
+            "studentStoryTitle"
+        ).textContent =
+            "تعديل الستوري";
 
-            textInput.value =
-                currentViewingStory
-                    .content || "";
+        document.getElementById(
+            "studentStoryText"
+        ).value =
+            currentViewingStory.content ||
+            "";
 
-            backgroundInput.value =
-                currentViewingStory
-                    .background_color ||
-                "#1877f2";
+        document.getElementById(
+            "studentStoryBackground"
+        ).value =
+            currentViewingStory.background_color ||
+            "#1877f2";
 
-            textColorInput.value =
-                currentViewingStory
-                    .text_color ||
-                "#ffffff";
+        document.getElementById(
+            "studentStoryTextColor"
+        ).value =
+            currentViewingStory.text_color ||
+            "#ffffff";
 
-            mediaInput.value = "";
+        document.getElementById(
+            "studentStoryFile"
+        ).value =
+            "";
 
-            storyMode =
-                currentViewingStory
-                    .type === "text"
-                        ? "text"
-                        : "media";
+        if (
+            currentViewingStory.type ===
+            "text"
+        ) {
 
-            mediaInput.style.display =
-                storyMode === "media"
-                    ? "block"
-                    : "none";
-
-            createModal.classList.add(
-                "active"
+            setStoryMode(
+                "text"
             );
 
-            viewerOverlay.classList.remove(
-                "active"
+        } else {
+
+            setStoryMode(
+                "media"
+            );
+        }
+
+        document.getElementById(
+            "studentStoryViewer"
+        ).classList.remove(
+            "active"
+        );
+
+        document.getElementById(
+            "studentStoryCreateModal"
+        ).classList.add(
+            "active"
+        );
+    }
+
+    /* =====================================================
+       REACTION
+       ===================================================== */
+
+    async function reactToStory(
+        reaction
+    ) {
+
+        if (
+            !currentViewingStory
+        ) {
+            return;
+        }
+
+        await loadUser();
+
+        if (!currentUser) {
+
+            alert(
+                "يجب تسجيل الدخول أولًا."
             );
 
+            return;
         }
-    );
 
-    /* =========================
-       Reactions
-       ========================= */
+        try {
 
-    document
-        .querySelectorAll(
-            ".story-reaction-btn"
-        )
-        .forEach(button => {
+            const {
+                error
+            } =
+                await sb
+                    .from(
+                        "story_reactions"
+                    )
+                    .upsert(
+                        {
+                            story_id:
+                                currentViewingStory.id,
 
-            button.addEventListener(
+                            user_id:
+                                currentUser.id,
+
+                            reaction
+                        },
+                        {
+                            onConflict:
+                                "story_id,user_id"
+                        }
+                    );
+
+            if (error) {
+                throw error;
+            }
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+            alert(
+                error.message ||
+                "تعذر تسجيل التفاعل."
+            );
+        }
+    }
+
+    /* =====================================================
+       EVENTS
+       ===================================================== */
+
+    function setupEvents() {
+
+        document
+            .getElementById(
+                "studentStoryTextMode"
+            )
+            .addEventListener(
                 "click",
-                async () => {
+                () => {
+                    setStoryMode(
+                        "text"
+                    );
+                }
+            );
 
-                    if (
-                        !currentViewingStory
-                    ) {
-                        return;
-                    }
+        document
+            .getElementById(
+                "studentStoryMediaMode"
+            )
+            .addEventListener(
+                "click",
+                () => {
 
-                    await loadUser();
+                    setStoryMode(
+                        "media"
+                    );
 
-                    if (!currentUser) {
-                        alert(
-                            "يجب تسجيل الدخول أولًا."
-                        );
-                        return;
-                    }
+                    /*
+                     * افتح معرض الهاتف مباشرة
+                     */
+                    openFilePicker();
+                }
+            );
 
-                    const reaction =
-                        button.dataset.reaction;
+        document
+            .getElementById(
+                "studentStoryFile"
+            )
+            .addEventListener(
+                "change",
+                event => {
 
-                    const {
-                        error
-                    } = await sb
-                        .from(
-                            "story_reactions"
+                    const file =
+                        event.target.files[0];
+
+                    showFilePreview(
+                        file
+                    );
+                }
+            );
+
+        document
+            .getElementById(
+                "studentStoryCancel"
+            )
+            .addEventListener(
+                "click",
+                closeCreateModal
+            );
+
+        document
+            .getElementById(
+                "studentStoryPublish"
+            )
+            .addEventListener(
+                "click",
+                saveStory
+            );
+
+        document
+            .getElementById(
+                "studentStoryClose"
+            )
+            .addEventListener(
+                "click",
+                () => {
+
+                    document
+                        .getElementById(
+                            "studentStoryViewer"
                         )
-                        .upsert(
-                            {
-                                story_id:
-                                    currentViewingStory.id,
-
-                                user_id:
-                                    currentUser.id,
-
-                                reaction
-                            },
-                            {
-                                onConflict:
-                                    "story_id,user_id"
-                            }
+                        .classList.remove(
+                            "active"
                         );
-
-                    if (error) {
-
-                        console.error(
-                            error
-                        );
-
-                        alert(
-                            "تعذر تسجيل التفاعل."
-                        );
-
-                        return;
-                    }
-
-                    button.style.transform =
-                        "scale(1.25)";
-
-                    setTimeout(() => {
-
-                        button.style.transform =
-                            "";
-
-                    }, 200);
 
                 }
             );
 
-        });
+        document
+            .getElementById(
+                "studentStoryMenu"
+            )
+            .addEventListener(
+                "click",
+                () => {
 
-    /* =========================
-       Close Viewer
-       ========================= */
+                    document
+                        .getElementById(
+                            "studentStoryOwnerMenu"
+                        )
+                        .classList.toggle(
+                            "show"
+                        );
 
-    closeViewerBtn.addEventListener(
-        "click",
-        () => {
-
-            viewerOverlay.classList.remove(
-                "active"
+                }
             );
 
-            viewerContent.innerHTML =
-                "";
+        document
+            .getElementById(
+                "studentStoryDelete"
+            )
+            .addEventListener(
+                "click",
+                deleteStory
+            );
 
+        document
+            .getElementById(
+                "studentStoryEdit"
+            )
+            .addEventListener(
+                "click",
+                editCurrentStory
+            );
+
+        document
+            .querySelectorAll(
+                ".student-story-reaction"
+            )
+            .forEach(
+                button => {
+
+                    button.addEventListener(
+                        "click",
+                        () => {
+
+                            reactToStory(
+                                button.dataset
+                                    .reaction
+                            );
+
+                        }
+                    );
+                }
+            );
+
+        document
+            .getElementById(
+                "studentStoryViewer"
+            )
+            .addEventListener(
+                "click",
+                event => {
+
+                    if (
+                        event.target.id ===
+                        "studentStoryViewer"
+                    ) {
+
+                        event.currentTarget
+                            .classList
+                            .remove(
+                                "active"
+                            );
+                    }
+
+                }
+            );
+
+        document
+            .getElementById(
+                "studentStoryCreateModal"
+            )
+            .addEventListener(
+                "click",
+                event => {
+
+                    if (
+                        event.target.id ===
+                        "studentStoryCreateModal"
+                    ) {
+
+                        closeCreateModal();
+
+                    }
+
+                }
+            );
+    }
+
+    /* =====================================================
+       AUTH STATE
+       ===================================================== */
+
+    function watchAuth() {
+
+        if (!sb) {
+            return;
         }
-    );
 
-    viewerOverlay.addEventListener(
-        "click",
-        event => {
+        sb.auth.onAuthStateChange(
+            async (
+                event,
+                session
+            ) => {
 
-            if (
-                event.target ===
-                viewerOverlay
-            ) {
+                currentUser =
+                    session?.user ||
+                    null;
 
-                viewerOverlay.classList.remove(
-                    "active"
-                );
+                if (currentUser) {
 
+                    await loadStories();
+
+                }
             }
+        );
+    }
 
+    /* =====================================================
+       INITIALIZE
+       ===================================================== */
+
+    async function initialize() {
+
+        const ready =
+            await initSupabase();
+
+        if (!ready) {
+            return;
         }
-    );
 
-    /* =========================
-       Load
-       ========================= */
+        addStyles();
 
-    await loadStories();
+        createModals();
 
-    setInterval(
-        async () => {
+        setupStoryContainer();
+
+        setupEvents();
+
+        await loadUser();
+
+        watchAuth();
+
+        if (currentUser) {
             await loadStories();
-        },
-        60000
-    );
+        }
+
+    }
+
+    /* =====================================================
+       START
+       ===================================================== */
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            initialize
+        );
+
+    } else {
+
+        initialize();
+
+    }
 
 })();
