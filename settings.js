@@ -1,5 +1,6 @@
 /* =========================================================
    Student - Settings System
+   إعدادات مستقلة بالكامل
 ========================================================= */
 
 (function () {
@@ -7,6 +8,8 @@
 
     if (window.__studentSettingsLoaded) return;
     window.__studentSettingsLoaded = true;
+
+    let settingsOverlay = null;
 
 
     /* =====================================================
@@ -23,7 +26,7 @@
     }
 
 
-    function esc(value) {
+    function escapeHTML(value) {
         return String(value || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -34,77 +37,521 @@
 
 
     /* =====================================================
-       فتح نافذة إعدادات ثابتة
+       إنشاء CSS
     ===================================================== */
 
-    function openSettingsPanel(title, content) {
+    function injectStyles() {
 
         if (
-            typeof window.showFloatingPanel !==
-            "function"
+            document.getElementById(
+                "student-settings-style"
+            )
         ) {
             return;
         }
 
-        window.showFloatingPanel(
-            title,
-            content
-        );
+        const style =
+            document.createElement("style");
 
-        /*
-           منع إغلاق الإعدادات عند الضغط على
-           الخلفية، لكن السماح بزر × بالعمل.
-        */
+        style.id =
+            "student-settings-style";
 
-        const panel =
-            document.getElementById(
-                "floating-panel"
-            );
+        style.textContent = `
 
-        if (!panel) return;
+            /* =========================================
+               الإعدادات
+            ========================================= */
 
-        panel.addEventListener(
-            "click",
-            function (event) {
+            #student-settings-overlay {
+                position:fixed;
+                inset:0;
+                z-index:9999999;
+                background:rgba(0,0,0,.40);
+                display:none;
+                align-items:center;
+                justify-content:center;
+                padding:15px;
+                box-sizing:border-box;
+                direction:rtl;
+            }
 
-                if (
-                    event.target === panel
-                ) {
-                    event.stopPropagation();
+            #student-settings-overlay.show {
+                display:flex;
+            }
+
+            .student-settings-window {
+                width:100%;
+                max-width:520px;
+                max-height:92vh;
+                overflow:hidden;
+                background:#fff;
+                border-radius:22px;
+                box-shadow:0 20px 60px rgba(0,0,0,.25);
+                display:flex;
+                flex-direction:column;
+            }
+
+            .student-settings-header {
+                flex-shrink:0;
+                display:flex;
+                align-items:center;
+                gap:12px;
+                padding:16px 18px;
+                border-bottom:1px solid #eee;
+                background:#fff;
+            }
+
+            .student-settings-title {
+                flex:1;
+                font-size:20px;
+                font-weight:700;
+                color:#222;
+            }
+
+            .student-settings-close,
+            .student-settings-back {
+                width:40px;
+                height:40px;
+                border:none;
+                border-radius:50%;
+                background:#f1f3f5;
+                color:#333;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:16px;
+                flex-shrink:0;
+            }
+
+            .student-settings-back {
+                display:none;
+            }
+
+            .student-settings-body {
+                flex:1;
+                overflow-y:auto;
+                padding:15px;
+                background:#fff;
+            }
+
+            .student-settings-list {
+                display:flex;
+                flex-direction:column;
+                gap:10px;
+            }
+
+            .student-settings-item {
+                width:100%;
+                border:none;
+                background:#f7f8fa;
+                padding:14px;
+                border-radius:15px;
+                display:flex;
+                align-items:center;
+                gap:13px;
+                direction:rtl;
+                text-align:right;
+                cursor:pointer;
+                color:#222;
+            }
+
+            .student-settings-item:hover {
+                background:#f0f2f5;
+            }
+
+            .student-settings-icon {
+                width:42px;
+                height:42px;
+                border-radius:12px;
+                background:#eaf5ff;
+                color:#0095f6;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                flex-shrink:0;
+                font-size:17px;
+            }
+
+            .student-settings-item-text {
+                flex:1;
+            }
+
+            .student-settings-item-title {
+                font-weight:700;
+                font-size:15px;
+            }
+
+            .student-settings-item-description {
+                margin-top:4px;
+                font-size:12px;
+                color:#888;
+            }
+
+            .student-settings-chevron {
+                color:#aaa;
+                font-size:12px;
+            }
+
+            .student-settings-card {
+                background:#f7f8fa;
+                border-radius:15px;
+                padding:15px;
+                margin-bottom:12px;
+            }
+
+            .student-settings-label {
+                display:block;
+                margin-bottom:7px;
+                font-size:13px;
+                color:#555;
+                font-weight:600;
+            }
+
+            .student-settings-input,
+            .student-settings-select,
+            .student-settings-textarea {
+                width:100%;
+                box-sizing:border-box;
+                padding:13px;
+                border:1px solid #ddd;
+                border-radius:11px;
+                outline:none;
+                font-size:14px;
+                background:#fff;
+            }
+
+            .student-settings-input:focus,
+            .student-settings-select:focus,
+            .student-settings-textarea:focus {
+                border-color:#0095f6;
+            }
+
+            .student-settings-button {
+                width:100%;
+                border:none;
+                background:#0095f6;
+                color:#fff;
+                padding:13px;
+                border-radius:11px;
+                cursor:pointer;
+                font-size:14px;
+            }
+
+            .student-settings-button:disabled {
+                opacity:.6;
+                cursor:not-allowed;
+            }
+
+            .student-settings-danger {
+                width:100%;
+                border:none;
+                background:#fff2f2;
+                color:#d93025;
+                padding:15px;
+                border-radius:14px;
+                text-align:right;
+                cursor:pointer;
+            }
+
+            .student-settings-message {
+                min-height:20px;
+                margin-top:10px;
+                text-align:center;
+                font-size:13px;
+                line-height:1.6;
+            }
+
+            .student-theme-button,
+            .student-language-button {
+                width:100%;
+                border-radius:14px;
+                padding:15px;
+                text-align:right;
+                cursor:pointer;
+                font-size:14px;
+                background:#f7f8fa;
+                color:#222;
+            }
+
+            .student-theme-button.active,
+            .student-language-button.active {
+                border:2px solid #0095f6;
+            }
+
+            .student-theme-button:not(.active),
+            .student-language-button:not(.active) {
+                border:2px solid transparent;
+            }
+
+
+            /* =========================================
+               الوضع الداكن
+            ========================================= */
+
+            html[data-student-theme="dark"]
+            #student-settings-overlay {
+                background:rgba(0,0,0,.65);
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-window,
+            html[data-student-theme="dark"]
+            .student-settings-header,
+            html[data-student-theme="dark"]
+            .student-settings-body {
+                background:#121212;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-header {
+                border-bottom-color:#2b2b2b;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-title,
+            html[data-student-theme="dark"]
+            .student-settings-item-title {
+                color:#fff;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-item,
+            html[data-student-theme="dark"]
+            .student-settings-card,
+            html[data-student-theme="dark"]
+            .student-theme-button,
+            html[data-student-theme="dark"]
+            .student-language-button {
+                background:#1d1d1d;
+                color:#fff;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-item-description,
+            html[data-student-theme="dark"]
+            .student-settings-label,
+            html[data-student-theme="dark"]
+            .student-settings-item-description {
+                color:#aaa;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-close,
+            html[data-student-theme="dark"]
+            .student-settings-back {
+                background:#252525;
+                color:#fff;
+            }
+
+            html[data-student-theme="dark"]
+            .student-settings-input,
+            html[data-student-theme="dark"]
+            .student-settings-select,
+            html[data-student-theme="dark"]
+            .student-settings-textarea {
+                background:#1d1d1d;
+                color:#fff;
+                border-color:#3a3a3a;
+            }
+
+
+            @media (max-width:480px) {
+
+                #student-settings-overlay {
+                    padding:0;
+                    align-items:stretch;
                 }
 
-            },
-            true
+                .student-settings-window {
+                    max-width:none;
+                    max-height:none;
+                    height:100%;
+                    border-radius:0;
+                }
+
+                .student-settings-body {
+                    padding:15px;
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+
+    /* =====================================================
+       إنشاء النافذة
+    ===================================================== */
+
+    function createOverlay() {
+
+        if (settingsOverlay) {
+            return;
+        }
+
+        settingsOverlay =
+            document.createElement("div");
+
+        settingsOverlay.id =
+            "student-settings-overlay";
+
+        settingsOverlay.innerHTML = `
+
+            <div
+                class="student-settings-window"
+                role="dialog"
+                aria-modal="true"
+            >
+
+                <div class="student-settings-header">
+
+                    <button
+                        id="student-settings-back"
+                        class="student-settings-back"
+                        type="button"
+                        aria-label="رجوع"
+                    >
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                    <div
+                        id="student-settings-title"
+                        class="student-settings-title"
+                    >
+                        الإعدادات
+                    </div>
+
+                    <button
+                        id="student-settings-close"
+                        class="student-settings-close"
+                        type="button"
+                        aria-label="إغلاق"
+                    >
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+
+                </div>
+
+                <div
+                    id="student-settings-body"
+                    class="student-settings-body"
+                ></div>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            settingsOverlay
+        );
+
+
+        /* مهم:
+           لا يوجد أي event لإغلاق النافذة
+           عند الضغط على الخلفية.
+        */
+
+
+        document
+            .getElementById(
+                "student-settings-close"
+            )
+            .addEventListener(
+                "click",
+                closeSettings
+            );
+
+
+        document
+            .getElementById(
+                "student-settings-back"
+            )
+            .addEventListener(
+                "click",
+                showSettingsHome
+            );
+    }
+
+
+    /* =====================================================
+       تغيير العنوان
+    ===================================================== */
+
+    function setPageTitle(
+        title,
+        showBack
+    ) {
+
+        const titleElement =
+            document.getElementById(
+                "student-settings-title"
+            );
+
+        const backButton =
+            document.getElementById(
+                "student-settings-back"
+            );
+
+        if (titleElement) {
+            titleElement.textContent =
+                title;
+        }
+
+        if (backButton) {
+
+            backButton.style.display =
+                showBack
+                    ? "flex"
+                    : "none";
+        }
+    }
+
+
+    /* =====================================================
+       فتح
+    ===================================================== */
+
+    function openSettings() {
+
+        injectStyles();
+        createOverlay();
+
+        showSettingsHome();
+
+        settingsOverlay.classList.add(
+            "show"
         );
     }
 
 
     /* =====================================================
-       زر الرجوع
+       إغلاق صريح فقط
     ===================================================== */
-
-    function backToSettings() {
-        openSettings();
-    }
-
 
     function closeSettings() {
 
-        if (
-            typeof window.closeFloatingPanel ===
-            "function"
-        ) {
-            window.closeFloatingPanel();
-            return;
-        }
+        if (settingsOverlay) {
 
-        const panel =
+            settingsOverlay.classList.remove(
+                "show"
+            );
+        }
+    }
+
+
+    /* =====================================================
+       محتوى النافذة
+    ===================================================== */
+
+    function setBody(html) {
+
+        const body =
             document.getElementById(
-                "floating-panel"
+                "student-settings-body"
             );
 
-        if (panel) {
-            panel.remove();
+        if (body) {
+            body.innerHTML = html;
         }
     }
 
@@ -113,220 +560,238 @@
        الرئيسية
     ===================================================== */
 
-    function openSettings() {
+    function showSettingsHome() {
 
-        const sections = [
-
-            {
-                id: "account",
-                icon: "fa-regular fa-user",
-                title: "الحساب",
-                text: "البريد الإلكتروني وكلمة المرور",
-                action: openAccountSettings
-            },
-
-            {
-                id: "privacy",
-                icon: "fa-solid fa-lock",
-                title: "الخصوصية",
-                text: "خصوصية الحساب",
-                action: openPrivacySettings
-            },
-
-            {
-                id: "notifications",
-                icon: "fa-regular fa-bell",
-                title: "الإشعارات",
-                text: "التحكم بالإشعارات",
-                action: openNotificationSettings
-            },
-
-            {
-                id: "appearance",
-                icon: "fa-solid fa-palette",
-                title: "المظهر",
-                text: "فاتح أو داكن أو حسب الجهاز",
-                action: openAppearanceSettings
-            },
-
-            {
-                id: "language",
-                icon: "fa-solid fa-language",
-                title: "اللغة",
-                text: "لغة واجهة التطبيق",
-                action: openLanguageSettings
-            },
-
-            {
-                id: "security",
-                icon: "fa-solid fa-shield-halved",
-                title: "الأمان",
-                text: "إدارة جلسات تسجيل الدخول",
-                action: openSecuritySettings
-            }
-
-        ];
-
-
-        const html =
-            sections.map(function (item) {
-
-                return `
-                    <button
-                        type="button"
-                        data-setting="${item.id}"
-                        style="
-                            width:100%;
-                            border:none;
-                            background:#f7f8fa;
-                            padding:14px;
-                            border-radius:15px;
-                            text-align:right;
-                            display:flex;
-                            align-items:center;
-                            gap:13px;
-                            direction:rtl;
-                            cursor:pointer;
-                        "
-                    >
-
-                        <div style="
-                            width:42px;
-                            height:42px;
-                            border-radius:12px;
-                            background:#eaf5ff;
-                            color:#0095f6;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            flex-shrink:0;
-                            font-size:17px;
-                        ">
-                            <i class="${item.icon}"></i>
-                        </div>
-
-                        <div>
-
-                            <div style="
-                                font-weight:700;
-                                color:#222;
-                                font-size:15px;
-                            ">
-                                ${item.title}
-                            </div>
-
-                            <div style="
-                                margin-top:4px;
-                                color:#888;
-                                font-size:12px;
-                            ">
-                                ${item.text}
-                            </div>
-
-                        </div>
-
-                        <i
-                            class="fa-solid fa-chevron-left"
-                            style="
-                                margin-right:auto;
-                                color:#aaa;
-                                font-size:12px;
-                            "
-                        ></i>
-
-                    </button>
-                `;
-
-            }).join("");
-
-
-        openSettingsPanel(
+        setPageTitle(
             "الإعدادات",
-            `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
-                ${html}
-            </div>
-            `
+            false
         );
 
 
-        sections.forEach(function (item) {
+        setBody(`
+            <div class="student-settings-list">
 
-            document
-                .querySelector(
-                    `[data-setting="${item.id}"]`
-                )
-                ?.addEventListener(
-                    "click",
-                    item.action
-                );
+                <button
+                    class="student-settings-item"
+                    data-settings-page="account"
+                >
 
-        });
-    }
+                    <div class="student-settings-icon">
+                        <i class="fa-regular fa-user"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
+                            الحساب
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            البريد الإلكتروني وكلمة المرور
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
 
 
-    /* =====================================================
-       رأس الصفحات الداخلية
-    ===================================================== */
+                <button
+                    class="student-settings-item"
+                    data-settings-page="privacy"
+                >
 
-    function pageHeader(title) {
+                    <div class="student-settings-icon">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
 
-        return `
-            <button
-                id="settings-back"
-                type="button"
-                style="
-                    border:none;
-                    background:#f1f3f5;
-                    width:40px;
-                    height:40px;
-                    border-radius:50%;
-                    cursor:pointer;
-                    font-size:17px;
-                    color:#333;
-                "
-            >
-                <i class="fa-solid fa-arrow-right"></i>
-            </button>
+                    <div class="student-settings-item-text">
 
-            <div style="
-                font-size:19px;
-                font-weight:700;
-                color:#222;
-            ">
-                ${title}
+                        <div class="student-settings-item-title">
+                            الخصوصية
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            خصوصية الحساب
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
+
+
+                <button
+                    class="student-settings-item"
+                    data-settings-page="notifications"
+                >
+
+                    <div class="student-settings-icon">
+                        <i class="fa-regular fa-bell"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
+                            الإشعارات
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            التحكم بتنبيهات التطبيق
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
+
+
+                <button
+                    class="student-settings-item"
+                    data-settings-page="appearance"
+                >
+
+                    <div class="student-settings-icon">
+                        <i class="fa-solid fa-palette"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
+                            المظهر
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            فاتح أو داكن أو حسب الجهاز
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
+
+
+                <button
+                    class="student-settings-item"
+                    data-settings-page="language"
+                >
+
+                    <div class="student-settings-icon">
+                        <i class="fa-solid fa-language"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
+                            اللغة
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            لغة واجهة التطبيق
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
+
+
+                <button
+                    class="student-settings-item"
+                    data-settings-page="security"
+                >
+
+                    <div class="student-settings-icon">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
+                            الأمان
+                        </div>
+
+                        <div class="student-settings-item-description">
+                            إدارة جلسات تسجيل الدخول
+                        </div>
+
+                    </div>
+
+                    <i class="fa-solid fa-chevron-left student-settings-chevron"></i>
+
+                </button>
+
             </div>
-        `;
-    }
+        `);
 
-
-    function bindBackButton() {
 
         document
-            .getElementById(
-                "settings-back"
+            .querySelectorAll(
+                "[data-settings-page]"
             )
-            ?.addEventListener(
-                "click",
-                backToSettings
-            );
+            .forEach(function (button) {
+
+                button.addEventListener(
+                    "click",
+                    function () {
+
+                        const page =
+                            button.dataset.settingsPage;
+
+                        switch (page) {
+
+                            case "account":
+                                showAccountPage();
+                                break;
+
+                            case "privacy":
+                                showPrivacyPage();
+                                break;
+
+                            case "notifications":
+                                showNotificationsPage();
+                                break;
+
+                            case "appearance":
+                                showAppearancePage();
+                                break;
+
+                            case "language":
+                                showLanguagePage();
+                                break;
+
+                            case "security":
+                                showSecurityPage();
+                                break;
+                        }
+                    }
+                );
+            });
     }
 
 
     /* =====================================================
-       الحساب
+       صفحة الحساب
     ===================================================== */
 
-    async function openAccountSettings() {
+    async function showAccountPage() {
+
+        setPageTitle(
+            "الحساب",
+            true
+        );
+
+
+        let email = "";
 
         const client =
             getSupabase();
 
-        let email = "";
 
         if (client) {
 
@@ -342,119 +807,78 @@
             } catch (error) {
 
                 console.error(
-                    "User error:",
                     error
                 );
             }
         }
 
 
-        openSettingsPanel(
-            "الحساب",
-            `
-            <div>
+        setBody(`
 
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("الحساب")}
+            <div class="student-settings-card">
+
+                <div
+                    class="student-settings-label"
+                >
+                    البريد الإلكتروني الحالي
                 </div>
 
-
                 <div style="
-                    display:flex;
-                    flex-direction:column;
-                    gap:10px;
+                    direction:ltr;
+                    text-align:right;
+                    color:#777;
+                    font-size:13px;
                 ">
-
-                    <button
-                        id="change-email"
-                        type="button"
-                        style="
-                            width:100%;
-                            border:none;
-                            background:#f7f8fa;
-                            padding:15px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-
-                        <strong>
-                            تغيير البريد الإلكتروني
-                        </strong>
-
-                        <div style="
-                            margin-top:5px;
-                            font-size:12px;
-                            color:#888;
-                            direction:ltr;
-                            text-align:right;
-                        ">
-                            ${esc(email)}
-                        </div>
-
-                    </button>
-
-
-                    <button
-                        id="change-password"
-                        type="button"
-                        style="
-                            width:100%;
-                            border:none;
-                            background:#f7f8fa;
-                            padding:15px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-
-                        <strong>
-                            تغيير كلمة المرور
-                        </strong>
-
-                        <div style="
-                            margin-top:5px;
-                            font-size:12px;
-                            color:#888;
-                        ">
-                            تحديث كلمة مرور الحساب
-                        </div>
-
-                    </button>
-
+                    ${escapeHTML(email)}
                 </div>
 
             </div>
-            `
-        );
 
-        bindBackButton();
+
+            <div class="student-settings-card">
+
+                <button
+                    id="settings-change-email"
+                    class="student-settings-button"
+                    type="button"
+                >
+                    تغيير البريد الإلكتروني
+                </button>
+
+            </div>
+
+
+            <div class="student-settings-card">
+
+                <button
+                    id="settings-change-password"
+                    class="student-settings-button"
+                    type="button"
+                >
+                    تغيير كلمة المرور
+                </button>
+
+            </div>
+        `);
 
 
         document
             .getElementById(
-                "change-email"
+                "settings-change-email"
             )
             ?.addEventListener(
                 "click",
-                openChangeEmail
+                showChangeEmailPage
             );
 
 
         document
             .getElementById(
-                "change-password"
+                "settings-change-password"
             )
             ?.addEventListener(
                 "click",
-                openChangePassword
+                showChangePasswordPage
             );
     }
 
@@ -463,93 +887,60 @@
        تغيير البريد
     ===================================================== */
 
-    function openChangeEmail() {
+    function showChangeEmailPage() {
 
-        const client =
-            getSupabase();
+        setPageTitle(
+            "تغيير البريد الإلكتروني",
+            true
+        );
 
-        if (!client) return;
 
+        setBody(`
 
-        openSettingsPanel(
-            "تغيير البريد",
-            `
-            <div>
+            <form
+                id="settings-email-form"
+            >
 
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader(
-                        "تغيير البريد الإلكتروني"
-                    )}
+                <div class="student-settings-card">
+
+                    <label
+                        class="student-settings-label"
+                    >
+                        البريد الإلكتروني الجديد
+                    </label>
+
+                    <input
+                        id="settings-new-email"
+                        class="student-settings-input"
+                        type="email"
+                        required
+                        placeholder="example@email.com"
+                    />
+
                 </div>
 
 
-                <form
-                    id="email-form"
-                    style="
-                        display:flex;
-                        flex-direction:column;
-                        gap:12px;
-                    "
+                <button
+                    id="settings-email-save"
+                    class="student-settings-button"
+                    type="submit"
                 >
-
-                    <input
-                        id="new-email"
-                        type="email"
-                        placeholder="البريد الإلكتروني الجديد"
-                        required
-                        style="
-                            width:100%;
-                            box-sizing:border-box;
-                            padding:13px;
-                            border:1px solid #ddd;
-                            border-radius:11px;
-                            direction:ltr;
-                        "
-                    >
+                    حفظ
+                </button>
 
 
-                    <button
-                        type="submit"
-                        id="email-save"
-                        style="
-                            border:none;
-                            background:#0095f6;
-                            color:#fff;
-                            padding:13px;
-                            border-radius:11px;
-                            cursor:pointer;
-                        "
-                    >
-                        حفظ
-                    </button>
+                <div
+                    id="settings-email-message"
+                    class="student-settings-message"
+                ></div>
 
-
-                    <div
-                        id="email-message"
-                        style="
-                            min-height:20px;
-                            text-align:center;
-                            font-size:13px;
-                        "
-                    ></div>
-
-                </form>
-
-            </div>
-            `
-        );
-
-        bindBackButton();
+            </form>
+        `);
 
 
         document
             .getElementById(
-                "email-form"
+                "settings-email-form"
             )
             ?.addEventListener(
                 "submit",
@@ -557,22 +948,30 @@
 
                     event.preventDefault();
 
+                    const client =
+                        getSupabase();
+
+                    if (!client) return;
+
+
                     const email =
                         document
                             .getElementById(
-                                "new-email"
+                                "settings-new-email"
                             )
                             .value
                             .trim();
 
-                    const message =
-                        document.getElementById(
-                            "email-message"
-                        );
 
                     const button =
                         document.getElementById(
-                            "email-save"
+                            "settings-email-save"
+                        );
+
+
+                    const message =
+                        document.getElementById(
+                            "settings-email-message"
                         );
 
 
@@ -590,9 +989,11 @@
                                 email: email
                             });
 
+
                         if (error) {
                             throw error;
                         }
+
 
                         message.style.color =
                             "#16803c";
@@ -611,11 +1012,12 @@
 
                     } finally {
 
-                        button.disabled = false;
+                        button.disabled =
+                            false;
+
                         button.textContent =
                             "حفظ";
                     }
-
                 }
             );
     }
@@ -625,104 +1027,79 @@
        تغيير كلمة المرور
     ===================================================== */
 
-    function openChangePassword() {
+    function showChangePasswordPage() {
 
-        const client =
-            getSupabase();
+        setPageTitle(
+            "تغيير كلمة المرور",
+            true
+        );
 
-        if (!client) return;
 
+        setBody(`
 
-        openSettingsPanel(
-            "كلمة المرور",
-            `
-            <div>
+            <form
+                id="settings-password-form"
+            >
 
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader(
-                        "تغيير كلمة المرور"
-                    )}
+                <div class="student-settings-card">
+
+                    <label
+                        class="student-settings-label"
+                    >
+                        كلمة المرور الجديدة
+                    </label>
+
+                    <input
+                        id="settings-password"
+                        class="student-settings-input"
+                        type="password"
+                        minlength="6"
+                        required
+                    />
+
                 </div>
 
 
-                <form
-                    id="password-form"
-                    style="
-                        display:flex;
-                        flex-direction:column;
-                        gap:12px;
-                    "
+                <div class="student-settings-card">
+
+                    <label
+                        class="student-settings-label"
+                    >
+                        تأكيد كلمة المرور
+                    </label>
+
+                    <input
+                        id="settings-password-confirm"
+                        class="student-settings-input"
+                        type="password"
+                        minlength="6"
+                        required
+                    />
+
+                </div>
+
+
+                <button
+                    id="settings-password-save"
+                    class="student-settings-button"
+                    type="submit"
                 >
-
-                    <input
-                        id="password-new"
-                        type="password"
-                        minlength="6"
-                        placeholder="كلمة المرور الجديدة"
-                        required
-                        style="
-                            padding:13px;
-                            border:1px solid #ddd;
-                            border-radius:11px;
-                        "
-                    >
+                    تحديث كلمة المرور
+                </button>
 
 
-                    <input
-                        id="password-confirm"
-                        type="password"
-                        minlength="6"
-                        placeholder="تأكيد كلمة المرور"
-                        required
-                        style="
-                            padding:13px;
-                            border:1px solid #ddd;
-                            border-radius:11px;
-                        "
-                    >
+                <div
+                    id="settings-password-message"
+                    class="student-settings-message"
+                ></div>
 
-
-                    <button
-                        type="submit"
-                        id="password-save"
-                        style="
-                            border:none;
-                            background:#0095f6;
-                            color:white;
-                            padding:13px;
-                            border-radius:11px;
-                        "
-                    >
-                        تحديث
-                    </button>
-
-
-                    <div
-                        id="password-message"
-                        style="
-                            min-height:20px;
-                            text-align:center;
-                            font-size:13px;
-                        "
-                    ></div>
-
-                </form>
-
-            </div>
-            `
-        );
-
-        bindBackButton();
+            </form>
+        `);
 
 
         document
             .getElementById(
-                "password-form"
+                "settings-password-form"
             )
             ?.addEventListener(
                 "submit",
@@ -730,24 +1107,31 @@
 
                     event.preventDefault();
 
+                    const client =
+                        getSupabase();
+
+                    if (!client) return;
+
+
                     const password =
                         document.getElementById(
-                            "password-new"
+                            "settings-password"
                         ).value;
 
                     const confirm =
                         document.getElementById(
-                            "password-confirm"
+                            "settings-password-confirm"
                         ).value;
 
-                    const message =
-                        document.getElementById(
-                            "password-message"
-                        );
 
                     const button =
                         document.getElementById(
-                            "password-save"
+                            "settings-password-save"
+                        );
+
+                    const message =
+                        document.getElementById(
+                            "settings-password-message"
                         );
 
 
@@ -795,9 +1179,11 @@
                                     password
                             });
 
+
                         if (error) {
                             throw error;
                         }
+
 
                         message.style.color =
                             "#16803c";
@@ -816,11 +1202,12 @@
 
                     } finally {
 
-                        button.disabled = false;
-                        button.textContent =
-                            "تحديث";
-                    }
+                        button.disabled =
+                            false;
 
+                        button.textContent =
+                            "تحديث كلمة المرور";
+                    }
                 }
             );
     }
@@ -830,10 +1217,11 @@
        الخصوصية
     ===================================================== */
 
-    function openPrivacySettings() {
+    function showPrivacyPage() {
 
         let status =
             "public";
+
 
         if (
             typeof currentProfile !==
@@ -847,100 +1235,73 @@
         }
 
 
-        openSettingsPanel(
+        setPageTitle(
             "الخصوصية",
-            `
-            <div>
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("الخصوصية")}
-                </div>
-
-
-                <div style="
-                    background:#f7f8fa;
-                    padding:15px;
-                    border-radius:14px;
-                ">
-
-                    <div style="
-                        font-weight:700;
-                        margin-bottom:8px;
-                    ">
-                        خصوصية الحساب
-                    </div>
-
-                    <select
-                        id="account-privacy"
-                        style="
-                            width:100%;
-                            padding:12px;
-                            border:1px solid #ddd;
-                            border-radius:10px;
-                        "
-                    >
-
-                        <option
-                            value="public"
-                            ${status === "public" ? "selected" : ""}
-                        >
-                            حساب عام
-                        </option>
-
-                        <option
-                            value="private"
-                            ${status === "private" ? "selected" : ""}
-                        >
-                            حساب خاص
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <button
-                    id="privacy-save"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#0095f6;
-                        color:white;
-                        padding:13px;
-                        border-radius:11px;
-                        margin-top:12px;
-                    "
-                >
-                    حفظ
-                </button>
-
-
-                <div
-                    id="privacy-message"
-                    style="
-                        min-height:20px;
-                        text-align:center;
-                        margin-top:10px;
-                        font-size:13px;
-                    "
-                ></div>
-
-            </div>
-            `
+            true
         );
 
-        bindBackButton();
+
+        setBody(`
+
+            <div class="student-settings-card">
+
+                <label
+                    class="student-settings-label"
+                >
+                    خصوصية الحساب
+                </label>
+
+                <select
+                    id="settings-account-status"
+                    class="student-settings-select"
+                >
+
+                    <option
+                        value="public"
+                        ${
+                            status === "public"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        حساب عام
+                    </option>
+
+                    <option
+                        value="private"
+                        ${
+                            status === "private"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        حساب خاص
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <button
+                id="settings-privacy-save"
+                class="student-settings-button"
+                type="button"
+            >
+                حفظ
+            </button>
+
+
+            <div
+                id="settings-privacy-message"
+                class="student-settings-message"
+            ></div>
+        `);
 
 
         document
             .getElementById(
-                "privacy-save"
+                "settings-privacy-save"
             )
             ?.addEventListener(
                 "click",
@@ -949,14 +1310,18 @@
                     const client =
                         getSupabase();
 
+                    if (!client) return;
+
+
                     const newStatus =
                         document.getElementById(
-                            "account-privacy"
+                            "settings-account-status"
                         ).value;
+
 
                     const message =
                         document.getElementById(
-                            "privacy-message"
+                            "settings-privacy-message"
                         );
 
 
@@ -974,9 +1339,11 @@
                                 }
                             );
 
+
                         if (error) {
                             throw error;
                         }
+
 
                         if (
                             data !== "public" &&
@@ -986,6 +1353,7 @@
                                 "تعذر تحديث الخصوصية."
                             );
                         }
+
 
                         if (
                             typeof loadProfile ===
@@ -998,11 +1366,12 @@
                             );
                         }
 
+
                         message.style.color =
                             "#16803c";
 
                         message.textContent =
-                            "تم حفظ الخصوصية.";
+                            "تم حفظ إعدادات الخصوصية.";
 
                     } catch (error) {
 
@@ -1022,51 +1391,47 @@
        الإشعارات
     ===================================================== */
 
-    function openNotificationSettings() {
+    function showNotificationsPage() {
 
         const stored =
             localStorage.getItem(
                 "student_notifications_enabled"
             );
 
+
         const enabled =
             stored !== "false";
 
 
-        openSettingsPanel(
+        setPageTitle(
             "الإشعارات",
-            `
-            <div>
+            true
+        );
+
+
+        setBody(`
+
+            <div class="student-settings-card">
 
                 <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("الإشعارات")}
-                </div>
-
-
-                <div style="
-                    background:#f7f8fa;
-                    padding:16px;
-                    border-radius:14px;
                     display:flex;
                     align-items:center;
                     justify-content:space-between;
+                    gap:10px;
                 ">
 
                     <div>
 
-                        <strong>
+                        <div style="
+                            font-weight:700;
+                        ">
                             إشعارات التطبيق
-                        </strong>
+                        </div>
 
                         <div style="
+                            margin-top:4px;
                             color:#888;
                             font-size:12px;
-                            margin-top:4px;
                         ">
                             تشغيل أو إيقاف تنبيهات التطبيق
                         </div>
@@ -1078,19 +1443,24 @@
                         position:relative;
                         width:50px;
                         height:28px;
+                        flex-shrink:0;
                     ">
 
                         <input
-                            id="notification-toggle"
+                            id="settings-notification-toggle"
                             type="checkbox"
-                            ${enabled ? "checked" : ""}
+                            ${
+                                enabled
+                                    ? "checked"
+                                    : ""
+                            }
                             style="
                                 display:none;
                             "
                         >
 
                         <span
-                            id="notification-switch"
+                            id="settings-notification-switch"
                             style="
                                 position:absolute;
                                 inset:0;
@@ -1108,37 +1478,29 @@
 
                 </div>
 
-
-                <div
-                    id="notification-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        margin-top:10px;
-                        font-size:13px;
-                    "
-                ></div>
-
             </div>
-            `
-        );
 
-        bindBackButton();
+
+            <div
+                id="settings-notification-message"
+                class="student-settings-message"
+            ></div>
+        `);
 
 
         const toggle =
             document.getElementById(
-                "notification-toggle"
+                "settings-notification-toggle"
             );
 
         const switchElement =
             document.getElementById(
-                "notification-switch"
+                "settings-notification-switch"
             );
 
         const message =
             document.getElementById(
-                "notification-message"
+                "settings-notification-message"
             );
 
 
@@ -1149,15 +1511,18 @@
                 const value =
                     toggle.checked;
 
+
                 localStorage.setItem(
                     "student_notifications_enabled",
                     String(value)
                 );
 
+
                 switchElement.style.background =
                     value
                         ? "#0095f6"
                         : "#ccc";
+
 
                 message.style.color =
                     "#16803c";
@@ -1184,6 +1549,7 @@
         ) {
             theme = "light";
         }
+
 
         localStorage.setItem(
             "student_theme",
@@ -1224,7 +1590,7 @@
     }
 
 
-    function openAppearanceSettings() {
+    function showAppearancePage() {
 
         const current =
             localStorage.getItem(
@@ -1233,143 +1599,113 @@
             "light";
 
 
-        openSettingsPanel(
+        setPageTitle(
             "المظهر",
-            `
-            <div>
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("المظهر")}
-                </div>
-
-
-                <div style="
-                    display:flex;
-                    flex-direction:column;
-                    gap:10px;
-                ">
-
-                    <button
-                        data-theme="light"
-                        style="
-                            border:2px solid ${
-                                current === "light"
-                                    ? "#0095f6"
-                                    : "transparent"
-                            };
-                            background:#f7f8fa;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-                        ☀️ الوضع الفاتح
-                    </button>
-
-
-                    <button
-                        data-theme="dark"
-                        style="
-                            border:2px solid ${
-                                current === "dark"
-                                    ? "#0095f6"
-                                    : "transparent"
-                            };
-                            background:#222;
-                            color:white;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-                        🌙 الوضع الداكن
-                    </button>
-
-
-                    <button
-                        data-theme="system"
-                        style="
-                            border:2px solid ${
-                                current === "system"
-                                    ? "#0095f6"
-                                    : "transparent"
-                            };
-                            background:#f7f8fa;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-                        📱 حسب الجهاز
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="theme-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        margin-top:10px;
-                        color:#16803c;
-                        font-size:13px;
-                    "
-                ></div>
-
-            </div>
-            `
+            true
         );
 
-        bindBackButton();
+
+        setBody(`
+
+            <div class="student-settings-list">
+
+                <button
+                    class="student-theme-button ${
+                        current === "light"
+                            ? "active"
+                            : ""
+                    }"
+                    data-theme="light"
+                >
+                    ☀️ الوضع الفاتح
+                </button>
+
+
+                <button
+                    class="student-theme-button ${
+                        current === "dark"
+                            ? "active"
+                            : ""
+                    }"
+                    data-theme="dark"
+                    style="
+                        background:#222;
+                        color:#fff;
+                    "
+                >
+                    🌙 الوضع الداكن
+                </button>
+
+
+                <button
+                    class="student-theme-button ${
+                        current === "system"
+                            ? "active"
+                            : ""
+                    }"
+                    data-theme="system"
+                >
+                    📱 حسب الجهاز
+                </button>
+
+            </div>
+
+
+            <div
+                id="settings-theme-message"
+                class="student-settings-message"
+            ></div>
+        `);
 
 
         document
             .querySelectorAll(
                 "[data-theme]"
             )
-            .forEach(function (button) {
+            .forEach(
+                function (button) {
 
-                button.addEventListener(
-                    "click",
-                    function () {
+                    button.addEventListener(
+                        "click",
+                        function () {
 
-                        const theme =
-                            button.dataset.theme;
+                            const theme =
+                                button.dataset.theme;
 
-                        applyTheme(theme);
 
-                        document
-                            .querySelectorAll(
-                                "[data-theme]"
-                            )
-                            .forEach(
-                                function (item) {
-                                    item.style.borderColor =
-                                        item.dataset.theme ===
-                                        theme
-                                            ? "#0095f6"
-                                            : "transparent";
-                                }
+                            applyTheme(
+                                theme
                             );
 
-                        document
-                            .getElementById(
-                                "theme-message"
-                            )
-                            .textContent =
-                            "تم حفظ المظهر.";
-                    }
-                );
-            });
+
+                            document
+                                .querySelectorAll(
+                                    "[data-theme]"
+                                )
+                                .forEach(
+                                    function (
+                                        item
+                                    ) {
+
+                                        item.classList.toggle(
+                                            "active",
+                                            item.dataset.theme ===
+                                            theme
+                                        );
+                                    }
+                                );
+
+
+                            document
+                                .getElementById(
+                                    "settings-theme-message"
+                                )
+                                .textContent =
+                                "تم حفظ المظهر.";
+                        }
+                    );
+                }
+            );
     }
 
 
@@ -1377,7 +1713,7 @@
        اللغة
     ===================================================== */
 
-    function openLanguageSettings() {
+    function showLanguagePage() {
 
         const current =
             localStorage.getItem(
@@ -1386,80 +1722,47 @@
             "ar";
 
 
-        openSettingsPanel(
+        setPageTitle(
             "اللغة",
-            `
-            <div>
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("اللغة")}
-                </div>
-
-
-                <div style="
-                    display:flex;
-                    flex-direction:column;
-                    gap:10px;
-                ">
-
-                    <button
-                        data-language="ar"
-                        style="
-                            border:2px solid ${
-                                current === "ar"
-                                    ? "#0095f6"
-                                    : "transparent"
-                            };
-                            background:#f7f8fa;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                        "
-                    >
-                        🇮🇶 العربية
-                    </button>
-
-
-                    <button
-                        data-language="en"
-                        style="
-                            border:2px solid ${
-                                current === "en"
-                                    ? "#0095f6"
-                                    : "transparent"
-                            };
-                            background:#f7f8fa;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                        "
-                    >
-                        🇬🇧 English
-                    </button>
-
-                </div>
-
-
-                <div style="
-                    color:#888;
-                    text-align:center;
-                    font-size:12px;
-                    margin-top:12px;
-                ">
-                    الترجمة الإنجليزية الكاملة
-                    ستُستكمل مع دعم اللغات.
-                </div>
-
-            </div>
-            `
+            true
         );
 
-        bindBackButton();
+
+        setBody(`
+
+            <div class="student-settings-list">
+
+                <button
+                    class="student-language-button ${
+                        current === "ar"
+                            ? "active"
+                            : ""
+                    }"
+                    data-language="ar"
+                >
+                    🇮🇶 العربية
+                </button>
+
+
+                <button
+                    class="student-language-button ${
+                        current === "en"
+                            ? "active"
+                            : ""
+                    }"
+                    data-language="en"
+                >
+                    🇬🇧 English
+                </button>
+
+            </div>
+
+
+            <div
+                id="settings-language-message"
+                class="student-settings-message"
+            ></div>
+        `);
 
 
         document
@@ -1475,6 +1778,7 @@
 
                             const language =
                                 button.dataset.language;
+
 
                             localStorage.setItem(
                                 "student_language",
@@ -1502,16 +1806,27 @@
                                         item
                                     ) {
 
-                                        item.style.borderColor =
+                                        item.classList.toggle(
+                                            "active",
                                             item.dataset.language ===
                                             language
-                                                ? "#0095f6"
-                                                : "transparent";
+                                        );
                                     }
                                 );
+
+
+                            const message =
+                                document.getElementById(
+                                    "settings-language-message"
+                                );
+
+
+                            message.textContent =
+                                language === "ar"
+                                    ? "تم اختيار العربية."
+                                    : "English selected. Full translation will be added later.";
                         }
                     );
-
                 }
             );
     }
@@ -1521,103 +1836,59 @@
        الأمان
     ===================================================== */
 
-    function openSecuritySettings() {
+    function showSecurityPage() {
 
-        openSettingsPanel(
+        setPageTitle(
             "الأمان",
-            `
-            <div>
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-                    ${pageHeader("الأمان")}
-                </div>
+            true
+        );
 
 
-                <div style="
-                    display:flex;
-                    flex-direction:column;
-                    gap:10px;
-                ">
+        setBody(`
 
-                    <button
-                        id="signout-others"
-                        type="button"
-                        style="
-                            border:none;
-                            background:#f7f8fa;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
+            <div class="student-settings-list">
 
-                        <strong>
+                <button
+                    id="signout-others"
+                    class="student-settings-item"
+                    type="button"
+                >
+
+                    <div class="student-settings-icon">
+                        <i class="fa-solid fa-mobile-screen-button"></i>
+                    </div>
+
+                    <div class="student-settings-item-text">
+
+                        <div class="student-settings-item-title">
                             تسجيل الخروج من الأجهزة الأخرى
-                        </strong>
+                        </div>
 
-                        <div style="
-                            color:#888;
-                            font-size:12px;
-                            margin-top:5px;
-                        ">
+                        <div class="student-settings-item-description">
                             يبقى هذا الجهاز متصلًا
                         </div>
 
-                    </button>
+                    </div>
+
+                </button>
 
 
-                    <button
-                        id="signout-all"
-                        type="button"
-                        style="
-                            border:none;
-                            background:#fff2f2;
-                            color:#d93025;
-                            padding:16px;
-                            border-radius:14px;
-                            text-align:right;
-                            cursor:pointer;
-                        "
-                    >
-
-                        <strong>
-                            تسجيل الخروج من جميع الأجهزة
-                        </strong>
-
-                        <div style="
-                            color:#c77777;
-                            font-size:12px;
-                            margin-top:5px;
-                        ">
-                            يشمل هذا الجهاز أيضًا
-                        </div>
-
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="security-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        margin-top:10px;
-                        font-size:13px;
-                    "
-                ></div>
+                <button
+                    id="signout-all"
+                    class="student-settings-danger"
+                    type="button"
+                >
+                    تسجيل الخروج من جميع الأجهزة
+                </button>
 
             </div>
-            `
-        );
 
-        bindBackButton();
+
+            <div
+                id="settings-security-message"
+                class="student-settings-message"
+            ></div>
+        `);
 
 
         document
@@ -1633,7 +1904,7 @@
 
                     const message =
                         document.getElementById(
-                            "security-message"
+                            "settings-security-message"
                         );
 
 
@@ -1646,9 +1917,11 @@
                                 scope: "others"
                             });
 
+
                         if (error) {
                             throw error;
                         }
+
 
                         message.style.color =
                             "#16803c";
@@ -1665,7 +1938,6 @@
                             error?.message ||
                             "تعذر تنفيذ العملية.";
                     }
-
                 }
             );
 
@@ -1683,6 +1955,7 @@
                             "هل أنت متأكد أنك تريد تسجيل الخروج من جميع الأجهزة؟"
                         );
 
+
                     if (!confirmed) {
                         return;
                     }
@@ -1691,42 +1964,55 @@
                     const client =
                         getSupabase();
 
+
                     if (!client) {
                         return;
                     }
 
 
-                    const {
-                        error
-                    } =
-                        await client.auth.signOut();
+                    try {
 
-
-                    if (error) {
-
-                        console.error(
+                        const {
                             error
-                        );
+                        } =
+                            await client.auth.signOut();
 
-                        return;
+
+                        if (error) {
+                            throw error;
+                        }
+
+                    } catch (error) {
+
+                        const message =
+                            document.getElementById(
+                                "settings-security-message"
+                            );
+
+                        message.style.color =
+                            "#d93025";
+
+                        message.textContent =
+                            error?.message ||
+                            "تعذر تسجيل الخروج.";
                     }
-
                 }
             );
     }
 
 
     /* =====================================================
-       تحميل المظهر واللغة المحفوظين
+       تحميل التفضيلات
     ===================================================== */
 
-    function loadStoredPreferences() {
+    function loadPreferences() {
 
         const theme =
             localStorage.getItem(
                 "student_theme"
             ) ||
             "light";
+
 
         applyTheme(theme);
 
@@ -1751,7 +2037,7 @@
 
 
     /* =====================================================
-       الدوال العامة
+       API عامة
     ===================================================== */
 
     window.showSettingsPanel =
@@ -1760,11 +2046,18 @@
     window.openStudentSettings =
         openSettings;
 
+    window.closeStudentSettings =
+        closeSettings;
+
+    window.applyStudentTheme =
+        applyTheme;
+
 
     /* =====================================================
-       تشغيل
+       بدء النظام
     ===================================================== */
 
-    loadStoredPreferences();
+    injectStyles();
+    loadPreferences();
 
 })();
