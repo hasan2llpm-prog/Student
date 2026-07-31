@@ -169,16 +169,42 @@ async function profileOpen() {
         return;
     }
 
+
+    /* =====================================================
+       إذا كان الملف الشخصي مفتوحًا من داخل القائمة
+       الرئيسية، لا نغلق القائمة.
+    ===================================================== */
+
+    const mainMenu =
+        document.getElementById(
+            "student-main-menu"
+        );
+
+
+    const openedInsideMainMenu =
+        !!(
+            mainMenu &&
+            mainMenu.classList.contains(
+                "is-open"
+            )
+        );
+
+
     if (
-        typeof closeFloatingPanel === "function"
+        !openedInsideMainMenu &&
+        typeof closeFloatingPanel ===
+        "function"
     ) {
+
         closeFloatingPanel();
     }
+
 
     const profile =
         await profileLoad(
             currentUser.id
         );
+
 
     if (!profile) {
 
@@ -198,30 +224,37 @@ async function profileOpen() {
         return;
     }
 
+
     const stats =
         await profileGetStats(
             currentUser.id
         );
 
+
     const fullName =
         profile.full_name ||
         "بدون اسم";
+
 
     const username =
         profile.username ||
         "username";
 
+
     const bio =
         profile.bio ||
         "لا توجد نبذة بعد.";
+
 
     const email =
         profile.email ||
         currentUser.email ||
         "";
 
+
     const isPrivate =
-        profile.account_status === "private";
+        profile.account_status ===
+        "private";
 
 
     showFloatingPanel(
@@ -486,6 +519,7 @@ async function profileOpen() {
                         border-radius:12px;
                         font-size:15px;
                         cursor:pointer;
+                        display:none;
                     "
                 >
                     إغلاق
@@ -512,11 +546,42 @@ async function profileOpen() {
         );
 
 
+    /*
+       زر الإغلاق مخفي داخل القائمة،
+       لذلك لا نستخدمه للتنقل.
+    */
+
     document
         .getElementById("profile-close-btn")
         ?.addEventListener(
             "click",
-            closeFloatingPanel
+            function () {
+
+                if (
+                    openedInsideMainMenu
+                ) {
+
+                    if (
+                        typeof window.goBackInsideMenu ===
+                        "function"
+                    ) {
+
+                        window.goBackInsideMenu();
+                    }
+
+                    return;
+                }
+
+
+                if (
+                    typeof closeFloatingPanel ===
+                    "function"
+                ) {
+
+                    closeFloatingPanel();
+                }
+
+            }
         );
 
 
@@ -1139,19 +1204,9 @@ async function profileTogglePrivacy(
    ربط الملف الشخصي بالتطبيق
 ========================================================= */
 
-/*
- * app.js يستخدم الاسم showProfilePanel
- * لذلك نربطه هنا بدون تعديل app.js
- */
-
 window.showProfilePanel =
     profileOpen;
 
-
-/*
- * يمكن استخدامه مستقبلًا
- * من أي ملف آخر
- */
 
 window.StudentProfile = {
 
@@ -1169,6 +1224,7 @@ window.StudentProfile = {
                 "undefined" &&
                 currentUser
             ) {
+
                 return profileLoad(
                     currentUser.id
                 );
