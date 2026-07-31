@@ -1,24 +1,18 @@
 /* =========================================================
    Student - Posts System
    منشور نصي + صورة
-   Reels يتم نشرها من داخل reels.js
+   نشر Reels يتم من داخل reels.js
 ========================================================= */
 
 (function () {
 
     "use strict";
 
-
-    if (
-        window.__studentPostsLoaded
-    ) {
+    if (window.__studentPostsLoaded) {
         return;
     }
 
-
-    window.__studentPostsLoaded =
-        true;
-
+    window.__studentPostsLoaded = true;
 
     let overlay = null;
 
@@ -30,11 +24,9 @@
     function getSupabase() {
 
         if (
-            typeof supabaseClient !==
-                "undefined" &&
+            typeof supabaseClient !== "undefined" &&
             supabaseClient
         ) {
-
             return supabaseClient;
         }
 
@@ -43,39 +35,17 @@
 
 
     /* =====================================================
-       حماية
+       حماية HTML
     ===================================================== */
 
     function escapeHTML(value) {
 
-        return String(
-            value || ""
-        )
-
-            .replace(
-                /&/g,
-                "&amp;"
-            )
-
-            .replace(
-                /</g,
-                "&lt;"
-            )
-
-            .replace(
-                />/g,
-                "&gt;"
-            )
-
-            .replace(
-                /"/g,
-                "&quot;"
-            )
-
-            .replace(
-                /'/g,
-                "&#039;"
-            );
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 
 
@@ -90,20 +60,14 @@
                 "student-posts-style"
             )
         ) {
-
             return;
         }
 
-
         const style =
-            document.createElement(
-                "style"
-            );
-
+            document.createElement("style");
 
         style.id =
             "student-posts-style";
-
 
         style.textContent = `
 
@@ -111,8 +75,7 @@
                 position:fixed;
                 inset:0;
                 z-index:9999996;
-                background:
-                    rgba(0,0,0,.42);
+                background:rgba(0,0,0,.42);
                 display:none;
                 align-items:center;
                 justify-content:center;
@@ -144,8 +107,7 @@
                 align-items:center;
                 gap:12px;
                 padding:16px;
-                border-bottom:
-                    1px solid #eee;
+                border-bottom:1px solid #eee;
                 flex-shrink:0;
             }
 
@@ -164,6 +126,7 @@
                 background:#f1f3f5;
                 color:#333;
                 cursor:pointer;
+                font-size:20px;
             }
 
             .student-posts-body {
@@ -226,7 +189,6 @@
                 gap:12px;
             }
 
-            .student-post-input,
             .student-post-textarea {
                 width:100%;
                 box-sizing:border-box;
@@ -236,14 +198,10 @@
                 outline:none;
                 font-size:14px;
                 background:#fff;
-            }
-
-            .student-post-textarea {
                 min-height:150px;
                 resize:vertical;
             }
 
-            .student-post-input:focus,
             .student-post-textarea:focus {
                 border-color:#0095f6;
                 box-shadow:
@@ -309,6 +267,15 @@
                 cursor:pointer;
             }
 
+            .student-reels-video-preview {
+                width:100%;
+                max-height:380px;
+                border-radius:16px;
+                background:#000;
+                display:none;
+                margin-top:10px;
+            }
+
             @media (max-width:480px) {
 
                 #student-posts-overlay {
@@ -323,18 +290,14 @@
                     border-radius:0;
                 }
             }
-
         `;
 
-
-        document.head.appendChild(
-            style
-        );
+        document.head.appendChild(style);
     }
 
 
     /* =====================================================
-       النافذة
+       إنشاء النافذة
     ===================================================== */
 
     function createOverlay() {
@@ -343,50 +306,28 @@
             return;
         }
 
-
         overlay =
-            document.createElement(
-                "div"
-            );
-
+            document.createElement("div");
 
         overlay.id =
             "student-posts-overlay";
 
-
         overlay.innerHTML = `
 
-            <div
-                class="
-                    student-posts-window
-                "
-            >
+            <div class="student-posts-window">
 
-                <div
-                    class="
-                        student-posts-header
-                    "
-                >
+                <div class="student-posts-header">
 
                     <div
-                        id="
-                            student-posts-title
-                        "
-                        class="
-                            student-posts-title
-                        "
+                        id="student-posts-title"
+                        class="student-posts-title"
                     >
                         إضافة
                     </div>
 
-
                     <button
-                        id="
-                            student-posts-close
-                        "
-                        class="
-                            student-posts-close
-                        "
+                        id="student-posts-close"
+                        class="student-posts-close"
                         type="button"
                     >
                         ×
@@ -394,24 +335,17 @@
 
                 </div>
 
-
                 <div
-                    id="
-                        student-posts-body
-                    "
-                    class="
-                        student-posts-body
-                    "
+                    id="student-posts-body"
+                    class="student-posts-body"
                 ></div>
 
             </div>
         `;
 
-
         document.body.appendChild(
             overlay
         );
-
 
         document
             .getElementById(
@@ -425,13 +359,12 @@
 
 
     /* =====================================================
-       فتح القائمة
+       فتح نافذة الإضافة
     ===================================================== */
 
     function openPostCreator() {
 
         injectStyles();
-
         createOverlay();
 
         overlay.classList.add(
@@ -445,7 +378,6 @@
     function closePosts() {
 
         if (overlay) {
-
             overlay.classList.remove(
                 "show"
             );
@@ -453,25 +385,21 @@
     }
 
 
-    function setTitle(
-        title
-    ) {
+    function setTitle(title) {
 
-        document
-            .getElementById(
+        const element =
+            document.getElementById(
                 "student-posts-title"
-            )
-            ?.replaceChildren(
-                document.createTextNode(
-                    title
-                )
             );
+
+        if (element) {
+            element.textContent =
+                title;
+        }
     }
 
 
-    function setBody(
-        html
-    ) {
+    function setBody(html) {
 
         const body =
             document.getElementById(
@@ -486,9 +414,8 @@
 
 
     /* =====================================================
-       قائمة الإضافة
-       فقط:
-       نص + صورة
+       القائمة الرئيسية
+       فقط نص + صورة
     ===================================================== */
 
     function showPostTypes() {
@@ -497,41 +424,27 @@
             "إضافة"
         );
 
-
         setBody(`
 
-            <div class="
-                student-post-type-grid
-            ">
+            <div class="student-post-type-grid">
 
                 <button
                     id="create-text-post"
-                    class="
-                        student-post-type
-                    "
+                    class="student-post-type"
                     type="button"
                 >
 
-                    <div class="
-                        student-post-type-icon
-                    ">
-                        <i class="
-                            fa-solid
-                            fa-pen
-                        "></i>
+                    <div class="student-post-type-icon">
+                        <i class="fa-solid fa-pen"></i>
                     </div>
 
                     <div>
 
-                        <div class="
-                            student-post-type-title
-                        ">
+                        <div class="student-post-type-title">
                             منشور نصي
                         </div>
 
-                        <div class="
-                            student-post-type-desc
-                        ">
+                        <div class="student-post-type-desc">
                             اكتب أفكارك أو رأيك
                         </div>
 
@@ -542,32 +455,21 @@
 
                 <button
                     id="create-image-post"
-                    class="
-                        student-post-type
-                    "
+                    class="student-post-type"
                     type="button"
                 >
 
-                    <div class="
-                        student-post-type-icon
-                    ">
-                        <i class="
-                            fa-regular
-                            fa-image
-                        "></i>
+                    <div class="student-post-type-icon">
+                        <i class="fa-regular fa-image"></i>
                     </div>
 
                     <div>
 
-                        <div class="
-                            student-post-type-title
-                        ">
+                        <div class="student-post-type-title">
                             صورة
                         </div>
 
-                        <div class="
-                            student-post-type-desc
-                        ">
+                        <div class="student-post-type-desc">
                             انشر صورة مع وصف اختياري
                         </div>
 
@@ -601,7 +503,6 @@
 
 
     function backToTypes() {
-
         showPostTypes();
     }
 
@@ -616,57 +517,41 @@
             "منشور نصي"
         );
 
-
         setBody(`
 
             <button
                 id="text-post-back"
-                class="
-                    student-post-back
-                "
+                class="student-post-back"
                 type="button"
             >
                 ←
             </button>
 
-
             <form
                 id="text-post-form"
-                class="
-                    student-post-form
-                "
-                style="
-                    margin-top:14px;
-                "
+                class="student-post-form"
+                style="margin-top:14px;"
             >
 
                 <textarea
                     id="text-post-content"
-                    class="
-                        student-post-textarea
-                    "
+                    class="student-post-textarea"
                     maxlength="5000"
                     placeholder="ماذا تريد أن تقول؟"
                     required
                 ></textarea>
 
-
                 <button
                     id="text-post-submit"
-                    class="
-                        student-post-submit
-                    "
+                    class="student-post-submit"
                     type="submit"
                 >
                     نشر
                 </button>
 
-
                 <div
                     id="text-post-message"
-                    class="
-                        student-post-message
-                    "
+                    class="student-post-message"
                 ></div>
 
             </form>
@@ -744,10 +629,7 @@
             );
 
 
-        button.disabled =
-            true;
-
-
+        button.disabled = true;
         button.textContent =
             "جارٍ النشر...";
 
@@ -759,12 +641,10 @@
                     user
                 }
             } =
-                await client.auth
-                    .getUser();
+                await client.auth.getUser();
 
 
             if (!user) {
-
                 throw new Error(
                     "يجب تسجيل الدخول أولًا."
                 );
@@ -844,44 +724,29 @@
             "نشر صورة"
         );
 
-
         setBody(`
 
             <button
                 id="image-post-back"
-                class="
-                    student-post-back
-                "
+                class="student-post-back"
                 type="button"
             >
                 ←
             </button>
 
-
             <form
                 id="image-post-form"
-                class="
-                    student-post-form
-                "
-                style="
-                    margin-top:14px;
-                "
+                class="student-post-form"
+                style="margin-top:14px;"
             >
 
                 <label
-                    class="
-                        student-post-file
-                    "
+                    class="student-post-file"
                     for="image-post-file"
                 >
 
-                    <div class="
-                        student-post-file-icon
-                    ">
-                        <i class="
-                            fa-regular
-                            fa-image
-                        "></i>
+                    <div class="student-post-file-icon">
+                        <i class="fa-regular fa-image"></i>
                     </div>
 
                     <strong>
@@ -910,31 +775,23 @@
 
                 <img
                     id="image-post-preview"
-                    class="
-                        student-post-preview
-                    "
+                    class="student-post-preview"
                     alt=""
                 />
 
 
                 <textarea
                     id="image-post-caption"
-                    class="
-                        student-post-textarea
-                    "
+                    class="student-post-textarea"
                     maxlength="2000"
                     placeholder="اكتب وصفًا للصورة (اختياري)"
-                    style="
-                        min-height:100px;
-                    "
+                    style="min-height:100px;"
                 ></textarea>
 
 
                 <button
                     id="image-post-submit"
-                    class="
-                        student-post-submit
-                    "
+                    class="student-post-submit"
                     type="submit"
                 >
                     نشر
@@ -943,9 +800,7 @@
 
                 <div
                     id="image-post-message"
-                    class="
-                        student-post-message
-                    "
+                    class="student-post-message"
                 ></div>
 
             </form>
@@ -1019,15 +874,10 @@
                 file
             );
 
-
         preview.style.display =
             "block";
     }
 
-
-    /* =====================================================
-       حفظ الصورة
-    ===================================================== */
 
     async function submitImagePost(
         event
@@ -1087,26 +937,7 @@
         }
 
 
-        if (
-            !file.type.startsWith(
-                "image/"
-            )
-        ) {
-
-            showPostMessage(
-                "image-post-message",
-                "الملف المختار ليس صورة.",
-                true
-            );
-
-            return;
-        }
-
-
-        button.disabled =
-            true;
-
-
+        button.disabled = true;
         button.textContent =
             "جارٍ الرفع...";
 
@@ -1118,12 +949,10 @@
                     user
                 }
             } =
-                await client.auth
-                    .getUser();
+                await client.auth.getUser();
 
 
             if (!user) {
-
                 throw new Error(
                     "يجب تسجيل الدخول أولًا."
                 );
@@ -1153,10 +982,8 @@
                         {
                             cacheControl:
                                 "3600",
-
                             upsert:
                                 false,
-
                             contentType:
                                 file.type
                         }
@@ -1261,14 +1088,13 @@
 
     /* =====================================================
        Reels
-       نفس نظام الرفع السابق
-       لكن لا يظهر داخل قائمة ➕
+       هذه الدالة لا تظهر في قائمة ➕
+       ويتم استدعاؤها من reels.js
     ===================================================== */
 
     function showReelForm() {
 
         injectStyles();
-
         createOverlay();
 
         overlay.classList.add(
@@ -1277,7 +1103,7 @@
 
 
         setTitle(
-            "نشر Reels"
+            "نشر Reel"
         );
 
 
@@ -1285,9 +1111,7 @@
 
             <button
                 id="reel-back"
-                class="
-                    student-post-back
-                "
+                class="student-post-back"
                 type="button"
             >
                 ←
@@ -1296,24 +1120,16 @@
 
             <form
                 id="reel-form"
-                class="
-                    student-post-form
-                "
-                style="
-                    margin-top:14px;
-                "
+                class="student-post-form"
+                style="margin-top:14px;"
             >
 
                 <label
-                    class="
-                        student-post-file
-                    "
+                    class="student-post-file"
                     for="reel-file"
                 >
 
-                    <div class="
-                        student-post-file-icon
-                    ">
+                    <div class="student-post-file-icon">
                         🎬
                     </div>
 
@@ -1343,33 +1159,24 @@
 
                 <video
                     id="reel-preview"
-                    class="
-                        student-post-preview
-                    "
+                    class="student-reels-video-preview"
                     controls
                     playsinline
-                    style="display:none;"
                 ></video>
 
 
                 <textarea
                     id="reel-caption"
-                    class="
-                        student-post-textarea
-                    "
+                    class="student-post-textarea"
                     maxlength="2000"
                     placeholder="اكتب وصف الـReel (اختياري)"
-                    style="
-                        min-height:100px;
-                    "
+                    style="min-height:100px;"
                 ></textarea>
 
 
                 <button
                     id="reel-submit"
-                    class="
-                        student-post-submit
-                    "
+                    class="student-post-submit"
                     type="submit"
                 >
                     نشر Reel
@@ -1378,9 +1185,7 @@
 
                 <div
                     id="reel-message"
-                    class="
-                        student-post-message
-                    "
+                    class="student-post-message"
                 ></div>
 
             </form>
@@ -1467,7 +1272,6 @@
                 file
             );
 
-
         preview.style.display =
             "block";
     }
@@ -1531,26 +1335,7 @@
         }
 
 
-        if (
-            !file.type.startsWith(
-                "video/"
-            )
-        ) {
-
-            showPostMessage(
-                "reel-message",
-                "الملف المختار ليس فيديو.",
-                true
-            );
-
-            return;
-        }
-
-
-        button.disabled =
-            true;
-
-
+        button.disabled = true;
         button.textContent =
             "جارٍ رفع الفيديو...";
 
@@ -1562,8 +1347,7 @@
                     user
                 }
             } =
-                await client.auth
-                    .getUser();
+                await client.auth.getUser();
 
 
             if (!user) {
@@ -1597,10 +1381,8 @@
                         {
                             cacheControl:
                                 "3600",
-
                             upsert:
                                 false,
-
                             contentType:
                                 file.type
                         }
@@ -1667,12 +1449,6 @@
             );
 
 
-            /*
-               بعد النشر نغلق نموذج النشر
-               ثم نفتح Reels من جديد
-               حتى يظهر الفيديو مباشرة.
-            */
-
             setTimeout(
                 async function() {
 
@@ -1721,7 +1497,7 @@
 
 
     /* =====================================================
-       الرسائل
+       رسائل
     ===================================================== */
 
     function showPostMessage(
@@ -1746,14 +1522,13 @@
                 ? "#d93025"
                 : "#16803c";
 
-
         element.textContent =
             message;
     }
 
 
     /* =====================================================
-       الامتداد
+       امتداد الملف
     ===================================================== */
 
     function getFileExtension(
@@ -1763,8 +1538,7 @@
         const parts =
             String(
                 filename || ""
-            )
-            .split(".");
+            ).split(".");
 
 
         return (
@@ -1776,8 +1550,7 @@
             .replace(
                 /[^a-z0-9]/g,
                 ""
-            ) ||
-            "bin";
+            ) || "bin";
     }
 
 
@@ -1847,7 +1620,6 @@
 
 
                 event.preventDefault();
-
                 event.stopImmediatePropagation();
 
 
@@ -1866,10 +1638,8 @@
     window.openStudentPostCreator =
         openPostCreator;
 
-
     window.openStudentReelCreator =
         showReelForm;
-
 
     window.closeStudentPostCreator =
         closePosts;
@@ -1919,10 +1689,8 @@
     script.src =
         "reels.js";
 
-
     script.async =
         true;
-
 
     script.dataset.studentReels =
         "true";
