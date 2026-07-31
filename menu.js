@@ -1,6 +1,15 @@
 /* =========================================================
    Student - Menu System
    ☰ القائمة الرئيسية
+
+   التصميم:
+   - من اليسار
+   - سريع
+   - رمادي متدرج
+   - الأقسام داخل نفس اللوحة قدر الإمكان
+   - رجوع الهاتف للتنقل
+   - لا رجوع تلقائي للصفحة الرئيسية
+   - تأكيد تسجيل الخروج
 ========================================================= */
 
 (function () {
@@ -15,6 +24,108 @@
 
     let featureCache = {};
 
+    let menuElement = null;
+
+    let currentView = "menu";
+
+    let viewStack = [];
+
+    let originalShowFloatingPanel = null;
+
+    let floatingPanelInterceptActive = false;
+
+    let historyDepth = 0;
+
+    let ignoreNextPopState = false;
+
+
+    /* =====================================================
+       Toast
+    ===================================================== */
+
+    function menuToast(message) {
+
+        const old =
+            document.getElementById(
+                "student-menu-toast"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const el =
+            document.createElement(
+                "div"
+            );
+
+        el.id =
+            "student-menu-toast";
+
+        el.textContent =
+            message;
+
+        el.style.cssText = `
+            position:fixed;
+            left:50%;
+            bottom:28px;
+            transform:translateX(-50%);
+            z-index:100003000;
+            background:#1f1f1f;
+            color:#fff;
+            padding:11px 16px;
+            border-radius:13px;
+            font-size:13px;
+            direction:rtl;
+            box-shadow:0 10px 35px rgba(0,0,0,.25);
+        `;
+
+        document.body.appendChild(
+            el
+        );
+
+        setTimeout(
+            function () {
+
+                el.remove();
+
+            },
+            2200
+        );
+    }
+
+
+    /* =====================================================
+       حماية HTML
+    ===================================================== */
+
+    function escapeHTML(value) {
+
+        return String(
+            value || ""
+        )
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+    }
+
 
     /* =====================================================
        تحميل ميزات القائمة
@@ -23,15 +134,19 @@
     async function loadMenuFeatures() {
 
         if (
-            typeof supabaseClient === "undefined" ||
+            typeof supabaseClient ===
+            "undefined" ||
             !supabaseClient
         ) {
+
             return false;
         }
+
 
         try {
 
             const keys = [
+
                 "menu",
                 "profile",
                 "settings",
@@ -39,14 +154,18 @@
                 "saved",
                 "contact_us",
                 "about"
+
             ];
+
 
             const {
                 data,
                 error
             } =
                 await supabaseClient
-                    .from("feature_flags")
+                    .from(
+                        "feature_flags"
+                    )
                     .select(
                         "feature_key, enabled, release_at"
                     )
@@ -54,6 +173,7 @@
                         "feature_key",
                         keys
                     );
+
 
             if (error) {
 
@@ -65,13 +185,17 @@
                 return false;
             }
 
+
             featureCache = {};
+
 
             (data || []).forEach(
                 function (feature) {
 
                     let enabled =
-                        feature.enabled === true;
+                        feature.enabled ===
+                        true;
+
 
                     if (
                         enabled &&
@@ -83,22 +207,28 @@
                                 feature.release_at
                             );
 
+
                         if (
                             !Number.isNaN(
                                 releaseDate.getTime()
                             ) &&
-                            releaseDate > new Date()
+                            releaseDate >
+                            new Date()
                         ) {
 
                             enabled = false;
                         }
                     }
 
+
                     featureCache[
                         feature.feature_key
-                    ] = enabled;
+                    ] =
+                        enabled;
+
                 }
             );
+
 
             return true;
 
@@ -123,7 +253,9 @@
     ) {
 
         return (
-            featureCache[featureKey] === true
+            featureCache[
+                featureKey
+            ] === true
         );
     }
 
@@ -139,7 +271,7 @@
 
 
     /* =====================================================
-       تحميل saved.js عند الحاجة
+       Saved
     ===================================================== */
 
     async function ensureSavedSystem() {
@@ -148,8 +280,10 @@
             typeof window.openStudentSaved ===
             "function"
         ) {
+
             return true;
         }
+
 
         if (
             document.querySelector(
@@ -160,13 +294,16 @@
             return new Promise(
                 function (resolve) {
 
-                    let attempts = 0;
+                    let attempts =
+                        0;
+
 
                     const timer =
                         setInterval(
                             function () {
 
                                 attempts++;
+
 
                                 if (
                                     typeof window.openStudentSaved ===
@@ -177,19 +314,26 @@
                                         timer
                                     );
 
-                                    resolve(true);
+                                    resolve(
+                                        true
+                                    );
+
                                     return;
                                 }
 
+
                                 if (
-                                    attempts >= 30
+                                    attempts >=
+                                    30
                                 ) {
 
                                     clearInterval(
                                         timer
                                     );
 
-                                    resolve(false);
+                                    resolve(
+                                        false
+                                    );
                                 }
 
                             },
@@ -199,6 +343,7 @@
             );
         }
 
+
         return new Promise(
             function (resolve) {
 
@@ -207,11 +352,14 @@
                         "script"
                     );
 
+
                 script.src =
                     "saved.js";
 
+
                 script.async =
                     true;
+
 
                 script.dataset.studentSaved =
                     "true";
@@ -235,7 +383,10 @@
                             "تعذر تحميل saved.js"
                         );
 
-                        resolve(false);
+                        resolve(
+                            false
+                        );
+
                     };
 
 
@@ -249,180 +400,1323 @@
 
 
     /* =====================================================
-       تواصل معنا
+       CSS
     ===================================================== */
 
-    function openContact() {
+    function injectMenuStyles() {
 
-        const whatsappURL =
-            "https://wa.me/message/TSDV5JBPE2KSP1";
+        if (
+            document.getElementById(
+                "student-menu-style"
+            )
+        ) {
+
+            return;
+        }
+
+
+        const style =
+            document.createElement(
+                "style"
+            );
+
+
+        style.id =
+            "student-menu-style";
+
+
+        style.textContent = `
+
+            #student-main-menu {
+                position:fixed;
+                inset:0;
+                z-index:100001900;
+                display:none;
+                direction:rtl;
+            }
+
+            #student-main-menu.is-open {
+                display:block;
+            }
+
+            #student-main-menu-backdrop {
+                position:absolute;
+                inset:0;
+                background:rgba(0,0,0,.34);
+                opacity:0;
+                transition:
+                    opacity .16s ease;
+            }
+
+            #student-main-menu.is-open
+            #student-main-menu-backdrop {
+                opacity:1;
+            }
+
+            #student-main-menu-sheet {
+                position:absolute;
+                top:0;
+                left:0;
+                bottom:0;
+
+                width:
+                    min(88vw,390px);
+
+                background:
+                    linear-gradient(
+                        180deg,
+                        #ececec 0%,
+                        #dddddd 48%,
+                        #cfcfcf 100%
+                    );
+
+                box-shadow:
+                    12px 0 35px
+                    rgba(0,0,0,.15);
+
+                transform:
+                    translateX(-100%);
+
+                transition:
+                    transform
+                    .18s
+                    cubic-bezier(
+                        .22,
+                        .8,
+                        .24,
+                        1
+                    );
+
+                display:flex;
+                flex-direction:column;
+
+                overflow:hidden;
+            }
+
+            #student-main-menu.is-open
+            #student-main-menu-sheet {
+                transform:
+                    translateX(0);
+            }
+
+            .student-menu-header {
+                min-height:64px;
+
+                display:flex;
+                align-items:center;
+
+                gap:10px;
+
+                padding:
+                    max(
+                        12px,
+                        env(
+                            safe-area-inset-top
+                        )
+                    )
+                    15px
+                    12px;
+
+                background:
+                    linear-gradient(
+                        180deg,
+                        #d5d5d5,
+                        #c8c8c8
+                    );
+
+                border-bottom:
+                    1px solid
+                    rgba(0,0,0,.08);
+
+                flex-shrink:0;
+            }
+
+            .student-menu-back {
+                width:42px;
+                height:42px;
+
+                border:0;
+                border-radius:50%;
+
+                background:
+                    rgba(255,255,255,.45);
+
+                color:#222;
+
+                display:flex;
+                align-items:center;
+                justify-content:center;
+
+                font-size:18px;
+
+                cursor:pointer;
+
+                opacity:0;
+                pointer-events:none;
+
+                transition:
+                    opacity .15s ease;
+            }
+
+            .student-menu-back.visible {
+                opacity:1;
+                pointer-events:auto;
+            }
+
+            .student-menu-title {
+                flex:1;
+
+                color:#202020;
+
+                font-size:19px;
+
+                font-weight:800;
+
+                text-align:right;
+            }
+
+            .student-menu-close {
+                width:42px;
+                height:42px;
+
+                border:0;
+                border-radius:50%;
+
+                background:
+                    rgba(255,255,255,.45);
+
+                color:#222;
+
+                display:flex;
+                align-items:center;
+                justify-content:center;
+
+                font-size:20px;
+
+                cursor:pointer;
+            }
+
+            .student-menu-content {
+                flex:1;
+
+                overflow-y:auto;
+
+                padding:14px;
+
+                -webkit-overflow-scrolling:touch;
+            }
+
+            .student-menu-item {
+                width:100%;
+
+                border:1px solid
+                    rgba(0,0,0,.05);
+
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        .48
+                    );
+
+                color:#262626;
+
+                padding:15px;
+
+                border-radius:15px;
+
+                text-align:right;
+
+                font-size:15px;
+
+                font-weight:650;
+
+                cursor:pointer;
+
+                display:flex;
+                align-items:center;
+
+                gap:13px;
+
+                direction:rtl;
+
+                margin-bottom:9px;
+
+                box-shadow:
+                    0 2px 7px
+                    rgba(0,0,0,.04);
+
+                transition:
+                    transform .10s ease,
+                    background .10s ease;
+            }
+
+            .student-menu-item:active {
+
+                transform:
+                    scale(.985);
+
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        .68
+                    );
+            }
+
+            .student-menu-item i {
+
+                width:23px;
+
+                text-align:center;
+
+                color:#444;
+
+                font-size:16px;
+            }
+
+            .student-menu-item.danger {
+
+                color:#8f2222;
+
+                background:
+                    rgba(
+                        255,
+                        235,
+                        235,
+                        .60
+                    );
+            }
+
+            .student-menu-item.danger i {
+
+                color:#a52525;
+            }
+
+            .student-menu-loading {
+
+                padding:35px 10px;
+
+                text-align:center;
+
+                color:#555;
+
+                font-size:13px;
+            }
+
+            .student-menu-empty {
+
+                padding:35px 10px;
+
+                text-align:center;
+
+                color:#555;
+
+                font-size:13px;
+            }
+
+            .student-menu-footer {
+
+                padding:
+                    10px
+                    14px
+                    max(
+                        12px,
+                        env(
+                            safe-area-inset-bottom
+                        )
+                    );
+
+                color:#666;
+
+                text-align:center;
+
+                font-size:11px;
+
+                border-top:
+                    1px solid
+                    rgba(0,0,0,.08);
+
+                background:
+                    rgba(
+                        255,
+                        255,
+                        255,
+                        .15
+                    );
+
+                flex-shrink:0;
+            }
+
+
+            /*
+               أي Floating Panel يتم إنشاؤه أثناء
+               وجود قائمة Student سيُخفى عن الشاشة.
+            */
+
+            body.student-menu-inner-open
+            > .floating-panel,
+            body.student-menu-inner-open
+            > [id*="floating"],
+            body.student-menu-inner-open
+            > [class*="floating-panel"] {
+                display:none !important;
+            }
+
+        `;
+
+
+        document.head.appendChild(
+            style
+        );
+    }
+
+
+    /* =====================================================
+       إنشاء القائمة
+    ===================================================== */
+
+    function ensureMenuElement() {
+
+        if (
+            document.getElementById(
+                "student-main-menu"
+            )
+        ) {
+
+            menuElement =
+                document.getElementById(
+                    "student-main-menu"
+                );
+
+            return menuElement;
+        }
+
+
+        menuElement =
+            document.createElement(
+                "div"
+            );
+
+
+        menuElement.id =
+            "student-main-menu";
+
+
+        menuElement.innerHTML = `
+
+            <div
+                id="student-main-menu-backdrop"
+            ></div>
+
+
+            <aside
+                id="student-main-menu-sheet"
+                aria-label="القائمة الرئيسية"
+            >
+
+                <div
+                    class="student-menu-header"
+                >
+
+                    <button
+                        id="student-menu-back"
+                        type="button"
+                        class="student-menu-back"
+                        aria-label="رجوع"
+                    >
+                        <i class="
+                            fa-solid
+                            fa-arrow-right
+                        "></i>
+                    </button>
+
+
+                    <div
+                        id="student-menu-title"
+                        class="student-menu-title"
+                    >
+                        القائمة
+                    </div>
+
+
+                    <button
+                        id="student-menu-close"
+                        type="button"
+                        class="student-menu-close"
+                        aria-label="إغلاق"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <div
+                    id="student-menu-content"
+                    class="student-menu-content"
+                ></div>
+
+
+                <div
+                    id="student-menu-footer"
+                    class="student-menu-footer"
+                >
+                    Student
+                </div>
+
+            </aside>
+        `;
+
+
+        document.body.appendChild(
+            menuElement
+        );
+
+
+        /*
+           إغلاق الخلفية:
+           نغلق القائمة بالكامل،
+           لا ننتقل إلى الرئيسية.
+        */
+
+        menuElement
+            .querySelector(
+                "#student-main-menu-backdrop"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    closeMainMenu();
+
+                }
+            );
+
+
+        /*
+           × موجود فقط لإغلاق القائمة بالكامل.
+           التنقل الداخلي يتم بزر الهاتف.
+        */
+
+        menuElement
+            .querySelector(
+                "#student-menu-close"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    closeMainMenu();
+
+                }
+            );
+
+
+        /*
+           زر الرجوع داخل القائمة:
+           نستخدمه كبديل احتياطي،
+           لكن زر الهاتف هو الأساسي.
+        */
+
+        menuElement
+            .querySelector(
+                "#student-menu-back"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    goBackInsideMenu();
+
+                }
+            );
+
+
+        return menuElement;
+    }
+
+
+    /* =====================================================
+       تنشيط اعتراض showFloatingPanel
+    ===================================================== */
+
+    function activateFloatingPanelInterceptor() {
+
+        if (
+            floatingPanelInterceptActive
+        ) {
+
+            return;
+        }
 
 
         if (
             typeof window.showFloatingPanel !==
             "function"
         ) {
+
             return;
         }
 
 
-        window.showFloatingPanel(
-            "تواصل معنا",
-            `
-            <div style="
-                text-align:center;
-                padding:20px 10px;
-            ">
+        originalShowFloatingPanel =
+            window.showFloatingPanel;
 
-                <div style="
-                    width:70px;
-                    height:70px;
-                    margin:0 auto 15px;
-                    border-radius:20px;
-                    background:#eafff0;
-                    color:#25D366;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:30px;
-                ">
-                    <i class="fa-brands fa-whatsapp"></i>
-                </div>
 
-                <h3 style="
-                    margin:0 0 10px;
+        window.showFloatingPanel =
+            function (
+                title,
+                content
+            ) {
+
+                if (
+                    !isMenuOpen()
+                ) {
+
+                    return originalShowFloatingPanel.apply(
+                        this,
+                        arguments
+                    );
+                }
+
+
+                openInnerView(
+                    title,
+                    content
+                );
+            };
+
+
+        floatingPanelInterceptActive =
+            true;
+    }
+
+
+    /* =====================================================
+       تعطيل الاعتراض
+    ===================================================== */
+
+    function deactivateFloatingPanelInterceptor() {
+
+        if (
+            !floatingPanelInterceptActive
+        ) {
+
+            return;
+        }
+
+
+        if (
+            originalShowFloatingPanel
+        ) {
+
+            window.showFloatingPanel =
+                originalShowFloatingPanel;
+        }
+
+
+        originalShowFloatingPanel =
+            null;
+
+
+        floatingPanelInterceptActive =
+            false;
+    }
+
+
+    /* =====================================================
+       فحص القائمة
+    ===================================================== */
+
+    function isMenuOpen() {
+
+        return !!(
+            menuElement &&
+            menuElement.classList.contains(
+                "is-open"
+            )
+        );
+    }
+
+
+    /* =====================================================
+       تنسيق محتوى داخلي
+    ===================================================== */
+
+    function normalizeInnerContent(
+        content
+    ) {
+
+        return `
+            <div
+                style="
                     color:#222;
-                ">
-                    تواصل معنا
-                </h3>
-
-                <p style="
-                    margin:0 0 20px;
-                    color:#777;
-                    line-height:1.8;
-                ">
-                    هل لديك مشكلة أو اقتراح؟
-                    تواصل مع فريق Student مباشرة.
-                </p>
-
-                <button
-                    id="student-contact-whatsapp"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#25D366;
-                        color:#fff;
-                        padding:14px;
-                        border-radius:12px;
-                        font-size:15px;
-                        cursor:pointer;
-                    "
-                >
-                    فتح WhatsApp
-                </button>
-
+                    font-weight:500;
+                "
+            >
+                ${content}
             </div>
-            `
+        `;
+    }
+
+
+    /* =====================================================
+       فتح View داخلي
+    ===================================================== */
+
+    function openInnerView(
+        title,
+        content
+    ) {
+
+        const menu =
+            ensureMenuElement();
+
+
+        const contentBox =
+            menu.querySelector(
+                "#student-menu-content"
+            );
+
+
+        const titleBox =
+            menu.querySelector(
+                "#student-menu-title"
+            );
+
+
+        const backButton =
+            menu.querySelector(
+                "#student-menu-back"
+            );
+
+
+        if (!contentBox) {
+            return;
+        }
+
+
+        /*
+           حفظ الصفحة السابقة
+        */
+
+        viewStack.push({
+
+            title:
+                titleBox?.textContent ||
+                "القائمة",
+
+            content:
+                contentBox.innerHTML,
+
+            view:
+                currentView
+
+        });
+
+
+        currentView =
+            "inner";
+
+
+        if (titleBox) {
+
+            titleBox.textContent =
+                title ||
+                "القائمة";
+        }
+
+
+        if (backButton) {
+
+            backButton.classList.add(
+                "visible"
+            );
+        }
+
+
+        contentBox.innerHTML =
+            normalizeInnerContent(
+                content
+            );
+
+
+        document.body.classList.add(
+            "student-menu-inner-open"
         );
 
 
-        document
-            .getElementById(
-                "student-contact-whatsapp"
+        /*
+           أضف اعتراضًا عامًا لأزرار إغلاق
+           النوافذ الداخلية حتى تعود للقائمة
+           بدل مغادرة الصفحة.
+        */
+
+        bindInnerCloseButtons(
+            contentBox
+        );
+
+
+        pushMenuHistoryState();
+    }
+
+
+    /* =====================================================
+       ربط إغلاق المحتوى الداخلي
+    ===================================================== */
+
+    function bindInnerCloseButtons(
+        container
+    ) {
+
+        if (!container) {
+            return;
+        }
+
+
+        container
+            .querySelectorAll(
+                '[data-close], [data-close-panel], .close-panel, .panel-close'
             )
-            ?.addEventListener(
-                "click",
-                function () {
+            .forEach(
+                function (button) {
 
-                    window.open(
-                        whatsappURL,
-                        "_blank",
-                        "noopener,noreferrer"
+                    if (
+                        button.dataset.studentMenuBackBound ===
+                        "true"
+                    ) {
+
+                        return;
+                    }
+
+
+                    button.dataset.studentMenuBackBound =
+                        "true";
+
+
+                    button.addEventListener(
+                        "click",
+                        function (event) {
+
+                            event.preventDefault();
+                            event.stopPropagation();
+
+                            goBackInsideMenu();
+
+                        },
+                        true
                     );
-
                 }
             );
     }
 
 
     /* =====================================================
-       حول Student
+       عرض القائمة الرئيسية
     ===================================================== */
 
-    function openAbout() {
+    async function renderMainMenu() {
+
+        const menu =
+            ensureMenuElement();
+
+
+        const contentBox =
+            menu.querySelector(
+                "#student-menu-content"
+            );
+
+
+        const titleBox =
+            menu.querySelector(
+                "#student-menu-title"
+            );
+
+
+        const backButton =
+            menu.querySelector(
+                "#student-menu-back"
+            );
+
+
+        if (titleBox) {
+
+            titleBox.textContent =
+                "القائمة";
+        }
+
+
+        if (backButton) {
+
+            backButton.classList.remove(
+                "visible"
+            );
+        }
+
+
+        currentView =
+            "menu";
+
+
+        if (viewStack.length) {
+            viewStack = [];
+        }
+
+
+        document.body.classList.remove(
+            "student-menu-inner-open"
+        );
+
+
+        contentBox.innerHTML = `
+
+            <div
+                class="student-menu-loading"
+            >
+                جاري تحميل القائمة...
+            </div>
+        `;
+
+
+        /*
+           القائمة تظهر قبل انتهاء الاستعلام.
+           هذا يحل مشكلة البطء.
+        */
+
+        menu.classList.add(
+            "is-open"
+        );
+
+
+        document.body.style.overflow =
+            "hidden";
+
+
+        activateFloatingPanelInterceptor();
+
+
+        await loadMenuFeatures();
+
 
         if (
-            typeof window.showFloatingPanel !==
-            "function"
+            !isFeatureEnabled(
+                "menu"
+            )
         ) {
+
+            closeMainMenu();
+
             return;
         }
 
 
-        window.showFloatingPanel(
-            "حول Student",
-            `
-            <div style="
-                text-align:center;
-                padding:10px;
-            ">
+        const items =
+            buildMenuItems();
 
-                <div style="
-                    width:82px;
-                    height:82px;
-                    margin:0 auto 15px;
-                    border-radius:22px;
-                    background:#eaf5ff;
-                    color:#0095f6;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:34px;
-                    font-weight:700;
-                ">
-                    S
-                </div>
 
-                <h2 style="
-                    margin:0 0 5px;
-                    color:#222;
-                ">
-                    Student
-                </h2>
+        contentBox.innerHTML =
+            items.length
+                ? items
+                    .map(
+                        function (item) {
 
-                <div style="
-                    color:#888;
-                    font-size:13px;
-                    margin-bottom:18px;
-                ">
-                    الإصدار 1.0.0
-                </div>
+                            return `
 
-                <div style="
-                    background:#f7f8fa;
-                    border-radius:14px;
-                    padding:15px;
-                    text-align:right;
-                    color:#666;
-                    line-height:1.9;
-                ">
-                    تطبيق عراقي صُمم لتطوير الطلاب
-                    وتوفير بيئة تعليمية واجتماعية
-                    متكاملة.
-                </div>
+                                <button
+                                    type="button"
+                                    class="
+                                        student-menu-item
+                                        ${
+                                            item.danger
+                                                ? "danger"
+                                                : ""
+                                        }
+                                    "
+                                    data-student-menu-id="${escapeHTML(
+                                        item.id
+                                    )}"
+                                >
 
-                <div style="
-                    margin-top:15px;
-                    color:#999;
-                    font-size:12px;
-                ">
-                    جميع الحقوق محفوظة لـ Student
-                </div>
+                                    <i
+                                        class="${escapeHTML(
+                                            item.icon
+                                        )}"
+                                    ></i>
 
-            </div>
-            `
+                                    <span>
+                                        ${escapeHTML(
+                                            item.text
+                                        )}
+                                    </span>
+
+                                </button>
+                            `;
+                        }
+                    )
+                    .join("")
+
+                : `
+                    <div
+                        class="student-menu-empty"
+                    >
+                        لا توجد عناصر متاحة.
+                    </div>
+                `;
+
+
+        items.forEach(
+            function (item) {
+
+                const button =
+                    contentBox.querySelector(
+                        `[data-student-menu-id="${item.id}"]`
+                    );
+
+
+                if (!button) {
+                    return;
+                }
+
+
+                button.addEventListener(
+                    "click",
+                    async function (event) {
+
+                        event.preventDefault();
+
+
+                        /*
+                           نترك القائمة نفسها مفتوحة.
+                           إذا استدعى العنصر
+                           showFloatingPanel سيتم اعتراضه
+                           وعرضه داخل القائمة.
+                        */
+
+                        await item.action();
+
+                    }
+                );
+            }
         );
+    }
+
+
+    /* =====================================================
+       Stack Back
+    ===================================================== */
+
+    function goBackInsideMenu() {
+
+        if (
+            viewStack.length
+        ) {
+
+            const previous =
+                viewStack.pop();
+
+
+            const contentBox =
+                menuElement?.querySelector(
+                    "#student-menu-content"
+                );
+
+
+            const titleBox =
+                menuElement?.querySelector(
+                    "#student-menu-title"
+                );
+
+
+            const backButton =
+                menuElement?.querySelector(
+                    "#student-menu-back"
+                );
+
+
+            if (
+                contentBox &&
+                titleBox
+            ) {
+
+                contentBox.innerHTML =
+                    previous.content;
+
+
+                titleBox.textContent =
+                    previous.title;
+            }
+
+
+            currentView =
+                previous.view;
+
+
+            if (
+                !viewStack.length &&
+                backButton
+            ) {
+
+                backButton.classList.remove(
+                    "visible"
+                );
+
+
+                document.body.classList.remove(
+                    "student-menu-inner-open"
+                );
+            }
+
+
+            bindInnerCloseButtons(
+                contentBox
+            );
+
+
+            /*
+               إزالة حالة history الحالية
+               بدون مغادرة التطبيق.
+            */
+
+            if (
+                historyDepth > 0
+            ) {
+
+                ignoreNextPopState =
+                    true;
+
+                history.back();
+
+                historyDepth--;
+            }
+
+            return;
+        }
+
+
+        closeMainMenu();
+    }
+
+
+    /* =====================================================
+       History
+    ===================================================== */
+
+    function pushMenuHistoryState() {
+
+        try {
+
+            history.pushState(
+                {
+                    studentMenu:
+                        true,
+
+                    depth:
+                        historyDepth + 1
+                },
+                "",
+                location.href
+            );
+
+
+            historyDepth++;
+
+        } catch (error) {
+
+            console.warn(
+                "Menu history state error:",
+                error
+            );
+        }
+    }
+
+
+    function handlePopState() {
+
+        if (
+            ignoreNextPopState
+        ) {
+
+            ignoreNextPopState =
+                false;
+
+            return;
+        }
+
+
+        if (
+            !isMenuOpen()
+        ) {
+
+            return;
+        }
+
+
+        if (
+            historyDepth > 0
+        ) {
+
+            historyDepth--;
+
+
+            if (
+                viewStack.length
+            ) {
+
+                const previous =
+                    viewStack.pop();
+
+
+                const contentBox =
+                    menuElement?.querySelector(
+                        "#student-menu-content"
+                    );
+
+
+                const titleBox =
+                    menuElement?.querySelector(
+                        "#student-menu-title"
+                    );
+
+
+                const backButton =
+                    menuElement?.querySelector(
+                        "#student-menu-back"
+                    );
+
+
+                if (
+                    contentBox &&
+                    titleBox
+                ) {
+
+                    contentBox.innerHTML =
+                        previous.content;
+
+                    titleBox.textContent =
+                        previous.title;
+                }
+
+
+                if (
+                    !viewStack.length &&
+                    backButton
+                ) {
+
+                    backButton.classList.remove(
+                        "visible"
+                    );
+
+                    document.body.classList.remove(
+                        "student-menu-inner-open"
+                    );
+                }
+
+
+                currentView =
+                    previous.view;
+
+
+                bindInnerCloseButtons(
+                    contentBox
+                );
+
+            } else {
+
+                closeMainMenu(
+                    false
+                );
+            }
+
+        } else {
+
+            closeMainMenu(
+                false
+            );
+        }
+    }
+
+
+    window.addEventListener(
+        "popstate",
+        handlePopState
+    );
+
+
+    /* =====================================================
+       إغلاق القائمة
+    ===================================================== */
+
+    function closeMainMenu(
+        changeHistory = true
+    ) {
+
+        if (!menuElement) {
+            return;
+        }
+
+
+        menuElement.classList.remove(
+            "is-open"
+        );
+
+
+        document.body.style.overflow =
+            "";
+
+
+        document.body.classList.remove(
+            "student-menu-inner-open"
+        );
+
+
+        viewStack = [];
+
+        currentView =
+            "menu";
+
+
+        deactivateFloatingPanelInterceptor();
+
+
+        /*
+           إذا كانت القائمة مفتوحة بحالة
+           history مستقلة، نرجع عنها فقط.
+           لا نرسل المستخدم إلى الصفحة الرئيسية.
+        */
+
+        if (
+            changeHistory &&
+            historyDepth > 0
+        ) {
+
+            const amount =
+                historyDepth;
+
+
+            historyDepth = 0;
+
+
+            ignoreNextPopState =
+                true;
+
+
+            try {
+
+                history.go(
+                    -amount
+                );
+
+            } catch (error) {
+
+                console.warn(
+                    "Menu history close error:",
+                    error
+                );
+            }
+        }
     }
 
 
@@ -432,10 +1726,11 @@
 
     function confirmLogout() {
 
-        let existing =
+        const existing =
             document.getElementById(
-                "student-menu-confirm"
+                "student-menu-logout-confirm"
             );
+
 
         if (existing) {
             existing.remove();
@@ -449,18 +1744,18 @@
 
 
         overlay.id =
-            "student-menu-confirm";
+            "student-menu-logout-confirm";
 
 
         overlay.style.cssText = `
             position:fixed;
             inset:0;
-            z-index:100002000;
+            z-index:100002100;
             display:flex;
             align-items:center;
             justify-content:center;
             padding:20px;
-            background:rgba(0,0,0,.5);
+            background:rgba(0,0,0,.50);
             direction:rtl;
         `;
 
@@ -502,7 +1797,7 @@
 
                     <button
                         type="button"
-                        id="student-menu-logout-cancel"
+                        id="student-logout-cancel"
                         style="
                             flex:1;
                             border:0;
@@ -518,7 +1813,7 @@
 
                     <button
                         type="button"
-                        id="student-menu-logout-confirm"
+                        id="student-logout-confirm"
                         style="
                             flex:1;
                             border:0;
@@ -546,7 +1841,7 @@
 
         overlay
             .querySelector(
-                "#student-menu-logout-cancel"
+                "#student-logout-cancel"
             )
             ?.addEventListener(
                 "click",
@@ -560,7 +1855,7 @@
 
         overlay
             .querySelector(
-                "#student-menu-logout-confirm"
+                "#student-logout-confirm"
             )
             ?.addEventListener(
                 "click",
@@ -581,8 +1876,8 @@
                         ) {
 
                             await window.logoutUser();
-
                         }
+
 
                     } catch (error) {
 
@@ -591,9 +1886,14 @@
                             error
                         );
 
+                        menuToast(
+                            "تعذر تسجيل الخروج."
+                        );
+
                     } finally {
 
                         overlay.remove();
+
                     }
 
                 }
@@ -602,7 +1902,210 @@
 
 
     /* =====================================================
-       بناء عناصر القائمة
+       Contact
+    ===================================================== */
+
+    function openContact() {
+
+        const whatsappURL =
+            "https://wa.me/message/TSDV5JBPE2KSP1";
+
+
+        /*
+           نستخدم showFloatingPanel:
+           سيتم اعتراضه وإظهاره داخل القائمة.
+        */
+
+        if (
+            typeof window.showFloatingPanel !==
+            "function"
+        ) {
+
+            menuToast(
+                "تعذر فتح التواصل."
+            );
+
+            return;
+        }
+
+
+        window.showFloatingPanel(
+            "تواصل معنا",
+            `
+            <div style="
+                text-align:center;
+                padding:20px 10px;
+                color:#222;
+            ">
+
+                <div style="
+                    width:70px;
+                    height:70px;
+                    margin:0 auto 15px;
+                    border-radius:20px;
+                    background:#eafff0;
+                    color:#25D366;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:30px;
+                ">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </div>
+
+                <h3 style="
+                    margin:0 0 10px;
+                ">
+                    تواصل معنا
+                </h3>
+
+                <p style="
+                    margin:0 0 20px;
+                    color:#555;
+                    line-height:1.8;
+                ">
+                    هل لديك مشكلة أو اقتراح؟
+                    تواصل مع فريق Student مباشرة.
+                </p>
+
+                <button
+                    id="student-contact-whatsapp"
+                    type="button"
+                    style="
+                        width:100%;
+                        border:none;
+                        background:#25D366;
+                        color:#fff;
+                        padding:14px;
+                        border-radius:12px;
+                        font-size:15px;
+                        cursor:pointer;
+                    "
+                >
+                    فتح WhatsApp
+                </button>
+
+            </div>
+            `
+        );
+
+
+        /*
+           لأن المحتوى أصبح داخل القائمة،
+           نبحث عن الزر داخله بعد الإنشاء.
+        */
+
+        setTimeout(
+            function () {
+
+                const button =
+                    menuElement?.querySelector(
+                        "#student-contact-whatsapp"
+                    );
+
+
+                button?.addEventListener(
+                    "click",
+                    function () {
+
+                        window.open(
+                            whatsappURL,
+                            "_blank",
+                            "noopener,noreferrer"
+                        );
+
+                    }
+                );
+
+            },
+            0
+        );
+    }
+
+
+    /* =====================================================
+       About
+    ===================================================== */
+
+    function openAbout() {
+
+        if (
+            typeof window.showFloatingPanel !==
+            "function"
+        ) {
+
+            return;
+        }
+
+
+        window.showFloatingPanel(
+            "حول Student",
+            `
+            <div style="
+                text-align:center;
+                padding:10px;
+                color:#222;
+            ">
+
+                <div style="
+                    width:82px;
+                    height:82px;
+                    margin:0 auto 15px;
+                    border-radius:22px;
+                    background:#e0e0e0;
+                    color:#333;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-size:34px;
+                    font-weight:700;
+                ">
+                    S
+                </div>
+
+                <h2 style="
+                    margin:0 0 5px;
+                ">
+                    Student
+                </h2>
+
+                <div style="
+                    color:#666;
+                    font-size:13px;
+                    margin-bottom:18px;
+                ">
+                    الإصدار 1.0.0
+                </div>
+
+                <div style="
+                    background:rgba(255,255,255,.50);
+                    border-radius:14px;
+                    padding:15px;
+                    text-align:right;
+                    color:#444;
+                    line-height:1.9;
+                ">
+                    تطبيق عراقي صُمم لتطوير الطلاب
+                    وتوفير بيئة تعليمية واجتماعية
+                    متكاملة.
+                </div>
+
+                <div style="
+                    margin-top:15px;
+                    color:#666;
+                    font-size:12px;
+                ">
+                    جميع الحقوق محفوظة لـ Student
+                </div>
+
+            </div>
+            `
+        );
+    }
+
+
+    /* =====================================================
+       بناء العناصر
     ===================================================== */
 
     function buildMenuItems() {
@@ -611,7 +2114,9 @@
 
 
         if (
-            isFeatureEnabled("profile")
+            isFeatureEnabled(
+                "profile"
+            )
         ) {
 
             items.push({
@@ -634,17 +2139,24 @@
                         ) {
 
                             window.showProfilePanel();
+
+                        } else {
+
+                            menuToast(
+                                "الملف الشخصي غير متاح."
+                            );
                         }
 
                     }
 
             });
-
         }
 
 
         if (
-            isFeatureEnabled("settings")
+            isFeatureEnabled(
+                "settings"
+            )
         ) {
 
             items.push({
@@ -667,17 +2179,24 @@
                         ) {
 
                             window.showSettingsPanel();
+
+                        } else {
+
+                            menuToast(
+                                "الإعدادات غير متاحة."
+                            );
                         }
 
                     }
 
             });
-
         }
 
 
         if (
-            isFeatureEnabled("notifications")
+            isFeatureEnabled(
+                "notifications"
+            )
         ) {
 
             items.push({
@@ -700,17 +2219,24 @@
                         ) {
 
                             window.openNotifications();
+
+                        } else {
+
+                            menuToast(
+                                "الإشعارات غير متاحة."
+                            );
                         }
 
                     }
 
             });
-
         }
 
 
         if (
-            isFeatureEnabled("saved")
+            isFeatureEnabled(
+                "saved"
+            )
         ) {
 
             items.push({
@@ -730,26 +2256,35 @@
                         const ready =
                             await ensureSavedSystem();
 
+
                         if (!ready) {
 
-                            console.error(
-                                "Saved system is not available."
+                            menuToast(
+                                "تعذر تحميل المحفوظات."
                             );
 
                             return;
                         }
+
+
+                        /*
+                           إذا كان saved.js يستخدم
+                           showFloatingPanel فسيتم اعتراضه
+                           تلقائيًا وعرضه داخل القائمة.
+                        */
 
                         window.openStudentSaved();
 
                     }
 
             });
-
         }
 
 
         if (
-            isFeatureEnabled("contact_us")
+            isFeatureEnabled(
+                "contact_us"
+            )
         ) {
 
             items.push({
@@ -767,12 +2302,13 @@
                     openContact
 
             });
-
         }
 
 
         if (
-            isFeatureEnabled("about")
+            isFeatureEnabled(
+                "about"
+            )
         ) {
 
             items.push({
@@ -790,7 +2326,6 @@
                     openAbout
 
             });
-
         }
 
 
@@ -819,444 +2354,51 @@
 
 
     /* =====================================================
-       CSS للقائمة الجانبية
-    ===================================================== */
-
-    function injectMenuStyles() {
-
-        if (
-            document.getElementById(
-                "student-main-menu-style"
-            )
-        ) {
-            return;
-        }
-
-
-        const style =
-            document.createElement(
-                "style"
-            );
-
-
-        style.id =
-            "student-main-menu-style";
-
-
-        style.textContent = `
-
-            #student-main-menu {
-                position:fixed;
-                inset:0;
-                z-index:100001900;
-                display:none;
-                direction:rtl;
-            }
-
-            #student-main-menu.open {
-                display:block;
-            }
-
-            #student-main-menu-backdrop {
-                position:absolute;
-                inset:0;
-                background:rgba(0,0,0,.38);
-                opacity:0;
-                transition:opacity .18s ease;
-            }
-
-            #student-main-menu.open
-            #student-main-menu-backdrop {
-                opacity:1;
-            }
-
-            #student-main-menu-sheet {
-                position:absolute;
-                top:0;
-                right:0;
-                bottom:0;
-                width:min(88vw,380px);
-                background:#fff;
-                box-shadow:
-                    -12px 0 40px
-                    rgba(0,0,0,.16);
-                transform:translateX(100%);
-                transition:
-                    transform .20s
-                    cubic-bezier(.22,.8,.25,1);
-                display:flex;
-                flex-direction:column;
-                overflow:hidden;
-            }
-
-            #student-main-menu.open
-            #student-main-menu-sheet {
-                transform:translateX(0);
-            }
-
-            .student-main-menu-header {
-                padding:
-                    max(18px, env(safe-area-inset-top))
-                    18px
-                    16px;
-                border-bottom:1px solid #eee;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                flex-shrink:0;
-            }
-
-            .student-main-menu-title {
-                flex:1;
-                font-size:20px;
-                font-weight:800;
-                color:#111;
-            }
-
-            .student-main-menu-close {
-                width:40px;
-                height:40px;
-                border:0;
-                border-radius:50%;
-                background:#f1f3f5;
-                font-size:20px;
-                cursor:pointer;
-            }
-
-            .student-main-menu-content {
-                flex:1;
-                overflow-y:auto;
-                padding:14px;
-            }
-
-            .student-main-menu-button {
-                width:100%;
-                border:0;
-                background:#f7f8fa;
-                color:#222;
-                padding:15px;
-                border-radius:14px;
-                text-align:right;
-                font-size:15px;
-                cursor:pointer;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                direction:rtl;
-                margin-bottom:9px;
-                transition:
-                    transform .12s ease,
-                    background .12s ease;
-            }
-
-            .student-main-menu-button:active {
-                transform:scale(.985);
-            }
-
-            .student-main-menu-button i {
-                width:22px;
-                text-align:center;
-                color:#0095f6;
-            }
-
-            .student-main-menu-button.danger {
-                background:#fff2f2;
-                color:#d93025;
-            }
-
-            .student-main-menu-button.danger i {
-                color:#d93025;
-            }
-
-            .student-main-menu-footer {
-                padding:
-                    10px
-                    14px
-                    max(14px, env(safe-area-inset-bottom));
-                border-top:1px solid #eee;
-                color:#aaa;
-                text-align:center;
-                font-size:11px;
-                flex-shrink:0;
-            }
-
-            @media (max-width:480px) {
-
-                #student-main-menu-sheet {
-                    width:90vw;
-                }
-
-            }
-        `;
-
-
-        document.head.appendChild(
-            style
-        );
-    }
-
-
-    /* =====================================================
-       بناء القائمة
-    ===================================================== */
-
-    function ensureMenuElement() {
-
-        let menu =
-            document.getElementById(
-                "student-main-menu"
-            );
-
-
-        if (menu) {
-            return menu;
-        }
-
-
-        menu =
-            document.createElement(
-                "div"
-            );
-
-
-        menu.id =
-            "student-main-menu";
-
-
-        menu.innerHTML = `
-
-            <div
-                id="student-main-menu-backdrop"
-            ></div>
-
-            <aside
-                id="student-main-menu-sheet"
-                aria-label="القائمة الرئيسية"
-            >
-
-                <div
-                    class="student-main-menu-header"
-                >
-
-                    <div
-                        class="student-main-menu-title"
-                    >
-                        القائمة
-                    </div>
-
-                    <button
-                        type="button"
-                        class="student-main-menu-close"
-                        id="student-main-menu-close"
-                    >
-                        ×
-                    </button>
-
-                </div>
-
-                <div
-                    class="student-main-menu-content"
-                    id="student-main-menu-content"
-                ></div>
-
-                <div
-                    class="student-main-menu-footer"
-                >
-                    Student
-                </div>
-
-            </aside>
-        `;
-
-
-        document.body.appendChild(
-            menu
-        );
-
-
-        menu
-            .querySelector(
-                "#student-main-menu-close"
-            )
-            ?.addEventListener(
-                "click",
-                closeMainMenu
-            );
-
-
-        menu
-            .querySelector(
-                "#student-main-menu-backdrop"
-            )
-            ?.addEventListener(
-                "click",
-                closeMainMenu
-            );
-
-
-        return menu;
-    }
-
-
-    /* =====================================================
-       إغلاق القائمة
-    ===================================================== */
-
-    function closeMainMenu() {
-
-        const menu =
-            document.getElementById(
-                "student-main-menu"
-            );
-
-        if (!menu) {
-            return;
-        }
-
-
-        menu.classList.remove(
-            "open"
-        );
-
-
-        document.body.style.overflow = "";
-    }
-
-
-    /* =====================================================
        فتح القائمة
     ===================================================== */
 
     async function openMenu() {
 
-        /*
-           نفتح الواجهة فورًا.
-           لا ننتظر Supabase قبل إظهارها.
-        */
-
         injectMenuStyles();
+
 
         const menu =
             ensureMenuElement();
 
-        const content =
-            menu.querySelector(
-                "#student-main-menu-content"
-            );
-
-
-        content.innerHTML = `
-            <div style="
-                padding:25px 10px;
-                text-align:center;
-                color:#999;
-            ">
-                جاري تحميل القائمة...
-            </div>
-        `;
-
-
-        menu.classList.add(
-            "open"
-        );
-
 
         /*
-           لا نعيد الصفحة الرئيسية
-           ولا نستخدم history.
+           إعادة ضبط البداية فقط إذا
+           لم تكن القائمة مفتوحة.
         */
-
-        document.body.style.overflow =
-            "hidden";
-
-
-        /*
-           نحمل البيانات بعد ظهور القائمة.
-        */
-
-        await loadMenuFeatures();
-
 
         if (
-            !isFeatureEnabled("menu")
+            !menu.classList.contains(
+                "is-open"
+            )
         ) {
 
-            closeMainMenu();
+            viewStack = [];
+
+            currentView =
+                "menu";
+
+            historyDepth =
+                0;
+
+            await renderMainMenu();
+
+            pushMenuHistoryState();
+
             return;
         }
 
 
-        const items =
-            buildMenuItems();
+        /*
+           إذا كانت مفتوحة، لا نعيد البناء.
+        */
 
-
-        content.innerHTML =
-            items
-                .map(
-                    function (item) {
-
-                        return `
-
-                            <button
-                                type="button"
-                                class="
-                                    student-main-menu-button
-                                    ${
-                                        item.danger
-                                            ? "danger"
-                                            : ""
-                                    }
-                                "
-                                data-student-menu-id="${item.id}"
-                            >
-
-                                <i
-                                    class="${item.icon}"
-                                ></i>
-
-                                <span>
-                                    ${escapeHTML(
-                                        item.text
-                                    )}
-                                </span>
-
-                            </button>
-                        `;
-                    }
-                )
-                .join("");
-
-
-        items.forEach(
-            function (item) {
-
-                const button =
-                    content.querySelector(
-                        `[data-student-menu-id="${item.id}"]`
-                    );
-
-
-                if (!button) {
-                    return;
-                }
-
-
-                button.addEventListener(
-                    "click",
-                    async function () {
-
-                        /*
-                           لا نغلق القائمة بالقوة
-                           قبل تنفيذ الإجراء.
-                           بعض الصفحات/النوافذ تبقى
-                           ضمن نفس الصفحة.
-                        */
-
-                        await item.action();
-
-                    }
-                );
-            }
+        menu.classList.add(
+            "is-open"
         );
     }
 
@@ -1282,6 +2424,7 @@
             menuIcon.dataset.studentMenuBound ===
             "true"
         ) {
+
             return;
         }
 
@@ -1310,7 +2453,27 @@
 
 
     /* =====================================================
-       تشغيل
+       API
+    ===================================================== */
+
+    window.openStudentMenu =
+        openMenu;
+
+
+    window.closeStudentMenu =
+        function () {
+
+            closeMainMenu();
+
+        };
+
+
+    window.clearStudentMenuFeatureCache =
+        clearMenuFeatureCache;
+
+
+    /* =====================================================
+       بدء
     ===================================================== */
 
     function startMenu() {
@@ -1332,26 +2495,6 @@
         );
     }
 
-
-    /* =====================================================
-       API
-    ===================================================== */
-
-    window.openStudentMenu =
-        openMenu;
-
-
-    window.closeStudentMenu =
-        closeMainMenu;
-
-
-    window.clearStudentMenuFeatureCache =
-        clearMenuFeatureCache;
-
-
-    /* =====================================================
-       Start
-    ===================================================== */
 
     if (
         document.readyState ===
