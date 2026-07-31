@@ -1,7 +1,6 @@
 /* =========================================================
    Student - Menu System
    القائمة الرئيسية ☰
-   إصدار سريع - طلب Supabase واحد فقط
 ========================================================= */
 
 (function () {
@@ -14,7 +13,7 @@
 
 
     /* =====================================================
-       جلب جميع الميزات دفعة واحدة
+       تحميل ميزات القائمة
     ===================================================== */
 
     async function loadMenuFeatures() {
@@ -41,15 +40,16 @@
             const {
                 data,
                 error
-            } = await supabaseClient
-                .from("feature_flags")
-                .select(
-                    "feature_key, enabled, release_at"
-                )
-                .in(
-                    "feature_key",
-                    keys
-                );
+            } =
+                await supabaseClient
+                    .from("feature_flags")
+                    .select(
+                        "feature_key, enabled, release_at"
+                    )
+                    .in(
+                        "feature_key",
+                        keys
+                    );
 
             if (error) {
 
@@ -61,9 +61,7 @@
                 return false;
             }
 
-
             featureCache = {};
-
 
             (data || []).forEach(
                 function (feature) {
@@ -88,6 +86,7 @@
                             ) &&
                             releaseDate > new Date()
                         ) {
+
                             enabled = false;
                         }
                     }
@@ -98,7 +97,6 @@
                     ] = enabled;
                 }
             );
-
 
             return true;
 
@@ -129,69 +127,123 @@
 
 
     /* =====================================================
-       تنظيف الذاكرة
+       تنظيف الكاش
     ===================================================== */
 
     function clearMenuFeatureCache() {
-
         featureCache = {};
     }
 
 
     /* =====================================================
-       المحفوظات
+       تحميل saved.js عند الحاجة
     ===================================================== */
 
-    function openSaved() {
+    async function ensureSavedSystem() {
 
         if (
-            typeof window.showFloatingPanel !==
+            typeof window.openStudentSaved ===
             "function"
         ) {
-            return;
+            return true;
         }
 
-        window.showFloatingPanel(
-            "المحفوظات",
-            `
-            <div style="
-                text-align:center;
-                padding:30px 10px;
-            ">
 
-                <div style="
-                    width:70px;
-                    height:70px;
-                    margin:0 auto 15px;
-                    border-radius:20px;
-                    background:#eaf5ff;
-                    color:#0095f6;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:30px;
-                ">
-                    <i class="fa-regular fa-bookmark"></i>
-                </div>
+        if (
+            document.querySelector(
+                'script[data-student-saved="true"]'
+            )
+        ) {
 
-                <h3 style="
-                    margin:0 0 10px;
-                    color:#222;
-                ">
-                    المحفوظات
-                </h3>
+            return new Promise(
+                function (resolve) {
 
-                <p style="
-                    margin:0;
-                    color:#777;
-                    line-height:1.8;
-                ">
-                    ستظهر هنا المنشورات والدروس
-                    والمحتويات التي تحفظها لاحقًا.
-                </p>
+                    let attempts = 0;
 
-            </div>
-            `
+                    const timer =
+                        setInterval(
+                            function () {
+
+                                attempts++;
+
+                                if (
+                                    typeof window.openStudentSaved ===
+                                    "function"
+                                ) {
+
+                                    clearInterval(
+                                        timer
+                                    );
+
+                                    resolve(true);
+
+                                    return;
+                                }
+
+
+                                if (
+                                    attempts >= 30
+                                ) {
+
+                                    clearInterval(
+                                        timer
+                                    );
+
+                                    resolve(false);
+                                }
+
+                            },
+                            100
+                        );
+                }
+            );
+        }
+
+
+        return new Promise(
+            function (resolve) {
+
+                const script =
+                    document.createElement(
+                        "script"
+                    );
+
+                script.src =
+                    "saved.js";
+
+                script.async =
+                    true;
+
+                script.dataset.studentSaved =
+                    "true";
+
+
+                script.onload =
+                    function () {
+
+                        resolve(
+                            typeof window.openStudentSaved ===
+                            "function"
+                        );
+                    };
+
+
+                script.onerror =
+                    function () {
+
+                        console.error(
+                            "تعذر تحميل saved.js"
+                        );
+
+                        resolve(false);
+                    };
+
+
+                document.body.appendChild(
+                    script
+                );
+
+            }
         );
     }
 
@@ -205,12 +257,14 @@
         const whatsappURL =
             "https://wa.me/message/TSDV5JBPE2KSP1";
 
+
         if (
             typeof window.showFloatingPanel !==
             "function"
         ) {
             return;
         }
+
 
         window.showFloatingPanel(
             "تواصل معنا",
@@ -305,6 +359,7 @@
             return;
         }
 
+
         window.showFloatingPanel(
             "حول Student",
             `
@@ -372,7 +427,7 @@
 
 
     /* =====================================================
-       إنشاء عناصر القائمة
+       بناء عناصر القائمة
     ===================================================== */
 
     function buildMenuItems() {
@@ -383,22 +438,27 @@
         /* الملف الشخصي */
 
         if (
-            isFeatureEnabled("profile")
+            isFeatureEnabled(
+                "profile"
+            )
         ) {
 
             items.push({
                 id: "menu-profile",
                 icon: "fa-regular fa-user",
                 text: "الملف الشخصي",
-                action: function () {
 
-                    if (
-                        typeof window.showProfilePanel ===
-                        "function"
-                    ) {
-                        window.showProfilePanel();
+                action:
+                    function () {
+
+                        if (
+                            typeof window.showProfilePanel ===
+                            "function"
+                        ) {
+
+                            window.showProfilePanel();
+                        }
                     }
-                }
             });
         }
 
@@ -406,22 +466,27 @@
         /* الإعدادات */
 
         if (
-            isFeatureEnabled("settings")
+            isFeatureEnabled(
+                "settings"
+            )
         ) {
 
             items.push({
                 id: "menu-settings",
                 icon: "fa-solid fa-gear",
                 text: "الإعدادات",
-                action: function () {
 
-                    if (
-                        typeof window.showSettingsPanel ===
-                        "function"
-                    ) {
-                        window.showSettingsPanel();
+                action:
+                    function () {
+
+                        if (
+                            typeof window.showSettingsPanel ===
+                            "function"
+                        ) {
+
+                            window.showSettingsPanel();
+                        }
                     }
-                }
             });
         }
 
@@ -438,15 +503,18 @@
                 id: "menu-notifications",
                 icon: "fa-regular fa-bell",
                 text: "الإشعارات",
-                action: function () {
 
-                    if (
-                        typeof window.openNotifications ===
-                        "function"
-                    ) {
-                        window.openNotifications();
+                action:
+                    function () {
+
+                        if (
+                            typeof window.openNotifications ===
+                            "function"
+                        ) {
+
+                            window.openNotifications();
+                        }
                     }
-                }
             });
         }
 
@@ -454,14 +522,33 @@
         /* المحفوظات */
 
         if (
-            isFeatureEnabled("saved")
+            isFeatureEnabled(
+                "saved"
+            )
         ) {
 
             items.push({
                 id: "menu-saved",
                 icon: "fa-regular fa-bookmark",
                 text: "المحفوظات",
-                action: openSaved
+
+                action:
+                    async function () {
+
+                        const ready =
+                            await ensureSavedSystem();
+
+                        if (!ready) {
+
+                            console.error(
+                                "Saved system is not available."
+                            );
+
+                            return;
+                        }
+
+                        window.openStudentSaved();
+                    }
             });
         }
 
@@ -469,7 +556,9 @@
         /* تواصل معنا */
 
         if (
-            isFeatureEnabled("contact_us")
+            isFeatureEnabled(
+                "contact_us"
+            )
         ) {
 
             items.push({
@@ -484,7 +573,9 @@
         /* حول Student */
 
         if (
-            isFeatureEnabled("about")
+            isFeatureEnabled(
+                "about"
+            )
         ) {
 
             items.push({
@@ -500,18 +591,26 @@
 
         items.push({
             id: "menu-logout",
-            icon: "fa-solid fa-right-from-bracket",
-            text: "تسجيل الخروج",
-            danger: true,
-            action: function () {
+            icon:
+                "fa-solid fa-right-from-bracket",
 
-                if (
-                    typeof window.logoutUser ===
-                    "function"
-                ) {
-                    window.logoutUser();
+            text:
+                "تسجيل الخروج",
+
+            danger:
+                true,
+
+            action:
+                function () {
+
+                    if (
+                        typeof window.logoutUser ===
+                        "function"
+                    ) {
+
+                        window.logoutUser();
+                    }
                 }
-            }
         });
 
 
@@ -533,29 +632,8 @@
         }
 
 
-        /* عرض سريع للقائمة */
-
-        const existing =
-            document.getElementById(
-                "floating-panel"
-            );
-
-        if (existing) {
-            existing.remove();
-        }
-
-
-        /*
-           نجلب جميع الصلاحيات بطلب واحد.
-        */
-
         await loadMenuFeatures();
 
-
-        /*
-           إذا كانت القائمة نفسها مغلقة
-           نخرج فورًا.
-        */
 
         if (
             !isFeatureEnabled("menu")
@@ -626,7 +704,8 @@
                         </button>
                     `;
                 }
-            ).join("");
+            )
+            .join("");
 
 
         window.showFloatingPanel(
@@ -651,13 +730,14 @@
                         `[data-student-menu-id="${item.id}"]`
                     );
 
+
                 if (button) {
 
                     button.addEventListener(
                         "click",
-                        function () {
+                        async function () {
 
-                            item.action();
+                            await item.action();
 
                         }
                     );
@@ -678,6 +758,7 @@
                 "menu-icon"
             );
 
+
         if (!menuIcon) {
             return;
         }
@@ -693,6 +774,7 @@
 
         menuIcon.dataset.studentMenuBound =
             "true";
+
 
         menuIcon.style.cursor =
             "pointer";
@@ -728,11 +810,12 @@
 
 
     /* =====================================================
-       دوال عامة
+       API عامة
     ===================================================== */
 
     window.openStudentMenu =
         openMenu;
+
 
     window.clearStudentMenuFeatureCache =
         clearMenuFeatureCache;
@@ -743,7 +826,8 @@
     ===================================================== */
 
     if (
-        document.readyState === "loading"
+        document.readyState ===
+        "loading"
     ) {
 
         document.addEventListener(
