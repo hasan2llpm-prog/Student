@@ -1,7 +1,10 @@
 /* =========================================================
    Student - Reels Social
-   ❤️ Likes
+   ❤️ Reel Likes
    💬 Comments
+   ❤️ Comment Likes
+   ✏️ Edit Comment
+   🗑️ Delete Comment
    ↗️ Share
 ========================================================= */
 
@@ -9,14 +12,16 @@
 
     "use strict";
 
-
     if (window.__studentReelsSocialLoaded) {
         return;
     }
 
-
     window.__studentReelsSocialLoaded = true;
 
+
+    /* =====================================================
+       Supabase
+    ===================================================== */
 
     function getSupabase() {
 
@@ -31,18 +36,7 @@
     }
 
 
-    function escapeHTML(value) {
-
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-
-    function getCurrentUserId() {
+    function getUserId() {
 
         try {
 
@@ -59,7 +53,62 @@
 
 
     /* =====================================================
-       إنشاء نافذة التعليقات الخاصة بنا
+       HTML
+    ===================================================== */
+
+    function escapeHTML(value) {
+
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+
+    /* =====================================================
+       Toast
+    ===================================================== */
+
+    function toast(message) {
+
+        const element =
+            document.createElement("div");
+
+        element.textContent =
+            message;
+
+        element.style.cssText = `
+            position:fixed;
+            left:50%;
+            bottom:30px;
+            transform:translateX(-50%);
+            z-index:100000200;
+            background:#222;
+            color:#fff;
+            padding:11px 16px;
+            border-radius:12px;
+            font-size:13px;
+            direction:rtl;
+            box-shadow:0 8px 30px rgba(0,0,0,.3);
+        `;
+
+        document.body.appendChild(
+            element
+        );
+
+        setTimeout(
+            function () {
+                element.remove();
+            },
+            2200
+        );
+    }
+
+
+    /* =====================================================
+       Comments UI
     ===================================================== */
 
     function createCommentsBox() {
@@ -69,21 +118,16 @@
                 "student-social-comments"
             );
 
-
         if (box) {
             return box;
         }
 
 
         box =
-            document.createElement(
-                "div"
-            );
-
+            document.createElement("div");
 
         box.id =
             "student-social-comments";
-
 
         box.style.cssText = `
             position:fixed;
@@ -102,7 +146,7 @@
             <div style="
                 width:100%;
                 max-width:620px;
-                height:min(78vh,650px);
+                height:min(80vh,680px);
                 background:#fff;
                 border-radius:24px 24px 0 0;
                 display:flex;
@@ -116,6 +160,7 @@
                     gap:10px;
                     padding:15px;
                     border-bottom:1px solid #eee;
+                    flex-shrink:0;
                 ">
 
                     <strong style="
@@ -162,6 +207,7 @@
                         gap:8px;
                         padding:10px;
                         border-top:1px solid #eee;
+                        flex-shrink:0;
                     "
                 >
 
@@ -230,7 +276,6 @@
                     event.target ===
                     box
                 ) {
-
                     closeComments();
                 }
 
@@ -259,9 +304,7 @@
                 "student-social-comments"
             );
 
-
         if (box) {
-
             box.style.display =
                 "none";
         }
@@ -269,7 +312,7 @@
 
 
     /* =====================================================
-       فتح التعليقات
+       Open comments
     ===================================================== */
 
     async function openComments(
@@ -295,10 +338,7 @@
 
 
     /* =====================================================
-       تحميل التعليقات
-       لا يعتمد على profiles
-       حتى لا تفشل النافذة إذا تعذر
-       تحميل معلومات المستخدم
+       Load comments
     ===================================================== */
 
     async function loadComments(
@@ -349,7 +389,8 @@
                         reel_id,
                         user_id,
                         content,
-                        created_at
+                        created_at,
+                        updated_at
                     `)
                     .eq(
                         "reel_id",
@@ -388,12 +429,7 @@
             }
 
 
-            /*
-               نحاول تحميل profiles بشكل منفصل.
-               لكن إذا فشل لن نفشل التعليق.
-            */
-
-            const ids =
+            const userIds =
                 Array.from(
                     new Set(
                         comments.map(
@@ -407,7 +443,7 @@
             let profiles = {};
 
 
-            if (ids.length) {
+            if (userIds.length) {
 
                 try {
 
@@ -427,7 +463,7 @@
                             `)
                             .in(
                                 "id",
-                                ids
+                                userIds
                             );
 
 
@@ -439,14 +475,101 @@
                                     profile.id
                                 ] =
                                     profile;
+
                             }
                         );
 
-                } catch (profileError) {
+                } catch (error) {
 
                     console.warn(
-                        "Profile loading skipped:",
-                        profileError
+                        "Profiles skipped:",
+                        error
+                    );
+                }
+            }
+
+
+            /*
+               تحميل إعجابات التعليقات
+               دفعة واحدة
+            */
+
+            const commentIds =
+                comments.map(
+                    item =>
+                        item.id
+                );
+
+
+            let commentLikeMap = {};
+            let myCommentLikeMap = {};
+
+
+            if (commentIds.length) {
+
+                try {
+
+                    const {
+                        data:
+                            likes
+                    } =
+                        await client
+                            .from(
+                                "reel_comment_likes"
+                            )
+                            .select(`
+                                comment_id,
+                                user_id
+                            `)
+                            .in(
+                                "comment_id",
+                                commentIds
+                            );
+
+
+                    (likes || [])
+                        .forEach(
+                            function(like) {
+
+                                if (
+                                    !commentLikeMap[
+                                        like.comment_id
+                                    ]
+                                ) {
+
+                                    commentLikeMap[
+                                        like.comment_id
+                                    ] = 0;
+                                }
+
+
+                                commentLikeMap[
+                                    like.comment_id
+                                ]++;
+
+
+                                if (
+                                    String(
+                                        like.user_id
+                                    ) ===
+                                    String(
+                                        getUserId()
+                                    )
+                                ) {
+
+                                    myCommentLikeMap[
+                                        like.comment_id
+                                    ] = true;
+                                }
+
+                            }
+                        );
+
+                } catch (error) {
+
+                    console.warn(
+                        "Comment likes skipped:",
+                        error
                     );
                 }
             }
@@ -468,6 +591,27 @@
                             "مستخدم";
 
 
+                        const isMine =
+                            String(
+                                comment.user_id
+                            ) ===
+                            String(
+                                getUserId()
+                            );
+
+
+                        const liked =
+                            !!myCommentLikeMap[
+                                comment.id
+                            ];
+
+
+                        const likeCount =
+                            commentLikeMap[
+                                comment.id
+                            ] || 0;
+
+
                         const avatar =
                             profile.avatar_url
                                 ? `
@@ -475,21 +619,20 @@
                                         src="${escapeHTML(
                                             profile.avatar_url
                                         )}"
+                                        alt=""
                                         style="
-                                            width:38px;
-                                            height:38px;
+                                            width:40px;
+                                            height:40px;
                                             border-radius:50%;
                                             object-fit:cover;
-                                            background:#eee;
                                             flex-shrink:0;
                                         "
-                                        alt=""
                                     >
                                   `
                                 : `
                                     <div style="
-                                        width:38px;
-                                        height:38px;
+                                        width:40px;
+                                        height:40px;
                                         border-radius:50%;
                                         background:#eaf5ff;
                                         color:#0095f6;
@@ -506,26 +649,18 @@
                                   `;
 
 
-                        const myComment =
-                            String(
-                                comment.user_id
-                            ) ===
-                            String(
-                                getCurrentUserId()
-                            );
-
-
                         return `
 
                             <div
-                                data-social-comment-id="${escapeHTML(
-                                    comment.id
-                                )}"
                                 style="
                                     display:flex;
                                     gap:10px;
-                                    padding:10px 3px;
+                                    padding:11px 3px;
                                 "
+                                data-social-comment
+                                data-comment-id="${escapeHTML(
+                                    comment.id
+                                )}"
                             >
 
                                 ${avatar}
@@ -537,27 +672,112 @@
                                 ">
 
                                     <div style="
-                                        font-size:13px;
-                                        font-weight:800;
-                                        color:#222;
+                                        display:flex;
+                                        align-items:center;
+                                        gap:7px;
                                     ">
-                                        @${escapeHTML(
-                                            name
+
+                                        <strong
+                                            style="
+                                                font-size:13px;
+                                            "
+                                        >
+                                            @${escapeHTML(
+                                                name
+                                            )}
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div
+                                        data-comment-text
+                                        style="
+                                            margin-top:4px;
+                                            color:#444;
+                                            font-size:13px;
+                                            line-height:1.7;
+                                            white-space:pre-wrap;
+                                            word-break:break-word;
+                                        "
+                                    >
+                                        ${escapeHTML(
+                                            comment.content
                                         )}
                                     </div>
 
 
                                     <div style="
-                                        margin-top:4px;
-                                        font-size:13px;
-                                        color:#444;
-                                        line-height:1.7;
-                                        white-space:pre-wrap;
-                                        word-break:break-word;
+                                        display:flex;
+                                        align-items:center;
+                                        gap:12px;
+                                        margin-top:6px;
                                     ">
-                                        ${escapeHTML(
-                                            comment.content
-                                        )}
+
+                                        <button
+                                            type="button"
+                                            data-comment-like
+                                            style="
+                                                border:0;
+                                                background:transparent;
+                                                padding:0;
+                                                cursor:pointer;
+                                                color:${liked ? "#ff3040" : "#777"};
+                                            "
+                                        >
+
+                                            <i class="
+                                                ${
+                                                    liked
+                                                        ? "fa-solid"
+                                                        : "fa-regular"
+                                                }
+                                                fa-heart
+                                            "></i>
+
+                                            <span
+                                                data-comment-like-count
+                                            >
+                                                ${likeCount}
+                                            </span>
+
+                                        </button>
+
+
+                                        ${
+                                            isMine
+                                                ? `
+                                                    <button
+                                                        type="button"
+                                                        data-comment-edit
+                                                        style="
+                                                            border:0;
+                                                            background:transparent;
+                                                            color:#777;
+                                                            cursor:pointer;
+                                                            padding:0;
+                                                        "
+                                                    >
+                                                        تعديل
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        data-comment-delete
+                                                        style="
+                                                            border:0;
+                                                            background:transparent;
+                                                            color:#d93025;
+                                                            cursor:pointer;
+                                                            padding:0;
+                                                        "
+                                                    >
+                                                        حذف
+                                                    </button>
+                                                  `
+                                                : ""
+                                        }
+
                                     </div>
 
 
@@ -573,30 +793,6 @@
 
                                 </div>
 
-
-                                ${
-                                    myComment
-                                        ? `
-                                            <button
-                                                type="button"
-                                                data-delete-social-comment="${escapeHTML(
-                                                    comment.id
-                                                )}"
-                                                style="
-                                                    border:0;
-                                                    background:transparent;
-                                                    color:#d93025;
-                                                    cursor:pointer;
-                                                    font-size:11px;
-                                                    align-self:center;
-                                                "
-                                            >
-                                                حذف
-                                            </button>
-                                          `
-                                        : ""
-                                }
-
                             </div>
                         `;
 
@@ -605,34 +801,15 @@
                 .join("");
 
 
-            list
-                .querySelectorAll(
-                    "[data-delete-social-comment]"
-                )
-                .forEach(
-                    function(button) {
-
-                        button.addEventListener(
-                            "click",
-                            function() {
-
-                                deleteComment(
-                                    this.dataset
-                                        .deleteSocialComment,
-                                    reelId
-                                );
-
-                            }
-                        );
-
-                    }
-                );
+            bindCommentActions(
+                reelId
+            );
 
 
         } catch (error) {
 
             console.error(
-                "Social comments error:",
+                "Load comments error:",
                 error
             );
 
@@ -642,7 +819,6 @@
                     padding:40px 15px;
                     text-align:center;
                     color:#d93025;
-                    line-height:1.8;
                 ">
                     تعذر تحميل التعليقات.
                     <br>
@@ -658,7 +834,537 @@
 
 
     /* =====================================================
-       إضافة تعليق
+       Comment actions
+    ===================================================== */
+
+    function bindCommentActions(
+        reelId
+    ) {
+
+        const list =
+            document.getElementById(
+                "student-social-comments-list"
+            );
+
+
+        if (!list) {
+            return;
+        }
+
+
+        list
+            .querySelectorAll(
+                "[data-comment-like]"
+            )
+            .forEach(
+                function(button) {
+
+                    button.addEventListener(
+                        "click",
+                        function() {
+
+                            const comment =
+                                button.closest(
+                                    "[data-social-comment]"
+                                );
+
+
+                            const id =
+                                comment?.dataset.commentId;
+
+
+                            toggleCommentLike(
+                                id,
+                                button
+                            );
+
+                        }
+                    );
+                }
+            );
+
+
+        list
+            .querySelectorAll(
+                "[data-comment-edit]"
+            )
+            .forEach(
+                function(button) {
+
+                    button.addEventListener(
+                        "click",
+                        function() {
+
+                            const comment =
+                                button.closest(
+                                    "[data-social-comment]"
+                                );
+
+
+                            editComment(
+                                comment
+                            );
+
+                        }
+                    );
+                }
+            );
+
+
+        list
+            .querySelectorAll(
+                "[data-comment-delete]"
+            )
+            .forEach(
+                function(button) {
+
+                    button.addEventListener(
+                        "click",
+                        function() {
+
+                            const comment =
+                                button.closest(
+                                    "[data-social-comment]"
+                                );
+
+
+                            deleteComment(
+                                comment?.dataset.commentId,
+                                reelId
+                            );
+
+                        }
+                    );
+                }
+            );
+    }
+
+
+    /* =====================================================
+       Comment like
+    ===================================================== */
+
+    async function toggleCommentLike(
+        commentId,
+        button
+    ) {
+
+        const client =
+            getSupabase();
+
+
+        const userId =
+            getUserId();
+
+
+        if (
+            !client ||
+            !userId ||
+            !commentId
+        ) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                data:existing
+            } =
+                await client
+                    .from(
+                        "reel_comment_likes"
+                    )
+                    .select(
+                        "comment_id"
+                    )
+                    .eq(
+                        "comment_id",
+                        commentId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    )
+                    .maybeSingle();
+
+
+            if (existing) {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from(
+                            "reel_comment_likes"
+                        )
+                        .delete()
+                        .eq(
+                            "comment_id",
+                            commentId
+                        )
+                        .eq(
+                            "user_id",
+                            userId
+                        );
+
+
+                if (error) {
+                    throw error;
+                }
+
+            } else {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from(
+                            "reel_comment_likes"
+                        )
+                        .insert({
+
+                            comment_id:
+                                commentId,
+
+                            user_id:
+                                userId
+
+                        });
+
+
+                if (error) {
+                    throw error;
+                }
+            }
+
+
+            const {
+                count
+            } =
+                await client
+                    .from(
+                        "reel_comment_likes"
+                    )
+                    .select(
+                        "comment_id",
+                        {
+                            count:
+                                "exact",
+                            head:
+                                true
+                        }
+                    )
+                    .eq(
+                        "comment_id",
+                        commentId
+                    );
+
+
+            const icon =
+                button.querySelector(
+                    "i"
+                );
+
+
+            const countElement =
+                button.querySelector(
+                    "[data-comment-like-count]"
+                );
+
+
+            const {
+                data:nowLiked
+            } =
+                await client
+                    .from(
+                        "reel_comment_likes"
+                    )
+                    .select(
+                        "comment_id"
+                    )
+                    .eq(
+                        "comment_id",
+                        commentId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    )
+                    .maybeSingle();
+
+
+            const liked =
+                !!nowLiked;
+
+
+            if (icon) {
+
+                icon.classList.toggle(
+                    "fa-solid",
+                    liked
+                );
+
+                icon.classList.toggle(
+                    "fa-regular",
+                    !liked
+                );
+            }
+
+
+            button.style.color =
+                liked
+                    ? "#ff3040"
+                    : "#777";
+
+
+            if (countElement) {
+
+                countElement.textContent =
+                    count || 0;
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Comment like error:",
+                error
+            );
+
+
+            toast(
+                "تعذر تحديث إعجاب التعليق."
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Edit comment
+    ===================================================== */
+
+    function editComment(
+        commentElement
+    ) {
+
+        if (!commentElement) {
+            return;
+        }
+
+
+        const textElement =
+            commentElement.querySelector(
+                "[data-comment-text]"
+            );
+
+
+        const oldText =
+            textElement?.textContent.trim() ||
+            "";
+
+
+        const newText =
+            prompt(
+                "تعديل التعليق:",
+                oldText
+            );
+
+
+        if (
+            newText ===
+            null
+        ) {
+            return;
+        }
+
+
+        const content =
+            newText.trim();
+
+
+        if (!content) {
+            return;
+        }
+
+
+        updateComment(
+            commentElement.dataset.commentId,
+            content
+        );
+    }
+
+
+    async function updateComment(
+        commentId,
+        content
+    ) {
+
+        const client =
+            getSupabase();
+
+
+        const userId =
+            getUserId();
+
+
+        if (
+            !client ||
+            !userId
+        ) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from(
+                        "reel_comments"
+                    )
+                    .update({
+
+                        content:
+                            content,
+
+                        updated_at:
+                            new Date().toISOString()
+
+                    })
+                    .eq(
+                        "id",
+                        commentId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            const box =
+                document.getElementById(
+                    "student-social-comments"
+                );
+
+
+            const reelId =
+                box?.dataset.reelId;
+
+
+            await loadComments(
+                reelId
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Edit comment error:",
+                error
+            );
+
+
+            toast(
+                "تعذر تعديل التعليق."
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Delete comment
+    ===================================================== */
+
+    async function deleteComment(
+        commentId,
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+
+        const userId =
+            getUserId();
+
+
+        if (
+            !client ||
+            !userId
+        ) {
+            return;
+        }
+
+
+        if (
+            !confirm(
+                "هل تريد حذف التعليق؟"
+            )
+        ) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from(
+                        "reel_comments"
+                    )
+                    .delete()
+                    .eq(
+                        "id",
+                        commentId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            await loadComments(
+                reelId
+            );
+
+
+            await updateReelCommentCount(
+                reelId
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "Delete comment error:",
+                error
+            );
+
+
+            toast(
+                "تعذر حذف التعليق."
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Add comment
     ===================================================== */
 
     async function submitComment(
@@ -672,18 +1378,16 @@
             getSupabase();
 
 
-        if (!client) {
-            return;
-        }
-
-
         const userId =
-            getCurrentUserId();
+            getUserId();
 
 
-        if (!userId) {
+        if (
+            !client ||
+            !userId
+        ) {
 
-            showToast(
+            toast(
                 "يجب تسجيل الدخول أولًا."
             );
 
@@ -738,6 +1442,7 @@
 
                         content:
                             content
+
                     });
 
 
@@ -746,7 +1451,8 @@
             }
 
 
-            input.value = "";
+            input.value =
+                "";
 
 
             await loadComments(
@@ -754,7 +1460,7 @@
             );
 
 
-            await updateCount(
+            await updateReelCommentCount(
                 reelId
             );
 
@@ -762,13 +1468,12 @@
         } catch (error) {
 
             console.error(
-                "Comment insert error:",
+                "Add comment error:",
                 error
             );
 
 
-            showToast(
-                error?.message ||
+            toast(
                 "تعذر نشر التعليق."
             );
         }
@@ -776,95 +1481,10 @@
 
 
     /* =====================================================
-       حذف التعليق
+       Update Reel comment count
     ===================================================== */
 
-    async function deleteComment(
-        commentId,
-        reelId
-    ) {
-
-        const client =
-            getSupabase();
-
-
-        const userId =
-            getCurrentUserId();
-
-
-        if (
-            !client ||
-            !userId
-        ) {
-            return;
-        }
-
-
-        if (
-            !confirm(
-                "هل تريد حذف التعليق؟"
-            )
-        ) {
-            return;
-        }
-
-
-        try {
-
-            const {
-                error
-            } =
-                await client
-                    .from(
-                        "reel_comments"
-                    )
-                    .delete()
-                    .eq(
-                        "id",
-                        commentId
-                    )
-                    .eq(
-                        "user_id",
-                        userId
-                    );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            await loadComments(
-                reelId
-            );
-
-
-            await updateCount(
-                reelId
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Delete comment error:",
-                error
-            );
-
-
-            showToast(
-                error?.message ||
-                "تعذر حذف التعليق."
-            );
-        }
-    }
-
-
-    /* =====================================================
-       تحديث العداد
-    ===================================================== */
-
-    async function updateCount(
+    async function updateReelCommentCount(
         reelId
     ) {
 
@@ -889,7 +1509,8 @@
                     {
                         count:
                             "exact",
-                        head:true
+                        head:
+                            true
                     }
                 )
                 .eq(
@@ -921,22 +1542,18 @@
 
 
     /* =====================================================
-       تنسيق التاريخ
+       Date
     ===================================================== */
 
     function formatDate(
         value
     ) {
 
-        if (!value) {
-            return "";
-        }
+        if (!value) return "";
 
 
         const date =
-            new Date(
-                value
-            );
+            new Date(value);
 
 
         if (
@@ -951,116 +1568,279 @@
         return date.toLocaleString(
             "ar-IQ",
             {
-                dateStyle:
-                    "medium",
-                timeStyle:
-                    "short"
+                dateStyle:"medium",
+                timeStyle:"short"
             }
         );
     }
 
 
     /* =====================================================
-       Toast
+       Reel Like - الآنية
+       نصلح الإعجاب بدون تكرار
     ===================================================== */
 
-    function showToast(
-        message
+    async function toggleReelLike(
+        reelId,
+        button
     ) {
 
-        const toast =
-            document.createElement(
-                "div"
+        const client =
+            getSupabase();
+
+
+        const userId =
+            getUserId();
+
+
+        if (
+            !client ||
+            !userId
+        ) {
+            toast(
+                "يجب تسجيل الدخول أولًا."
             );
 
-
-        toast.textContent =
-            message;
-
-
-        toast.style.cssText = `
-            position:fixed;
-            left:50%;
-            bottom:30px;
-            transform:translateX(-50%);
-            z-index:100000100;
-            background:#222;
-            color:#fff;
-            padding:11px 16px;
-            border-radius:12px;
-            font-size:13px;
-            direction:rtl;
-        `;
+            return;
+        }
 
 
-        document.body.appendChild(
-            toast
-        );
+        try {
+
+            const {
+                data:existing
+            } =
+                await client
+                    .from(
+                        "reel_likes"
+                    )
+                    .select(
+                        "reel_id"
+                    )
+                    .eq(
+                        "reel_id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    )
+                    .maybeSingle();
 
 
-        setTimeout(
-            function() {
-                toast.remove();
-            },
-            2200
-        );
-    }
+            if (existing) {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from(
+                            "reel_likes"
+                        )
+                        .delete()
+                        .eq(
+                            "reel_id",
+                            reelId
+                        )
+                        .eq(
+                            "user_id",
+                            userId
+                        );
 
 
-    /* =====================================================
-       اعتراض زر التعليقات القديم
-    ===================================================== */
+                if (error) {
+                    throw error;
+                }
 
-    document.addEventListener(
-        "click",
-        function(event) {
+            } else {
 
-            const button =
-                event.target.closest(
-                    "[data-comments]"
+                const {
+                    error
+                } =
+                    await client
+                        .from(
+                            "reel_likes"
+                        )
+                        .insert({
+
+                            reel_id:
+                                reelId,
+
+                            user_id:
+                                userId
+                        });
+
+
+                if (error) {
+                    throw error;
+                }
+            }
+
+
+            const {
+                count
+            } =
+                await client
+                    .from(
+                        "reel_likes"
+                    )
+                    .select(
+                        "reel_id",
+                        {
+                            count:
+                                "exact",
+                            head:
+                                true
+                        }
+                    )
+                    .eq(
+                        "reel_id",
+                        reelId
+                    );
+
+
+            const {
+                data:likedRow
+            } =
+                await client
+                    .from(
+                        "reel_likes"
+                    )
+                    .select(
+                        "reel_id"
+                    )
+                    .eq(
+                        "reel_id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        userId
+                    )
+                    .maybeSingle();
+
+
+            const liked =
+                !!likedRow;
+
+
+            const icon =
+                button.querySelector(
+                    "i"
                 );
 
 
-            if (!button) {
-                return;
-            }
-
-
-            const reel =
+            const slide =
                 button.closest(
                     ".student-reel"
                 );
 
 
-            const reelId =
-                reel?.dataset.id;
+            const counter =
+                slide?.querySelector(
+                    "[data-like-count]"
+                );
 
 
-            if (!reelId) {
-                return;
+            button.classList.toggle(
+                "active",
+                liked
+            );
+
+
+            if (icon) {
+
+                icon.classList.toggle(
+                    "fa-solid",
+                    liked
+                );
+
+                icon.classList.toggle(
+                    "fa-regular",
+                    !liked
+                );
             }
 
 
-            /*
-               نمنع reels.js القديم من
-               تشغيل نافذة التعليقات القديمة.
-            */
+            if (counter) {
 
-            event.preventDefault();
-            event.stopImmediatePropagation();
+                counter.textContent =
+                    count || 0;
+            }
 
 
-            openComments(
-                reelId
+        } catch (error) {
+
+            console.error(
+                "Reel like error:",
+                error
             );
 
-        },
-        true
-    );
+
+            toast(
+                "تعذر تحديث الإعجاب."
+            );
+        }
+    }
 
 
     /* =====================================================
-       API
+       Share
+    ===================================================== */
+
+    async function shareReel(
+        reelId
+    ) {
+
+        const url =
+            `${location.origin}${location.pathname}#reel=${reelId}`;
+
+
+        if (
+            navigator.share
+        ) {
+
+            try {
+
+                await navigator.share({
+
+                    title:
+                        "Student Reel",
+
+                    text:
+                        "شاهد هذا الـReel",
+
+                    url:
+                        url
+                });
+
+                return;
+
+            } catch (error) {}
+        }
+
+
+        try {
+
+            await navigator.clipboard.writeText(
+                url
+            );
+
+            toast(
+                "تم نسخ رابط الـReel."
+            );
+
+        } catch (error) {
+
+            toast(
+                "تعذر نسخ الرابط."
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Global API
     ===================================================== */
 
     window.StudentReelsSocial =
@@ -1074,6 +1854,126 @@
 
     window.StudentReelsSocial.closeComments =
         closeComments;
+
+
+    window.StudentReelsSocial.toggleReelLike =
+        toggleReelLike;
+
+
+    window.StudentReelsSocial.shareReel =
+        shareReel;
+
+
+    /* =====================================================
+       اعتراض أزرار Reels الموجودة
+    ===================================================== */
+
+    document.addEventListener(
+        "click",
+        function (event) {
+
+            const commentButton =
+                event.target.closest(
+                    "[data-comments]"
+                );
+
+
+            if (commentButton) {
+
+                const reel =
+                    commentButton.closest(
+                        ".student-reel"
+                    );
+
+
+                const reelId =
+                    reel?.dataset.id;
+
+
+                if (reelId) {
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+
+                    openComments(
+                        reelId
+                    );
+
+                    return;
+                }
+            }
+
+
+            const likeButton =
+                event.target.closest(
+                    "[data-like]"
+                );
+
+
+            if (likeButton) {
+
+                const reel =
+                    likeButton.closest(
+                        ".student-reel"
+                    );
+
+
+                const reelId =
+                    reel?.dataset.id;
+
+
+                if (reelId) {
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+
+                    toggleReelLike(
+                        reelId,
+                        likeButton
+                    );
+
+                    return;
+                }
+            }
+
+
+            const shareButton =
+                event.target.closest(
+                    "[data-share]"
+                );
+
+
+            if (shareButton) {
+
+                const reel =
+                    shareButton.closest(
+                        ".student-reel"
+                    );
+
+
+                const reelId =
+                    reel?.dataset.id;
+
+
+                if (reelId) {
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+
+                    shareReel(
+                        reelId
+                    );
+
+                    return;
+                }
+            }
+
+        },
+        true
+    );
 
 
 })();
