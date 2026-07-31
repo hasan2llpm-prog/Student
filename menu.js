@@ -5,7 +5,7 @@
    التصميم:
    - من اليسار
    - سريع
-   - رمادي متدرج
+   - أزرق داكن متدرج إلى الأبيض
    - الأقسام داخل نفس اللوحة قدر الإمكان
    - رجوع الهاتف للتنقل
    - لا رجوع تلقائي للصفحة الرئيسية
@@ -465,9 +465,10 @@
                 background:
                     linear-gradient(
                         180deg,
-                        #ececec 0%,
-                        #dddddd 48%,
-                        #cfcfcf 100%
+                        #063b73 0%,
+                        #0a5ca8 42%,
+                        #dfeeff 76%,
+                        #ffffff 100%
                     );
 
                 box-shadow:
@@ -520,13 +521,13 @@
                 background:
                     linear-gradient(
                         180deg,
-                        #d5d5d5,
-                        #c8c8c8
+                        #063b73,
+                        #0a5ca8
                     );
 
                 border-bottom:
                     1px solid
-                    rgba(0,0,0,.08);
+                    rgba(255,255,255,.18);
 
                 flex-shrink:0;
             }
@@ -566,7 +567,7 @@
             .student-menu-title {
                 flex:1;
 
-                color:#202020;
+                color:#fff;
 
                 font-size:19px;
 
@@ -610,17 +611,17 @@
                 width:100%;
 
                 border:1px solid
-                    rgba(0,0,0,.05);
+                    rgba(255,255,255,.35);
 
                 background:
                     rgba(
                         255,
                         255,
                         255,
-                        .48
+                        .72
                     );
 
-                color:#262626;
+                color:#222;
 
                 padding:15px;
 
@@ -645,7 +646,7 @@
 
                 box-shadow:
                     0 2px 7px
-                    rgba(0,0,0,.04);
+                    rgba(0,0,0,.05);
 
                 transition:
                     transform .10s ease,
@@ -662,7 +663,7 @@
                         255,
                         255,
                         255,
-                        .68
+                        .88
                     );
             }
 
@@ -672,7 +673,7 @@
 
                 text-align:center;
 
-                color:#444;
+                color:#07518e;
 
                 font-size:16px;
             }
@@ -684,9 +685,9 @@
                 background:
                     rgba(
                         255,
-                        235,
-                        235,
-                        .60
+                        240,
+                        240,
+                        .82
                     );
             }
 
@@ -729,7 +730,7 @@
                         )
                     );
 
-                color:#666;
+                color:#555;
 
                 text-align:center;
 
@@ -737,24 +738,19 @@
 
                 border-top:
                     1px solid
-                    rgba(0,0,0,.08);
+                    rgba(255,255,255,.35);
 
                 background:
                     rgba(
                         255,
                         255,
                         255,
-                        .15
+                        .35
                     );
 
                 flex-shrink:0;
             }
 
-
-            /*
-               أي Floating Panel يتم إنشاؤه أثناء
-               وجود قائمة Student سيُخفى عن الشاشة.
-            */
 
             body.student-menu-inner-open
             > .floating-panel,
@@ -1138,9 +1134,7 @@
 
 
     /* =====================================================
-       الجسر فقط
-       تمت إضافته لـ settings.js
-       ولا يغير أي وظيفة أخرى
+       الجسر لـ settings.js
     ===================================================== */
 
     window.StudentMenuOpenView =
@@ -1398,7 +1392,6 @@
                     async function (event) {
 
                         event.preventDefault();
-
 
                         await item.action();
 
@@ -2374,6 +2367,7 @@
 
     /* =====================================================
        ربط زر ☰
+       منع القائمة القديمة
     ===================================================== */
 
     function bindMenuButton() {
@@ -2390,7 +2384,7 @@
 
 
         if (
-            menuIcon.dataset.studentMenuBound ===
+            menuIcon.dataset.studentMenuCaptureBound ===
             "true"
         ) {
 
@@ -2398,7 +2392,7 @@
         }
 
 
-        menuIcon.dataset.studentMenuBound =
+        menuIcon.dataset.studentMenuCaptureBound =
             "true";
 
 
@@ -2411,12 +2405,13 @@
             function (event) {
 
                 event.preventDefault();
-                event.stopPropagation();
 
+                event.stopImmediatePropagation();
 
                 openMenu();
 
-            }
+            },
+            true
         );
     }
 
