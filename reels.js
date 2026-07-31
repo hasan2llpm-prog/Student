@@ -1,21 +1,22 @@
 /* =========================================================
-   Student - Reels System
-   تجربة Reels عمودية مثل TikTok
+   Student - Reels
+   Reels بجانب Stories + تصفح عمودي مثل TikTok
 ========================================================= */
 
 (function () {
+
     "use strict";
 
     if (window.__studentReelsLoaded) return;
+
     window.__studentReelsLoaded = true;
+
 
     let overlay = null;
     let reels = [];
     let profiles = {};
     let currentIndex = 0;
     let currentUserId = null;
-    let touchStartY = 0;
-    let touchEndY = 0;
     let loading = false;
 
 
@@ -24,25 +25,21 @@
     ===================================================== */
 
     function getSupabase() {
-        if (
-            typeof supabaseClient !== "undefined" &&
-            supabaseClient
-        ) {
-            return supabaseClient;
-        }
 
-        return null;
+        return (
+            typeof supabaseClient !== "undefined"
+                ? supabaseClient
+                : null
+        );
     }
 
 
-    async function waitForSupabase(maxAttempts = 50) {
+    async function waitForSupabase() {
 
-        for (let i = 0; i < maxAttempts; i++) {
+        for (let i = 0; i < 50; i++) {
 
-            const client = getSupabase();
-
-            if (client) {
-                return client;
+            if (getSupabase()) {
+                return getSupabase();
             }
 
             await new Promise(function (resolve) {
@@ -55,7 +52,7 @@
 
 
     /* =====================================================
-       حماية HTML
+       حماية النص
     ===================================================== */
 
     function escapeHTML(value) {
@@ -70,34 +67,10 @@
 
 
     /* =====================================================
-       التاريخ
-    ===================================================== */
-
-    function formatDate(value) {
-
-        if (!value) return "";
-
-        const date = new Date(value);
-
-        if (isNaN(date.getTime())) {
-            return "";
-        }
-
-        return date.toLocaleString(
-            "ar-IQ",
-            {
-                dateStyle: "medium",
-                timeStyle: "short"
-            }
-        );
-    }
-
-
-    /* =====================================================
        CSS
     ===================================================== */
 
-    function injectStyles() {
+    function styles() {
 
         if (
             document.getElementById(
@@ -115,298 +88,239 @@
 
         style.textContent = `
 
-            #student-reels-overlay {
-                position:fixed;
-                inset:0;
-                z-index:9999999;
-                background:#000;
-                display:none;
-                direction:rtl;
-                overflow:hidden;
-            }
+        #student-reels-overlay {
+            position:fixed;
+            inset:0;
+            background:#000;
+            z-index:99999999;
+            display:none;
+            direction:rtl;
+        }
 
-            #student-reels-overlay.show {
-                display:block;
-            }
+        #student-reels-overlay.show {
+            display:block;
+        }
 
-            .student-reels-container {
-                width:100%;
-                height:100%;
-                overflow-y:auto;
-                scroll-snap-type:y mandatory;
-                overscroll-behavior-y:contain;
-                scrollbar-width:none;
-                background:#000;
-            }
+        .student-reels-scroll {
+            width:100%;
+            height:100%;
+            overflow-y:auto;
+            scroll-snap-type:y mandatory;
+            scrollbar-width:none;
+        }
 
-            .student-reels-container::-webkit-scrollbar {
-                display:none;
-            }
+        .student-reels-scroll::-webkit-scrollbar {
+            display:none;
+        }
 
-            .student-reel-slide {
-                position:relative;
-                width:100%;
-                height:100dvh;
-                min-height:100vh;
-                scroll-snap-align:start;
-                scroll-snap-stop:always;
-                background:#000;
-                overflow:hidden;
-            }
+        .student-reel {
+            position:relative;
+            width:100%;
+            height:100dvh;
+            min-height:100vh;
+            background:#000;
+            scroll-snap-align:start;
+            scroll-snap-stop:always;
+            overflow:hidden;
+        }
 
-            .student-reel-video {
-                position:absolute;
-                inset:0;
-                width:100%;
-                height:100%;
-                object-fit:cover;
-                background:#000;
-            }
+        .student-reel video {
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:block;
+            background:#000;
+        }
 
-            .student-reel-top {
-                position:absolute;
-                top:0;
-                right:0;
-                left:0;
-                padding:
-                    max(16px, env(safe-area-inset-top))
-                    15px
-                    15px;
-                display:flex;
-                align-items:center;
-                gap:10px;
-                z-index:5;
-                background:
-                    linear-gradient(
-                        to bottom,
-                        rgba(0,0,0,.55),
-                        transparent
-                    );
-            }
+        .student-reel-top {
+            position:absolute;
+            top:0;
+            left:0;
+            right:0;
+            z-index:5;
+            padding:15px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            background:
+                linear-gradient(
+                    to bottom,
+                    rgba(0,0,0,.6),
+                    transparent
+                );
+        }
 
-            .student-reel-title {
-                flex:1;
-                color:#fff;
-                font-size:17px;
-                font-weight:800;
-            }
+        .student-reel-title {
+            color:#fff;
+            font-size:18px;
+            font-weight:800;
+        }
 
-            .student-reel-close {
-                width:42px;
-                height:42px;
-                border:none;
-                border-radius:50%;
-                background:rgba(0,0,0,.45);
-                color:#fff;
-                cursor:pointer;
-                font-size:18px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-            }
+        .student-reel-publish {
+            border:none;
+            background:#0095f6;
+            color:#fff;
+            padding:9px 13px;
+            border-radius:12px;
+            font-weight:700;
+            cursor:pointer;
+            font-size:13px;
+            margin-right:auto;
+        }
 
-            .student-reel-owner {
-                position:absolute;
-                right:15px;
-                bottom:
-                    calc(
-                        22px +
-                        env(safe-area-inset-bottom)
-                    );
-                left:88px;
-                z-index:5;
-                color:#fff;
-                text-shadow:
-                    0 1px 4px rgba(0,0,0,.7);
-            }
+        .student-reel-close {
+            width:42px;
+            height:42px;
+            border:0;
+            border-radius:50%;
+            background:rgba(0,0,0,.5);
+            color:#fff;
+            font-size:20px;
+            cursor:pointer;
+        }
 
-            .student-reel-owner-name {
-                font-size:16px;
-                font-weight:800;
-                margin-bottom:5px;
-            }
+        .student-reel-user {
+            position:absolute;
+            right:15px;
+            bottom:25px;
+            left:85px;
+            z-index:5;
+            color:#fff;
+            text-shadow:0 1px 5px #000;
+        }
 
-            .student-reel-owner-username {
-                font-size:12px;
-                opacity:.92;
-                direction:ltr;
-                text-align:right;
-                margin-bottom:8px;
-            }
+        .student-reel-name {
+            font-size:16px;
+            font-weight:800;
+            margin-bottom:4px;
+        }
 
-            .student-reel-caption {
-                font-size:13px;
-                line-height:1.7;
-                max-width:90%;
-                white-space:pre-wrap;
-                word-break:break-word;
-            }
+        .student-reel-caption {
+            font-size:13px;
+            line-height:1.7;
+            margin-top:8px;
+            white-space:pre-wrap;
+        }
 
-            .student-reel-actions {
-                position:absolute;
-                left:10px;
-                bottom:
-                    calc(
-                        25px +
-                        env(safe-area-inset-bottom)
-                    );
-                z-index:6;
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                gap:13px;
-            }
+        .student-reel-actions {
+            position:absolute;
+            left:10px;
+            bottom:25px;
+            z-index:6;
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+        }
 
-            .student-reel-action {
-                width:48px;
-                height:48px;
-                border:none;
-                border-radius:50%;
-                background:rgba(0,0,0,.42);
-                color:#fff;
-                cursor:pointer;
-                font-size:20px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                box-shadow:
-                    0 5px 15px rgba(0,0,0,.18);
-            }
+        .student-reel-action {
+            width:48px;
+            height:48px;
+            border:0;
+            border-radius:50%;
+            background:rgba(0,0,0,.5);
+            color:#fff;
+            font-size:20px;
+            cursor:pointer;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
 
-            .student-reel-action.active {
-                color:#ff3040;
-            }
+        .student-reel-action.active {
+            color:#ff3040;
+        }
 
-            .student-reel-action.saved {
-                color:#ffd400;
-            }
+        .student-reel-action.saved {
+            color:#ffd400;
+        }
 
-            .student-reel-more-menu {
-                position:absolute;
-                left:70px;
-                bottom:22px;
-                z-index:10;
-                width:210px;
-                background:#fff;
-                border-radius:17px;
-                overflow:hidden;
-                box-shadow:
-                    0 15px 45px rgba(0,0,0,.35);
-                display:none;
-            }
+        .student-reel-menu {
+            position:absolute;
+            left:70px;
+            bottom:20px;
+            width:210px;
+            background:#fff;
+            border-radius:15px;
+            overflow:hidden;
+            display:none;
+            z-index:20;
+            box-shadow:
+                0 15px 40px
+                rgba(0,0,0,.35);
+        }
 
-            .student-reel-more-menu.show {
-                display:block;
-            }
+        .student-reel-menu.show {
+            display:block;
+        }
 
-            .student-reel-menu-button {
-                width:100%;
-                border:none;
-                background:#fff;
-                padding:14px;
-                text-align:right;
-                cursor:pointer;
-                font-size:14px;
-                color:#222;
-                border-bottom:1px solid #eee;
-            }
+        .student-reel-menu button {
+            width:100%;
+            border:0;
+            background:#fff;
+            padding:14px;
+            text-align:right;
+            cursor:pointer;
+            border-bottom:1px solid #eee;
+            font-size:14px;
+        }
 
-            .student-reel-menu-button:last-child {
-                border-bottom:none;
-            }
+        .student-reel-menu button:last-child {
+            border-bottom:0;
+        }
 
-            .student-reel-menu-button.danger {
-                color:#d93025;
-            }
+        .student-reel-menu .danger {
+            color:#d93025;
+        }
 
-            .student-reel-progress {
-                position:absolute;
-                right:15px;
-                left:15px;
-                bottom:8px;
-                height:3px;
-                background:rgba(255,255,255,.3);
-                border-radius:10px;
-                overflow:hidden;
-                z-index:7;
-            }
+        /* زر Reels بجانب Stories */
 
-            .student-reel-progress-inner {
-                height:100%;
-                width:0%;
-                background:#fff;
-                transition:width .2s linear;
-            }
+        #student-reels-entry {
+            flex:0 0 auto !important;
+            width:auto !important;
+            height:auto !important;
+            margin:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            cursor:pointer !important;
+            text-align:center !important;
+        }
 
-            .student-reels-loading {
-                position:absolute;
-                inset:0;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                color:#fff;
-                background:#000;
-                z-index:20;
-            }
+        #student-reels-entry .student-reels-entry-inner {
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:flex-start;
+        }
 
-            .student-reels-spinner {
-                width:38px;
-                height:38px;
-                border:3px solid #444;
-                border-top-color:#fff;
-                border-radius:50%;
-                animation:
-                    studentReelsSpin .7s linear infinite;
-            }
+        #student-reels-entry .student-reels-entry-circle {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            overflow:hidden;
+            background:
+                linear-gradient(
+                    135deg,
+                    #111,
+                    #444
+                );
+            color:#fff;
+            border:3px solid #fff;
+            box-sizing:border-box;
+            box-shadow:
+                0 2px 8px
+                rgba(0,0,0,.12);
+            font-size:22px;
+        }
 
-            @keyframes studentReelsSpin {
-                to {
-                    transform:rotate(360deg);
-                }
-            }
-
-            .student-reels-empty {
-                position:absolute;
-                inset:0;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                flex-direction:column;
-                gap:10px;
-                color:#fff;
-                background:#000;
-                text-align:center;
-                padding:25px;
-            }
-
-            .student-reels-empty-icon {
-                font-size:55px;
-            }
-
-            .student-reels-next-hint {
-                position:absolute;
-                top:50%;
-                left:50%;
-                transform:translate(-50%,-50%);
-                color:#fff;
-                font-size:12px;
-                opacity:.65;
-                pointer-events:none;
-                z-index:5;
-            }
-
-            @media (min-width:800px) {
-
-                .student-reel-slide {
-                    max-width:520px;
-                    margin:0 auto;
-                }
-
-                .student-reels-container {
-                    background:#080808;
-                }
-
-            }
+        #student-reels-entry .student-reels-entry-name {
+            margin-top:5px;
+            font-size:11px;
+            color:#333;
+            line-height:1.2;
+            white-space:nowrap;
+        }
 
         `;
 
@@ -415,7 +329,202 @@
 
 
     /* =====================================================
-       إنشاء Overlay
+       إضافة زر Reels بحجم Story نفسه
+    ===================================================== */
+
+    function addReelsEntry() {
+
+        const storiesContainer =
+            findStoriesContainer();
+
+        if (!storiesContainer) {
+            return false;
+        }
+
+        const old =
+            document.getElementById(
+                "student-reels-entry"
+            );
+
+        if (old) {
+
+            storiesContainer.appendChild(old);
+
+            return true;
+        }
+
+        const story =
+            storiesContainer.querySelector(
+                ".story"
+            );
+
+        if (!story) {
+            return false;
+        }
+
+        const rect =
+            story.getBoundingClientRect();
+
+        const entry =
+            document.createElement("button");
+
+        entry.id =
+            "student-reels-entry";
+
+        entry.type =
+            "button";
+
+        entry.innerHTML = `
+
+            <span class="
+                student-reels-entry-inner
+            ">
+
+                <span
+                    class="
+                        student-reels-entry-circle
+                    "
+                    style="
+                        width:${rect.width}px;
+                        height:${rect.width}px;
+                    "
+                >
+                    🎬
+                </span>
+
+                <span
+                    class="
+                        student-reels-entry-name
+                    "
+                >
+                    Reels
+                </span>
+
+            </span>
+        `;
+
+        entry.addEventListener(
+            "click",
+            function (event) {
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                openReels(0);
+            }
+        );
+
+        storiesContainer.appendChild(
+            entry
+        );
+
+        resizeEntry();
+
+        return true;
+    }
+
+
+    /* =====================================================
+       العثور على حاوية Stories
+    ===================================================== */
+
+    function findStoriesContainer() {
+
+        const story =
+            document.querySelector(
+                ".story"
+            );
+
+        if (!story) {
+            return null;
+        }
+
+        return story.parentElement || null;
+    }
+
+
+    /* =====================================================
+       ضبط حجم Reels مثل Story
+    ===================================================== */
+
+    function resizeEntry() {
+
+        const entry =
+            document.getElementById(
+                "student-reels-entry"
+            );
+
+        const story =
+            document.querySelector(
+                ".story"
+            );
+
+        if (
+            !entry ||
+            !story
+        ) {
+            return;
+        }
+
+        const circle =
+            entry.querySelector(
+                ".student-reels-entry-circle"
+            );
+
+        if (!circle) {
+            return;
+        }
+
+        const rect =
+            story.getBoundingClientRect();
+
+        circle.style.width =
+            `${rect.width}px`;
+
+        circle.style.height =
+            `${rect.width}px`;
+    }
+
+
+    /* =====================================================
+       مراقبة Stories حتى لا يختفي الزر
+    ===================================================== */
+
+    function protectReelsEntry() {
+
+        const observer =
+            new MutationObserver(
+                function () {
+
+                    setTimeout(
+                        function () {
+
+                            addReelsEntry();
+                            resizeEntry();
+
+                        },
+                        50
+                    );
+                }
+            );
+
+        observer.observe(
+            document.body,
+            {
+                childList:true,
+                subtree:true
+            }
+        );
+
+        window.addEventListener(
+            "resize",
+            resizeEntry
+        );
+    }
+
+
+    /* =====================================================
+       إنشاء شاشة Reels
     ===================================================== */
 
     function createOverlay() {
@@ -425,7 +534,9 @@
         }
 
         overlay =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         overlay.id =
             "student-reels-overlay";
@@ -433,55 +544,30 @@
         overlay.innerHTML = `
 
             <div
-                id="student-reels-container"
-                class="student-reels-container"
+                id="student-reels-scroll"
+                class="student-reels-scroll"
             ></div>
-
         `;
 
         document.body.appendChild(
             overlay
         );
-
-
-        overlay.addEventListener(
-            "touchstart",
-            handleTouchStart,
-            {
-                passive:true
-            }
-        );
-
-
-        overlay.addEventListener(
-            "touchend",
-            handleTouchEnd,
-            {
-                passive:true
-            }
-        );
-
-
-        overlay.addEventListener(
-            "keydown",
-            handleKeyboard
-        );
     }
 
 
     /* =====================================================
-       فتح
+       فتح Reels
     ===================================================== */
 
     async function openReels(
-        startIndex = 0
+        start = 0
     ) {
 
         if (loading) {
             return;
         }
 
-        injectStyles();
+        styles();
         createOverlay();
 
         overlay.classList.add(
@@ -491,7 +577,9 @@
         await loadReels();
 
         if (!reels.length) {
+
             showEmpty();
+
             return;
         }
 
@@ -499,7 +587,7 @@
             Math.max(
                 0,
                 Math.min(
-                    startIndex,
+                    start,
                     reels.length - 1
                 )
             );
@@ -530,19 +618,15 @@
             return;
         }
 
-        const videos =
-            overlay.querySelectorAll(
-                "video"
-            );
+        overlay
+            .querySelectorAll("video")
+            .forEach(
+                function(video) {
 
-        videos.forEach(
-            function (video) {
-
-                try {
                     video.pause();
-                } catch (error) {}
-            }
-        );
+
+                }
+            );
 
         overlay.classList.remove(
             "show"
@@ -564,38 +648,28 @@
         if (!client) {
 
             loading = false;
-
             reels = [];
 
             return;
         }
 
-
         try {
 
             const {
-                data: {
+                data:{
                     user
                 }
             } =
                 await client.auth.getUser();
 
-
             currentUserId =
                 user?.id || null;
 
-
-            /*
-               نعرض:
-               - المنشورات العامة
-               - منشورات المستخدم الخاصة
-               - منشورات المتابعين تحتاج نظام follows لاحقًا
-            */
-
-            const queries = [];
-
-            queries.push(
-                client
+            const {
+                data,
+                error
+            } =
+                await client
                     .from("reels")
                     .select(`
                         id,
@@ -604,8 +678,8 @@
                         caption,
                         thumbnail_url,
                         visibility,
-                        created_at,
-                        updated_at
+                        is_archived,
+                        created_at
                     `)
                     .eq(
                         "visibility",
@@ -621,14 +695,21 @@
                             ascending:false
                         }
                     )
-                    .limit(50)
-            );
+                    .limit(50);
 
+            if (error) {
+                throw error;
+            }
+
+            reels =
+                data || [];
 
             if (currentUserId) {
 
-                queries.push(
-                    client
+                const {
+                    data:mine
+                } =
+                    await client
                         .from("reels")
                         .select(`
                             id,
@@ -637,8 +718,8 @@
                             caption,
                             thumbnail_url,
                             visibility,
-                            created_at,
-                            updated_at
+                            is_archived,
+                            created_at
                         `)
                         .eq(
                             "user_id",
@@ -651,79 +732,33 @@
                         .eq(
                             "is_archived",
                             false
-                        )
-                        .order(
-                            "created_at",
-                            {
-                                ascending:false
+                        );
+
+                (mine || [])
+                    .forEach(
+                        function(item) {
+
+                            if (
+                                !reels.some(
+                                    function(r) {
+
+                                        return (
+                                            String(r.id) ===
+                                            String(item.id)
+                                        );
+                                    }
+                                )
+                            ) {
+
+                                reels.push(
+                                    item
+                                );
                             }
-                        )
-                        .limit(50)
-                );
+                        }
+                    );
             }
 
-
-            const results =
-                await Promise.all(
-                    queries
-                );
-
-
-            const all = [];
-
-
-            results.forEach(
-                function (result) {
-
-                    if (
-                        result?.error
-                    ) {
-
-                        console.error(
-                            "Reels query error:",
-                            result.error
-                        );
-
-                        return;
-                    }
-
-
-                    all.push(
-                        ...(result.data || [])
-                    );
-                }
-            );
-
-
-            const unique =
-                [];
-
-            const seen =
-                new Set();
-
-
-            all.forEach(
-                function (item) {
-
-                    if (
-                        !seen.has(
-                            item.id
-                        )
-                    ) {
-
-                        seen.add(
-                            item.id
-                        );
-
-                        unique.push(
-                            item
-                        );
-                    }
-                }
-            );
-
-
-            unique.sort(
+            reels.sort(
                 function(a,b) {
 
                     return (
@@ -737,20 +772,14 @@
                 }
             );
 
-
-            reels =
-                unique;
-
-
             await loadProfiles(
                 client
             );
 
-
         } catch (error) {
 
             console.error(
-                "Load reels error:",
+                "Reels error:",
                 error
             );
 
@@ -773,23 +802,20 @@
 
         profiles = {};
 
-
         const ids =
             Array.from(
                 new Set(
                     reels.map(
-                        function (reel) {
-                            return reel.user_id;
+                        function(item) {
+                            return item.user_id;
                         }
                     )
                 )
             );
 
-
         if (!ids.length) {
             return;
         }
-
 
         const {
             data,
@@ -808,139 +834,50 @@
                     ids
                 );
 
-
         if (error) {
-
-            console.error(
-                "Reels profiles error:",
-                error
-            );
-
             return;
         }
 
+        (data || [])
+            .forEach(
+                function(profile) {
 
-        (data || []).forEach(
-            function(profile) {
-
-                profiles[
-                    profile.id
-                ] = profile;
-            }
-        );
-    }
-
-
-    /* =====================================================
-       عرض فارغ
-    ===================================================== */
-
-    function showEmpty() {
-
-        const container =
-            document.getElementById(
-                "student-reels-container"
-            );
-
-        if (!container) {
-            return;
-        }
-
-
-        container.innerHTML = `
-
-            <div class="
-                student-reels-empty
-            ">
-
-                <div class="
-                    student-reels-empty-icon
-                ">
-                    🎬
-                </div>
-
-                <div style="
-                    font-size:18px;
-                    font-weight:800;
-                ">
-                    لا توجد Reels بعد
-                </div>
-
-                <div style="
-                    font-size:13px;
-                    color:#bbb;
-                ">
-                    كن أول من ينشر Reel في Student.
-                </div>
-
-
-                <button
-                    id="student-reels-empty-close"
-                    type="button"
-                    style="
-                        margin-top:15px;
-                        border:none;
-                        background:#fff;
-                        color:#222;
-                        padding:11px 18px;
-                        border-radius:12px;
-                        cursor:pointer;
-                    "
-                >
-                    إغلاق
-                </button>
-
-            </div>
-        `;
-
-
-        document
-            .getElementById(
-                "student-reels-empty-close"
-            )
-            ?.addEventListener(
-                "click",
-                closeReels
+                    profiles[
+                        profile.id
+                    ] =
+                        profile;
+                }
             );
     }
 
 
     /* =====================================================
-       بناء الشرائح
+       عرض Reels
     ===================================================== */
 
     function renderReels() {
 
         const container =
             document.getElementById(
-                "student-reels-container"
+                "student-reels-scroll"
             );
 
         if (!container) {
             return;
         }
 
-
         container.innerHTML =
             reels.map(
-                function(reel, index) {
+                function(reel,index) {
 
                     const profile =
                         profiles[
                             reel.user_id
                         ] || {};
 
-
-                    const name =
-                        profile.full_name ||
-                        profile.username ||
-                        "مستخدم";
-
-
                     const username =
                         profile.username ||
                         "username";
-
 
                     const owner =
                         String(
@@ -950,274 +887,361 @@
                             currentUserId
                         );
 
-
                     return `
 
-                        <section
-                            class="
-                                student-reel-slide
-                            "
-                            data-reel-index="${index}"
-                            data-reel-id="${escapeHTML(
-                                reel.id
+                    <section
+                        class="student-reel"
+                        data-index="${index}"
+                        data-id="${escapeHTML(
+                            reel.id
+                        )}"
+                    >
+
+                        <video
+                            src="${escapeHTML(
+                                reel.video_url
                             )}"
-                        >
+                            ${
+                                reel.thumbnail_url
+                                    ? `poster="${escapeHTML(
+                                        reel.thumbnail_url
+                                    )}"`
+                                    : ""
+                            }
+                            playsinline
+                            loop
+                            preload="metadata"
+                        ></video>
 
-                            <video
+
+                        <div class="
+                            student-reel-top
+                        ">
+
+                            <div class="
+                                student-reel-title
+                            ">
+                                🎬 Reels
+                            </div>
+
+
+                            <button
+                                type="button"
                                 class="
-                                    student-reel-video
+                                    student-reel-publish
                                 "
-                                src="${escapeHTML(
-                                    reel.video_url
-                                )}"
-                                ${
-                                    reel.thumbnail_url
-                                        ? `poster="${escapeHTML(
-                                            reel.thumbnail_url
-                                        )}"`
-                                        : ""
-                                }
-                                playsinline
-                                loop
-                                preload="metadata"
-                            ></video>
+                                data-reel-publish
+                            >
+                                🎬 نشر Reel
+                            </button>
 
 
-                            <div class="
-                                student-reel-top
-                            ">
+                            <button
+                                class="
+                                    student-reel-close
+                                "
+                                data-close
+                            >
+                                ×
+                            </button>
 
-                                <div class="
-                                    student-reel-title
-                                ">
-                                    🎬 Reels
-                                </div>
+                        </div>
 
 
-                                <button
-                                    class="
-                                        student-reel-close
-                                    "
-                                    type="button"
-                                    data-reel-close
-                                >
-                                    <i class="
-                                        fa-solid
-                                        fa-xmark
-                                    "></i>
-                                </button>
-
-                            </div>
-
+                        <div class="
+                            student-reel-user
+                        ">
 
                             <div class="
-                                student-reel-owner
+                                student-reel-name
                             ">
-
-                                <div class="
-                                    student-reel-owner-name
-                                ">
-                                    ${escapeHTML(
-                                        name
-                                    )}
-                                </div>
-
-
-                                <div class="
-                                    student-reel-owner-username
-                                ">
-                                    @${escapeHTML(
-                                        username
-                                    )}
-                                </div>
-
-
-                                ${
-                                    reel.caption
-                                        ? `
-                                            <div class="
-                                                student-reel-caption
-                                            ">
-                                                ${escapeHTML(
-                                                    reel.caption
-                                                )}
-                                            </div>
-                                          `
-                                        : ""
-                                }
-
-                            </div>
-
-
-                            <div class="
-                                student-reel-actions
-                            ">
-
-                                <button
-                                    class="
-                                        student-reel-action
-                                    "
-                                    type="button"
-                                    data-reel-like
-                                >
-                                    <i class="
-                                        fa-regular
-                                        fa-heart
-                                    "></i>
-                                </button>
-
-
-                                <button
-                                    class="
-                                        student-reel-action
-                                    "
-                                    type="button"
-                                    data-reel-comment
-                                >
-                                    <i class="
-                                        fa-regular
-                                        fa-comment
-                                    "></i>
-                                </button>
-
-
-                                <button
-                                    class="
-                                        student-reel-action
-                                    "
-                                    type="button"
-                                    data-reel-save
-                                >
-                                    <i class="
-                                        fa-regular
-                                        fa-bookmark
-                                    "></i>
-                                </button>
-
-
-                                <button
-                                    class="
-                                        student-reel-action
-                                    "
-                                    type="button"
-                                    data-reel-share
-                                >
-                                    <i class="
-                                        fa-solid
-                                        fa-share
-                                    "></i>
-                                </button>
-
-
-                                ${
-                                    owner
-                                        ? `
-                                            <button
-                                                class="
-                                                    student-reel-action
-                                                "
-                                                type="button"
-                                                data-reel-more
-                                            >
-                                                <i class="
-                                                    fa-solid
-                                                    fa-ellipsis
-                                                "></i>
-                                            </button>
-                                          `
-                                        : ""
-                                }
-
+                                @${escapeHTML(
+                                    username
+                                )}
                             </div>
 
 
                             ${
-                                owner
+                                reel.caption
                                     ? `
-                                        <div
-                                            class="
-                                                student-reel-more-menu
-                                            "
-                                            data-reel-menu
-                                        >
-
-                                            <button
-                                                class="
-                                                    student-reel-menu-button
-                                                "
-                                                type="button"
-                                                data-reel-edit
-                                            >
-                                                ✏️ تعديل
-                                            </button>
-
-                                            <button
-                                                class="
-                                                    student-reel-menu-button
-                                                "
-                                                type="button"
-                                                data-reel-visibility
-                                            >
-                                                🔒 الخصوصية
-                                            </button>
-
-                                            <button
-                                                class="
-                                                    student-reel-menu-button
-                                                "
-                                                type="button"
-                                                data-reel-archive
-                                            >
-                                                📦 أرشفة
-                                            </button>
-
-                                            <button
-                                                class="
-                                                    student-reel-menu-button
-                                                    danger
-                                                "
-                                                type="button"
-                                                data-reel-delete
-                                            >
-                                                🗑️ حذف
-                                            </button>
-
+                                        <div class="
+                                            student-reel-caption
+                                        ">
+                                            ${escapeHTML(
+                                                reel.caption
+                                            )}
                                         </div>
                                       `
                                     : ""
                             }
 
+                        </div>
 
-                            <div class="
-                                student-reel-progress
-                            ">
 
-                                <div class="
-                                    student-reel-progress-inner
-                                "></div>
+                        <div class="
+                            student-reel-actions
+                        ">
 
-                            </div>
+                            <button
+                                class="
+                                    student-reel-action
+                                "
+                                data-like
+                            >
+                                ❤️
+                            </button>
 
-                        </section>
+
+                            <button
+                                class="
+                                    student-reel-action
+                                "
+                                data-comment
+                            >
+                                💬
+                            </button>
+
+
+                            <button
+                                class="
+                                    student-reel-action
+                                "
+                                data-save
+                            >
+                                🔖
+                            </button>
+
+
+                            <button
+                                class="
+                                    student-reel-action
+                                "
+                                data-share
+                            >
+                                ↗️
+                            </button>
+
+
+                            ${
+                                owner
+                                    ? `
+                                        <button
+                                            class="
+                                                student-reel-action
+                                            "
+                                            data-more
+                                        >
+                                            ⋯
+                                        </button>
+                                      `
+                                    : ""
+                            }
+
+                        </div>
+
+
+                        ${
+                            owner
+                                ? `
+                                    <div
+                                        class="
+                                            student-reel-menu
+                                        "
+                                        data-menu
+                                    >
+
+                                        <button
+                                            data-edit
+                                        >
+                                            ✏️ تعديل
+                                        </button>
+
+                                        <button
+                                            data-visibility
+                                        >
+                                            🔒 الخصوصية
+                                        </button>
+
+                                        <button
+                                            data-archive
+                                        >
+                                            📦 أرشفة
+                                        </button>
+
+                                        <button
+                                            class="danger"
+                                            data-delete
+                                        >
+                                            🗑️ حذف
+                                        </button>
+
+                                    </div>
+                                  `
+                                : ""
+                        }
+
+                    </section>
                     `;
                 }
             )
             .join("");
 
+        bindButtons();
 
-        bindReelButtons();
+        const container2 =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        container2?.addEventListener(
+            "scroll",
+            handleScroll,
+            {
+                passive:true
+            }
+        );
     }
 
 
     /* =====================================================
-       ربط الأزرار
+       Scroll
     ===================================================== */
 
-    function bindReelButtons() {
+    let scrollTimer = null;
+
+
+    function handleScroll() {
+
+        clearTimeout(
+            scrollTimer
+        );
+
+        scrollTimer =
+            setTimeout(
+                function() {
+
+                    const container =
+                        document.getElementById(
+                            "student-reels-scroll"
+                        );
+
+                    if (!container) {
+                        return;
+                    }
+
+                    const index =
+                        Math.round(
+                            container.scrollTop /
+                            window.innerHeight
+                        );
+
+                    if (
+                        index !==
+                        currentIndex
+                    ) {
+
+                        currentIndex =
+                            index;
+
+                        playCurrent();
+                    }
+
+                },
+                120
+            );
+    }
+
+
+    function scrollToReel(
+        index,
+        smooth=true
+    ) {
 
         const container =
             document.getElementById(
-                "student-reels-container"
+                "student-reels-scroll"
+            );
+
+        if (!container) {
+            return;
+        }
+
+        container.scrollTo({
+
+            top:
+                index *
+                window.innerHeight,
+
+            behavior:
+                smooth
+                    ? "smooth"
+                    : "auto"
+        });
+
+        currentIndex =
+            index;
+
+        setTimeout(
+            playCurrent,
+            150
+        );
+    }
+
+
+    function playCurrent() {
+
+        if (!overlay) {
+            return;
+        }
+
+        overlay
+            .querySelectorAll("video")
+            .forEach(
+                function(video,index) {
+
+                    if (
+                        index ===
+                        currentIndex
+                    ) {
+
+                        video.muted =
+                            false;
+
+                        video.play()
+                            .catch(
+                                function() {
+
+                                    video.muted =
+                                        true;
+
+                                    video.play()
+                                        .catch(
+                                            function(){}
+                                        );
+                                }
+                            );
+
+                    } else {
+
+                        video.pause();
+
+                        video.currentTime =
+                            0;
+                    }
+                }
+            );
+    }
+
+
+    /* =====================================================
+       الأزرار
+    ===================================================== */
+
+    function bindButtons() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
             );
 
         if (!container) {
@@ -1225,144 +1249,133 @@
         }
 
 
+        /* نشر Reel */
+
         container
             .querySelectorAll(
-                "[data-reel-close]"
+                "[data-reel-publish]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
-                        closeReels
-                    );
-                }
-            );
-
-
-        container
-            .querySelectorAll(
-                "[data-reel-more]"
-            )
-            .forEach(
-                function(button) {
-
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         function(event) {
 
+                            event.preventDefault();
                             event.stopPropagation();
 
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
+                            closeReels();
 
-                            const menu =
-                                slide?.querySelector(
-                                    "[data-reel-menu]"
-                                );
+                            if (
+                                typeof window.openStudentPostCreator ===
+                                "function"
+                            ) {
 
-                            if (menu) {
+                                window.openStudentPostCreator();
 
-                                menu.classList.toggle(
-                                    "show"
+                            } else {
+
+                                toast(
+                                    "نظام النشر غير جاهز."
                                 );
                             }
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* إغلاق */
+
         container
             .querySelectorAll(
-                "[data-reel-like]"
+                "[data-close]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
+                        closeReels;
+                }
+            );
+
+
+        /* إعجاب */
+
+        container
+            .querySelectorAll(
+                "[data-like]"
+            )
+            .forEach(
+                function(button) {
+
+                    button.onclick =
                         function() {
 
                             button.classList.toggle(
                                 "active"
                             );
-
-                            toast(
-                                button.classList.contains(
-                                    "active"
-                                )
-                                    ? "❤️ تمت الإعجاب"
-                                    : "تم إلغاء الإعجاب"
-                            );
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* تعليق */
+
         container
             .querySelectorAll(
-                "[data-reel-comment]"
+                "[data-comment]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         function() {
 
                             toast(
-                                "التعليقات ستُفعّل مع نظام التفاعلات."
+                                "التعليقات ستُفعّل قريبًا."
                             );
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* حفظ */
+
         container
             .querySelectorAll(
-                "[data-reel-save]"
+                "[data-save]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         async function() {
 
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
-
-                            const id =
-                                slide?.dataset.reelId;
-
-
-                            const ready =
-                                await ensureSavedSystem();
-
-
-                            if (!ready) {
+                            if (
+                                typeof window.saveStudentItem !==
+                                "function"
+                            ) {
 
                                 toast(
-                                    "تعذر تحميل المحفوظات."
+                                    "المحفوظات غير جاهزة."
                                 );
 
                                 return;
                             }
 
+                            const slide =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                slide?.dataset.id;
 
                             const result =
                                 await window.saveStudentItem(
                                     "reel",
                                     id
                                 );
-
 
                             if (
                                 result?.success
@@ -1373,43 +1386,32 @@
                                 );
 
                                 toast(
-                                    result.alreadySaved
-                                        ? "الـReel محفوظ مسبقًا."
-                                        : "تم حفظ الـReel."
+                                    "تم الحفظ."
                                 );
 
                             } else {
 
                                 toast(
                                     result?.error ||
-                                    "تعذر حفظ الـReel."
+                                    "تعذر الحفظ."
                                 );
                             }
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* مشاركة */
+
         container
             .querySelectorAll(
-                "[data-reel-share]"
+                "[data-share]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         async function() {
-
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
-
-                            const id =
-                                slide?.dataset.reelId;
-
 
                             if (
                                 navigator.share
@@ -1423,1534 +1425,376 @@
                                             "Student Reels",
 
                                         text:
-                                            "شاهد هذا الـReel في Student",
+                                            "شاهد هذا الـReel",
 
                                         url:
-                                            window.location.origin +
-                                            window.location.pathname +
-                                            "#reel-" +
-                                            id
+                                            location.href
                                     });
 
-                                } catch (error) {
-
-                                    if (
-                                        error?.name !==
-                                        "AbortError"
-                                    ) {
-
-                                        toast(
-                                            "تعذر المشاركة."
-                                        );
-                                    }
-                                }
+                                } catch (error) {}
 
                             } else {
 
                                 toast(
-                                    "المشاركة ستتوفر قريبًا."
+                                    "المشاركة غير متاحة في هذا المتصفح."
                                 );
                             }
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* قائمة المالك */
+
         container
             .querySelectorAll(
-                "[data-reel-edit]"
+                "[data-more]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         function() {
 
                             const slide =
                                 button.closest(
-                                    ".student-reel-slide"
+                                    ".student-reel"
                                 );
 
-                            const id =
-                                slide?.dataset.reelId;
-
-
-                            const reel =
-                                reels.find(
-                                    function(item) {
-
-                                        return String(
-                                            item.id
-                                        ) ===
-                                        String(id);
-                                    }
+                            const menu =
+                                slide?.querySelector(
+                                    "[data-menu]"
                                 );
 
-
-                            if (reel) {
-
-                                showEditPanel(
-                                    reel
-                                );
-                            }
-                        }
-                    );
+                            menu?.classList.toggle(
+                                "show"
+                            );
+                        };
                 }
             );
 
 
+        /* حذف */
+
         container
             .querySelectorAll(
-                "[data-reel-visibility]"
+                "[data-delete]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
+                    button.onclick =
                         function() {
 
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
-
-                            const id =
-                                slide?.dataset.reelId;
-
-
-                            showVisibilityPanel(
-                                id
+                            deleteReel(
+                                button
+                                    .closest(
+                                        ".student-reel"
+                                    )
+                                    ?.dataset.id
                             );
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* أرشفة */
+
         container
             .querySelectorAll(
-                "[data-reel-archive]"
+                "[data-archive]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
-                        async function() {
+                    button.onclick =
+                        function() {
 
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
-
-                            const id =
-                                slide?.dataset.reelId;
-
-
-                            await archiveReel(
-                                id
+                            archiveReel(
+                                button
+                                    .closest(
+                                        ".student-reel"
+                                    )
+                                    ?.dataset.id
                             );
-                        }
-                    );
+                        };
                 }
             );
 
 
+        /* تعديل */
+
         container
             .querySelectorAll(
-                "[data-reel-delete]"
+                "[data-edit]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
-                        async function() {
+                    button.onclick =
+                        function() {
 
-                            const slide =
-                                button.closest(
-                                    ".student-reel-slide"
-                                );
-
-                            const id =
-                                slide?.dataset.reelId;
-
-
-                            await deleteReel(
-                                id
+                            toast(
+                                "التعديل سيُفعّل مع محرر الـReels."
                             );
-                        }
-                    );
-                }
-            );
-    }
-
-
-    /* =====================================================
-       التمرير
-    ===================================================== */
-
-    function scrollToReel(
-        index,
-        smooth = true
-    ) {
-
-        const container =
-            document.getElementById(
-                "student-reels-container"
-            );
-
-        if (!container) {
-            return;
-        }
-
-
-        const slide =
-            container.querySelector(
-                `[data-reel-index="${index}"]`
-            );
-
-
-        if (!slide) {
-            return;
-        }
-
-
-        slide.scrollIntoView({
-            behavior:
-                smooth
-                    ? "smooth"
-                    : "auto",
-            block:
-                "start"
-        });
-
-
-        currentIndex =
-            index;
-
-
-        playCurrentReel();
-    }
-
-
-    function nextReel() {
-
-        if (
-            currentIndex >=
-            reels.length - 1
-        ) {
-
-            toast(
-                "وصلت إلى آخر Reels."
-            );
-
-            return;
-        }
-
-
-        scrollToReel(
-            currentIndex + 1
-        );
-    }
-
-
-    function previousReel() {
-
-        if (
-            currentIndex <= 0
-        ) {
-
-            return;
-        }
-
-
-        scrollToReel(
-            currentIndex - 1
-        );
-    }
-
-
-    function handleTouchStart(
-        event
-    ) {
-
-        touchStartY =
-            event.changedTouches?.[0]
-                ?.screenY || 0;
-    }
-
-
-    function handleTouchEnd(
-        event
-    ) {
-
-        touchEndY =
-            event.changedTouches?.[0]
-                ?.screenY || 0;
-
-
-        const difference =
-            touchStartY -
-            touchEndY;
-
-
-        if (
-            Math.abs(difference)
-            < 55
-        ) {
-
-            return;
-        }
-
-
-        if (
-            difference > 0
-        ) {
-
-            nextReel();
-
-        } else {
-
-            previousReel();
-        }
-    }
-
-
-    /* =====================================================
-       لوحة المفاتيح
-    ===================================================== */
-
-    function handleKeyboard(
-        event
-    ) {
-
-        if (
-            !overlay ||
-            !overlay.classList.contains(
-                "show"
-            )
-        ) {
-            return;
-        }
-
-
-        if (
-            event.key ===
-            "Escape"
-        ) {
-
-            closeReels();
-
-        } else if (
-            event.key ===
-            "ArrowUp"
-        ) {
-
-            previousReel();
-
-        } else if (
-            event.key ===
-            "ArrowDown"
-        ) {
-
-            nextReel();
-        }
-    }
-
-
-    /* =====================================================
-       تشغيل الحالي وإيقاف البقية
-    ===================================================== */
-
-    function playCurrentReel() {
-
-        if (!overlay) {
-            return;
-        }
-
-
-        const slides =
-            overlay.querySelectorAll(
-                ".student-reel-slide"
-            );
-
-
-        slides.forEach(
-            function(slide, index) {
-
-                const video =
-                    slide.querySelector(
-                        "video"
-                    );
-
-
-                if (!video) {
-                    return;
-                }
-
-
-                if (
-                    index ===
-                    currentIndex
-                ) {
-
-                    video.muted =
-                        false;
-
-
-                    const playPromise =
-                        video.play();
-
-
-                    if (
-                        playPromise &&
-                        typeof playPromise.catch ===
-                            "function"
-                    ) {
-
-                        playPromise.catch(
-                            function() {
-
-                                /*
-                                   بعض المتصفحات تمنع
-                                   autoplay مع الصوت.
-                                */
-
-                                video.muted =
-                                    true;
-
-                                video.play()
-                                    .catch(
-                                        function() {}
-                                    );
-                            }
-                        );
-                    }
-
-
-                    observeVideoProgress(
-                        video,
-                        slide
-                    );
-
-                } else {
-
-                    video.pause();
-
-                    video.currentTime =
-                        0;
-                }
-            }
-        );
-    }
-
-
-    /* =====================================================
-       شريط التقدم
-    ===================================================== */
-
-    function observeVideoProgress(
-        video,
-        slide
-    ) {
-
-        const progress =
-            slide.querySelector(
-                ".student-reel-progress-inner"
-            );
-
-
-        if (!progress) {
-            return;
-        }
-
-
-        const update =
-            function() {
-
-                if (
-                    !video.duration ||
-                    !isFinite(
-                        video.duration
-                    )
-                ) {
-
-                    return;
-                }
-
-
-                const percent =
-                    (
-                        video.currentTime /
-                        video.duration
-                    ) * 100;
-
-
-                progress.style.width =
-                    `${percent}%`;
-            };
-
-
-        video.ontimeupdate =
-            update;
-    }
-
-
-    /* =====================================================
-       تعديل
-    ===================================================== */
-
-    function showEditPanel(
-        reel
-    ) {
-
-        closeMenus();
-
-
-        const old =
-            document.getElementById(
-                "student-reel-edit-overlay"
-            );
-
-
-        if (old) {
-            old.remove();
-        }
-
-
-        const panel =
-            document.createElement(
-                "div"
-            );
-
-
-        panel.id =
-            "student-reel-edit-overlay";
-
-
-        panel.style.position =
-            "fixed";
-
-        panel.style.inset =
-            "0";
-
-        panel.style.zIndex =
-            "10000001";
-
-        panel.style.background =
-            "rgba(0,0,0,.5)";
-
-        panel.style.display =
-            "flex";
-
-        panel.style.alignItems =
-            "center";
-
-        panel.style.justifyContent =
-            "center";
-
-        panel.style.padding =
-            "20px";
-
-        panel.style.direction =
-            "rtl";
-
-
-        panel.innerHTML = `
-
-            <div style="
-                width:100%;
-                max-width:440px;
-                background:#fff;
-                border-radius:20px;
-                padding:20px;
-                box-sizing:border-box;
-            ">
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    margin-bottom:15px;
-                ">
-
-                    <strong style="
-                        font-size:18px;
-                    ">
-                        تعديل الـReel
-                    </strong>
-
-
-                    <button
-                        type="button"
-                        id="reel-edit-close"
-                        style="
-                            width:40px;
-                            height:40px;
-                            border:none;
-                            border-radius:50%;
-                            background:#f1f3f5;
-                            cursor:pointer;
-                        "
-                    >
-                        ×
-                    </button>
-
-                </div>
-
-
-                <textarea
-                    id="reel-edit-caption"
-                    maxlength="2000"
-                    style="
-                        width:100%;
-                        min-height:120px;
-                        box-sizing:border-box;
-                        padding:13px;
-                        border:1px solid #ddd;
-                        border-radius:12px;
-                        resize:none;
-                        outline:none;
-                    "
-                >${escapeHTML(
-                    reel.caption || ""
-                )}</textarea>
-
-
-                <button
-                    id="reel-edit-save"
-                    type="button"
-                    style="
-                        margin-top:12px;
-                        width:100%;
-                        border:none;
-                        background:#0095f6;
-                        color:#fff;
-                        padding:13px;
-                        border-radius:12px;
-                        cursor:pointer;
-                        font-weight:700;
-                    "
-                >
-                    حفظ التعديل
-                </button>
-
-
-                <div
-                    id="reel-edit-message"
-                    style="
-                        text-align:center;
-                        margin-top:10px;
-                        min-height:20px;
-                        font-size:13px;
-                    "
-                ></div>
-
-            </div>
-        `;
-
-
-        document.body.appendChild(
-            panel
-        );
-
-
-        document
-            .getElementById(
-                "reel-edit-close"
-            )
-            ?.addEventListener(
-                "click",
-                function() {
-
-                    panel.remove();
+                        };
                 }
             );
 
 
-        document
-            .getElementById(
-                "reel-edit-save"
-            )
-            ?.addEventListener(
-                "click",
-                async function() {
+        /* الخصوصية */
 
-                    const caption =
-                        document
-                            .getElementById(
-                                "reel-edit-caption"
-                            )
-                            ?.value
-                            .trim();
-
-
-                    const button =
-                        document
-                            .getElementById(
-                                "reel-edit-save"
-                            );
-
-
-                    const message =
-                        document
-                            .getElementById(
-                                "reel-edit-message"
-                            );
-
-
-                    button.disabled =
-                        true;
-
-                    button.textContent =
-                        "جارٍ الحفظ...";
-
-
-                    try {
-
-                        const client =
-                            getSupabase();
-
-
-                        const {
-                            error
-                        } =
-                            await client
-                                .from("reels")
-                                .update({
-                                    caption:
-                                        caption ||
-                                        null
-                                })
-                                .eq(
-                                    "id",
-                                    reel.id
-                                )
-                                .eq(
-                                    "user_id",
-                                    currentUserId
-                                );
-
-
-                        if (error) {
-                            throw error;
-                        }
-
-
-                        message.style.color =
-                            "#16803c";
-
-                        message.textContent =
-                            "تم تعديل الـReel.";
-
-
-                        setTimeout(
-                            async function() {
-
-                                panel.remove();
-
-                                await loadReels();
-
-                                renderReels();
-
-                                scrollToReel(
-                                    currentIndex,
-                                    false
-                                );
-
-                            },
-                            600
-                        );
-
-
-                    } catch (error) {
-
-                        console.error(
-                            "Edit reel error:",
-                            error
-                        );
-
-
-                        message.style.color =
-                            "#d93025";
-
-                        message.textContent =
-                            error?.message ||
-                            "تعذر تعديل الـReel.";
-
-
-                    } finally {
-
-                        button.disabled =
-                            false;
-
-                        button.textContent =
-                            "حفظ التعديل";
-                    }
-                }
-            );
-    }
-
-
-    /* =====================================================
-       الخصوصية
-    ===================================================== */
-
-    function showVisibilityPanel(
-        reelId
-    ) {
-
-        closeMenus();
-
-
-        const panel =
-            document.createElement(
-                "div"
-            );
-
-
-        panel.id =
-            "student-reel-visibility-panel";
-
-
-        panel.style.position =
-            "fixed";
-
-        panel.style.inset =
-            "0";
-
-        panel.style.zIndex =
-            "10000001";
-
-        panel.style.background =
-            "rgba(0,0,0,.5)";
-
-        panel.style.display =
-            "flex";
-
-        panel.style.alignItems =
-            "center";
-
-        panel.style.justifyContent =
-            "center";
-
-        panel.style.padding =
-            "20px";
-
-        panel.style.direction =
-            "rtl";
-
-
-        panel.innerHTML = `
-
-            <div style="
-                width:100%;
-                max-width:400px;
-                background:#fff;
-                border-radius:20px;
-                padding:20px;
-            ">
-
-                <div style="
-                    font-size:19px;
-                    font-weight:800;
-                    margin-bottom:15px;
-                ">
-                    خصوصية الـReel
-                </div>
-
-
-                <button
-                    data-visibility="public"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:12px;
-                        text-align:right;
-                        cursor:pointer;
-                        margin-bottom:8px;
-                    "
-                >
-                    🌎 عام
-                </button>
-
-
-                <button
-                    data-visibility="followers"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:12px;
-                        text-align:right;
-                        cursor:pointer;
-                        margin-bottom:8px;
-                    "
-                >
-                    👥 المتابعون
-                </button>
-
-
-                <button
-                    data-visibility="private"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#f7f8fa;
-                        padding:15px;
-                        border-radius:12px;
-                        text-align:right;
-                        cursor:pointer;
-                        margin-bottom:8px;
-                    "
-                >
-                    🔒 أنا فقط
-                </button>
-
-
-                <button
-                    id="visibility-close"
-                    style="
-                        width:100%;
-                        border:none;
-                        background:#fff2f2;
-                        color:#d93025;
-                        padding:13px;
-                        border-radius:12px;
-                        cursor:pointer;
-                    "
-                >
-                    إلغاء
-                </button>
-
-
-                <div
-                    id="visibility-message"
-                    style="
-                        text-align:center;
-                        min-height:20px;
-                        margin-top:10px;
-                        font-size:13px;
-                    "
-                ></div>
-
-            </div>
-        `;
-
-
-        document.body.appendChild(
-            panel
-        );
-
-
-        panel
+        container
             .querySelectorAll(
                 "[data-visibility]"
             )
             .forEach(
                 function(button) {
 
-                    button.addEventListener(
-                        "click",
-                        async function() {
+                    button.onclick =
+                        function() {
 
-                            await updateVisibility(
-                                reelId,
-                                button.dataset.visibility,
-                                panel
+                            toast(
+                                "اختيار الخصوصية سيُفتح هنا."
                             );
-                        }
-                    );
-                }
-            );
-
-
-        panel
-            .querySelector(
-                "#visibility-close"
-            )
-            ?.addEventListener(
-                "click",
-                function() {
-
-                    panel.remove();
+                        };
                 }
             );
     }
 
 
-    async function updateVisibility(
-        reelId,
-        visibility,
-        panel
-    ) {
-
-        const client =
-            getSupabase();
-
-
-        const message =
-            panel.querySelector(
-                "#visibility-message"
-            );
-
-
-        try {
-
-            const {
-                error
-            } =
-                await client
-                    .from("reels")
-                    .update({
-                        visibility:
-                            visibility
-                    })
-                    .eq(
-                        "id",
-                        reelId
-                    )
-                    .eq(
-                        "user_id",
-                        currentUserId
-                    );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            message.style.color =
-                "#16803c";
-
-            message.textContent =
-                "تم حفظ الخصوصية.";
-
-
-            setTimeout(
-                async function() {
-
-                    panel.remove();
-
-                    await loadReels();
-
-                    renderReels();
-
-                    scrollToReel(
-                        currentIndex,
-                        false
-                    );
-
-                },
-                500
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Visibility error:",
-                error
-            );
-
-
-            message.style.color =
-                "#d93025";
-
-            message.textContent =
-                error?.message ||
-                "تعذر تغيير الخصوصية.";
-        }
-    }
-
-
     /* =====================================================
-       أرشفة
-    ===================================================== */
-
-    async function archiveReel(
-        reelId
-    ) {
-
-        closeMenus();
-
-
-        const confirmed =
-            window.confirm(
-                "هل تريد أرشفة هذا الـReel؟"
-            );
-
-
-        if (!confirmed) {
-            return;
-        }
-
-
-        const client =
-            getSupabase();
-
-
-        try {
-
-            const {
-                error
-            } =
-                await client
-                    .from("reels")
-                    .update({
-                        is_archived:
-                            true
-                    })
-                    .eq(
-                        "id",
-                        reelId
-                    )
-                    .eq(
-                        "user_id",
-                        currentUserId
-                    );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            toast(
-                "تمت أرشفة الـReel."
-            );
-
-
-            await loadReels();
-
-            renderReels();
-
-            if (reels.length) {
-
-                currentIndex =
-                    Math.min(
-                        currentIndex,
-                        reels.length - 1
-                    );
-
-                scrollToReel(
-                    currentIndex,
-                    false
-                );
-
-            } else {
-
-                showEmpty();
-            }
-
-
-        } catch (error) {
-
-            console.error(
-                "Archive reel error:",
-                error
-            );
-
-
-            toast(
-                error?.message ||
-                "تعذر أرشفة الـReel."
-            );
-        }
-    }
-
-
-    /* =====================================================
-       حذف
+       حذف Reel
     ===================================================== */
 
     async function deleteReel(
-        reelId
+        id
     ) {
 
-        closeMenus();
-
-
-        const confirmed =
-            window.confirm(
-                "هل أنت متأكد من حذف هذا الـReel نهائيًا؟"
-            );
-
-
-        if (!confirmed) {
+        if (
+            !confirm(
+                "هل تريد حذف هذا الـReel نهائيًا؟"
+            )
+        ) {
             return;
         }
-
 
         const client =
             getSupabase();
 
-
-        try {
-
-            const {
-                error
-            } =
-                await client
-                    .from("reels")
-                    .delete()
-                    .eq(
-                        "id",
-                        reelId
-                    )
-                    .eq(
-                        "user_id",
-                        currentUserId
-                    );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            toast(
-                "تم حذف الـReel."
-            );
-
-
-            await loadReels();
-
-
-            if (!reels.length) {
-
-                showEmpty();
-
-                return;
-            }
-
-
-            currentIndex =
-                Math.min(
-                    currentIndex,
-                    reels.length - 1
-                );
-
-
-            renderReels();
-
-
-            setTimeout(
-                function() {
-
-                    scrollToReel(
-                        currentIndex,
-                        false
-                    );
-
-                },
-                30
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Delete reel error:",
-                error
-            );
-
-
-            toast(
-                error?.message ||
-                "تعذر حذف الـReel."
-            );
-        }
-    }
-
-
-    /* =====================================================
-       إغلاق القوائم
-    ===================================================== */
-
-    function closeMenus() {
-
-        if (!overlay) {
+        if (!client) {
             return;
         }
 
+        const {
+            error
+        } =
+            await client
+                .from("reels")
+                .delete()
+                .eq(
+                    "id",
+                    id
+                )
+                .eq(
+                    "user_id",
+                    currentUserId
+                );
 
-        overlay
-            .querySelectorAll(
-                ".student-reel-more-menu"
-            )
-            .forEach(
-                function(menu) {
+        if (error) {
 
-                    menu.classList.remove(
-                        "show"
-                    );
-                }
+            toast(
+                error.message ||
+                "تعذر حذف الـReel."
             );
+
+            return;
+        }
+
+        toast(
+            "تم حذف الـReel."
+        );
+
+        await openReels(
+            Math.max(
+                0,
+                currentIndex - 1
+            )
+        );
     }
 
 
     /* =====================================================
-       Toast
+       أرشفة Reel
+    ===================================================== */
+
+    async function archiveReel(
+        id
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client) {
+            return;
+        }
+
+        const {
+            error
+        } =
+            await client
+                .from("reels")
+                .update({
+                    is_archived:true
+                })
+                .eq(
+                    "id",
+                    id
+                )
+                .eq(
+                    "user_id",
+                    currentUserId
+                );
+
+        if (error) {
+
+            toast(
+                error.message ||
+                "تعذر الأرشفة."
+            );
+
+            return;
+        }
+
+        toast(
+            "تمت أرشفة الـReel."
+        );
+
+        await openReels(0);
+    }
+
+
+    /* =====================================================
+       شاشة فارغة
+    ===================================================== */
+
+    function showEmpty() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = `
+
+            <div style="
+                height:100%;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                color:#fff;
+                text-align:center;
+                gap:12px;
+            ">
+
+                <div style="
+                    font-size:55px;
+                ">
+                    🎬
+                </div>
+
+                <strong>
+                    لا توجد Reels بعد
+                </strong>
+
+                <span style="
+                    color:#aaa;
+                    font-size:13px;
+                ">
+                    كن أول من ينشر Reel.
+                </span>
+
+                <button
+                    onclick="closeStudentReels()"
+                    style="
+                        margin-top:10px;
+                        border:0;
+                        padding:11px 20px;
+                        border-radius:12px;
+                        cursor:pointer;
+                    "
+                >
+                    إغلاق
+                </button>
+
+            </div>
+        `;
+    }
+
+
+    /* =====================================================
+       رسالة
     ===================================================== */
 
     function toast(
         message
     ) {
 
-        const element =
+        const el =
             document.createElement(
                 "div"
             );
 
-
-        element.textContent =
+        el.textContent =
             message;
 
-
-        element.style.position =
+        el.style.position =
             "fixed";
 
-        element.style.left =
+        el.style.left =
             "50%";
 
-        element.style.bottom =
-            "35px";
+        el.style.bottom =
+            "30px";
 
-        element.style.transform =
+        el.style.transform =
             "translateX(-50%)";
 
-        element.style.zIndex =
-            "10000002";
+        el.style.zIndex =
+            "100000000";
 
-        element.style.background =
+        el.style.background =
             "#fff";
 
-        element.style.color =
+        el.style.color =
             "#222";
 
-        element.style.padding =
+        el.style.padding =
             "11px 16px";
 
-        element.style.borderRadius =
+        el.style.borderRadius =
             "12px";
 
-        element.style.fontSize =
+        el.style.fontSize =
             "13px";
 
-        element.style.direction =
+        el.style.direction =
             "rtl";
 
-        element.style.boxShadow =
-            "0 10px 35px rgba(0,0,0,.3)";
-
-
         document.body.appendChild(
-            element
+            el
         );
-
 
         setTimeout(
-            function() {
-
-                element.remove();
-
+            function () {
+                el.remove();
             },
-            2200
-        );
-    }
-
-
-    /* =====================================================
-       تحميل المحفوظات عند الحاجة
-    ===================================================== */
-
-    async function ensureSavedSystem() {
-
-        if (
-            typeof window.saveStudentItem ===
-            "function"
-        ) {
-
-            return true;
-        }
-
-
-        return new Promise(
-            function(resolve) {
-
-                const script =
-                    document.createElement(
-                        "script"
-                    );
-
-
-                script.src =
-                    "saved.js";
-
-
-                script.async =
-                    true;
-
-
-                script.dataset.studentSaved =
-                    "true";
-
-
-                script.onload =
-                    function() {
-
-                        resolve(
-                            typeof window.saveStudentItem ===
-                            "function"
-                        );
-                    };
-
-
-                script.onerror =
-                    function() {
-
-                        resolve(
-                            false
-                        );
-                    };
-
-
-                document.body.appendChild(
-                    script
-                );
-
-            }
-        );
-    }
-
-
-    /* =====================================================
-       إضافة Reels بجانب Stories
-    ===================================================== */
-
-    function createReelsEntry() {
-
-        if (
-            document.getElementById(
-                "student-reels-entry"
-            )
-        ) {
-            return;
-        }
-
-
-        const story =
-            document.querySelector(
-                ".story"
-            );
-
-
-        const storiesContainer =
-            story?.parentElement;
-
-
-        if (!storiesContainer) {
-            return;
-        }
-
-
-        const entry =
-            document.createElement(
-                "button"
-            );
-
-
-        entry.id =
-            "student-reels-entry";
-
-
-        entry.type =
-            "button";
-
-
-        entry.innerHTML = `
-
-            <span style="
-                width:58px;
-                height:58px;
-                border-radius:50%;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background:
-                    linear-gradient(
-                        135deg,
-                        #111,
-                        #444
-                    );
-                color:#fff;
-                border:3px solid #fff;
-                box-shadow:
-                    0 2px 8px
-                    rgba(0,0,0,.12);
-                font-size:22px;
-            ">
-                🎬
-            </span>
-
-            <span style="
-                display:block;
-                margin-top:5px;
-                font-size:11px;
-                color:#333;
-                white-space:nowrap;
-            ">
-                Reels
-            </span>
-        `;
-
-
-        entry.style.border =
-            "none";
-
-        entry.style.background =
-            "transparent";
-
-        entry.style.padding =
-            "0";
-
-        entry.style.cursor =
-            "pointer";
-
-        entry.style.textAlign =
-            "center";
-
-        entry.style.flex =
-            "0 0 auto";
-
-
-        entry.addEventListener(
-            "click",
-            function() {
-
-                openReels(
-                    0
-                );
-            }
-        );
-
-
-        /*
-           يوضع في البداية بجانب Stories
-        */
-
-        storiesContainer.insertBefore(
-            entry,
-            storiesContainer.firstChild
+            2000
         );
     }
 
@@ -2970,14 +1814,13 @@
        تشغيل
     ===================================================== */
 
-    function startReels() {
+    function start() {
 
-        injectStyles();
+        styles();
 
-        setTimeout(
-            createReelsEntry,
-            900
-        );
+        addReelsEntry();
+
+        protectReelsEntry();
     }
 
 
@@ -2988,12 +1831,12 @@
 
         document.addEventListener(
             "DOMContentLoaded",
-            startReels
+            start
         );
 
     } else {
 
-        startReels();
+        start();
     }
 
 })();
