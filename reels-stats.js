@@ -35,10 +35,10 @@
 
     async function loadUser() {
 
-        const client =
-            getSupabase();
+        const client = getSupabase();
 
         if (!client) {
+            statsUserId = null;
             return null;
         }
 
@@ -48,8 +48,7 @@
                 data: {
                     user
                 }
-            } =
-                await client.auth.getUser();
+            } = await client.auth.getUser();
 
             statsUserId =
                 user?.id || null;
@@ -114,18 +113,17 @@
             left:50%;
             bottom:30px;
             transform:translateX(-50%);
-            z-index:100001000;
-            background:#222;
+            z-index:100001500;
+            background:#111;
             color:#fff;
-            padding:11px 16px;
-            border-radius:12px;
+            padding:12px 18px;
+            border-radius:14px;
             font-size:13px;
             direction:rtl;
+            box-shadow:0 10px 35px rgba(0,0,0,.25);
         `;
 
-        document.body.appendChild(
-            element
-        );
+        document.body.appendChild(element);
 
         setTimeout(
             function () {
@@ -137,7 +135,254 @@
 
 
     /* =====================================================
-       نافذة الإحصائيات
+       CSS
+    ===================================================== */
+
+    function injectStyles() {
+
+        if (
+            document.getElementById(
+                "student-reels-stats-style"
+            )
+        ) {
+            return;
+        }
+
+        const style =
+            document.createElement("style");
+
+        style.id =
+            "student-reels-stats-style";
+
+        style.textContent = `
+
+            #student-reels-stats-dialog {
+                position:fixed;
+                inset:0;
+                z-index:100001400;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                padding:18px;
+                background:rgba(0,0,0,.58);
+                backdrop-filter:blur(6px);
+                direction:rtl;
+                box-sizing:border-box;
+            }
+
+            .student-stats-card {
+                width:100%;
+                max-width:470px;
+                max-height:92vh;
+                overflow:hidden;
+                background:#fff;
+                border-radius:28px;
+                box-shadow:
+                    0 25px 80px
+                    rgba(0,0,0,.30);
+                display:flex;
+                flex-direction:column;
+                animation:
+                    studentStatsIn
+                    .22s
+                    ease-out;
+            }
+
+            @keyframes studentStatsIn {
+
+                from {
+                    opacity:0;
+                    transform:
+                        translateY(15px)
+                        scale(.97);
+                }
+
+                to {
+                    opacity:1;
+                    transform:
+                        translateY(0)
+                        scale(1);
+                }
+            }
+
+            .student-stats-header {
+                padding:18px 18px 14px;
+                display:flex;
+                align-items:center;
+                gap:12px;
+                border-bottom:
+                    1px solid #f0f0f0;
+                flex-shrink:0;
+            }
+
+            .student-stats-header-title {
+                flex:1;
+            }
+
+            .student-stats-header-title strong {
+                display:block;
+                font-size:20px;
+                color:#111;
+                font-weight:800;
+            }
+
+            .student-stats-header-title span {
+                display:block;
+                margin-top:4px;
+                font-size:12px;
+                color:#999;
+            }
+
+            .student-stats-close {
+                width:40px;
+                height:40px;
+                border:0;
+                border-radius:50%;
+                background:#f3f4f6;
+                color:#222;
+                font-size:22px;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+            }
+
+            .student-stats-body {
+                padding:18px;
+                overflow-y:auto;
+            }
+
+            .student-stats-grid {
+                display:grid;
+                grid-template-columns:
+                    repeat(2, minmax(0, 1fr));
+                gap:12px;
+            }
+
+            .student-stat-item {
+                position:relative;
+                min-height:125px;
+                border-radius:20px;
+                padding:16px;
+                box-sizing:border-box;
+                background:#f8fafc;
+                border:1px solid #edf0f3;
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+            }
+
+            .student-stat-icon {
+                width:42px;
+                height:42px;
+                border-radius:14px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:19px;
+                background:#fff;
+                box-shadow:
+                    0 4px 14px
+                    rgba(0,0,0,.06);
+            }
+
+            .student-stat-title {
+                margin-top:12px;
+                color:#80868b;
+                font-size:12px;
+                font-weight:600;
+            }
+
+            .student-stat-number {
+                margin-top:3px;
+                color:#111;
+                font-size:27px;
+                line-height:1;
+                font-weight:900;
+            }
+
+            .student-stats-section {
+                margin-top:16px;
+                padding:16px;
+                border-radius:20px;
+                background:#f8fafc;
+                border:1px solid #edf0f3;
+            }
+
+            .student-stats-section-title {
+                font-size:14px;
+                font-weight:800;
+                color:#222;
+                margin-bottom:10px;
+            }
+
+            .student-stats-row {
+                min-height:44px;
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+                border-bottom:1px solid #e9edf1;
+            }
+
+            .student-stats-row:last-child {
+                border-bottom:0;
+            }
+
+            .student-stats-row-label {
+                color:#777;
+                font-size:13px;
+            }
+
+            .student-stats-row-value {
+                color:#222;
+                font-size:13px;
+                font-weight:800;
+                text-align:left;
+            }
+
+            .student-stats-footer {
+                padding:14px 18px 18px;
+                border-top:1px solid #f0f0f0;
+                flex-shrink:0;
+            }
+
+            .student-stats-close-button {
+                width:100%;
+                border:0;
+                padding:13px;
+                border-radius:14px;
+                background:#111;
+                color:#fff;
+                cursor:pointer;
+                font-size:14px;
+                font-weight:800;
+            }
+
+            @media (max-width:480px) {
+
+                #student-reels-stats-dialog {
+                    padding:0;
+                    align-items:flex-end;
+                }
+
+                .student-stats-card {
+                    max-width:none;
+                    max-height:90vh;
+                    border-radius:
+                        26px 26px 0 0;
+                }
+            }
+        `;
+
+        document.head.appendChild(
+            style
+        );
+    }
+
+
+    /* =====================================================
+       إغلاق
     ===================================================== */
 
     function closeStats() {
@@ -153,113 +398,8 @@
     }
 
 
-    function showStatsDialog(
-        title,
-        content
-    ) {
-
-        closeStats();
-
-        const dialog =
-            document.createElement("div");
-
-        dialog.id =
-            "student-reels-stats-dialog";
-
-        dialog.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:100000900;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.5);
-            direction:rtl;
-        `;
-
-        dialog.innerHTML = `
-
-            <div style="
-                width:100%;
-                max-width:440px;
-                max-height:90vh;
-                overflow:auto;
-                background:#fff;
-                border-radius:24px;
-                padding:20px;
-                box-sizing:border-box;
-                box-shadow:0 20px 70px rgba(0,0,0,.3);
-            ">
-
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin-bottom:18px;
-                ">
-
-                    <strong style="
-                        flex:1;
-                        font-size:20px;
-                    ">
-                        ${escapeHTML(title)}
-                    </strong>
-
-                    <button
-                        id="student-stats-close"
-                        type="button"
-                        style="
-                            width:40px;
-                            height:40px;
-                            border:0;
-                            border-radius:50%;
-                            background:#f1f3f5;
-                            font-size:20px;
-                            cursor:pointer;
-                        "
-                    >
-                        ×
-                    </button>
-
-                </div>
-
-                ${content}
-
-            </div>
-        `;
-
-        document.body.appendChild(
-            dialog
-        );
-
-        document
-            .getElementById(
-                "student-stats-close"
-            )
-            ?.addEventListener(
-                "click",
-                closeStats
-            );
-
-        dialog.addEventListener(
-            "click",
-            function (event) {
-
-                if (
-                    event.target ===
-                    dialog
-                ) {
-                    closeStats();
-                }
-
-            }
-        );
-    }
-
-
     /* =====================================================
-       جلب الإحصائيات
+       الإحصائيات
     ===================================================== */
 
     async function getStats(
@@ -397,7 +537,8 @@
                 savesResult.count || 0,
 
             createdAt:
-                reelResult.data?.created_at || null,
+                reelResult.data?.created_at ||
+                null,
 
             visibility:
                 reelResult.data?.visibility ||
@@ -407,7 +548,279 @@
 
 
     /* =====================================================
-       عرض الإحصائيات
+       بطاقة إحصائية
+    ===================================================== */
+
+    function statCard(
+        icon,
+        title,
+        value,
+        id
+    ) {
+
+        return `
+            <div
+                class="student-stat-item"
+            >
+
+                <div
+                    class="student-stat-icon"
+                >
+                    ${icon}
+                </div>
+
+                <div>
+
+                    <div
+                        class="student-stat-title"
+                    >
+                        ${escapeHTML(title)}
+                    </div>
+
+                    <div
+                        id="${escapeHTML(id)}"
+                        class="student-stat-number"
+                    >
+                        ${escapeHTML(value)}
+                    </div>
+
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* =====================================================
+       عرض النافذة
+    ===================================================== */
+
+    function renderStatsDialog() {
+
+        const dialog =
+            document.createElement("div");
+
+        dialog.id =
+            "student-reels-stats-dialog";
+
+        dialog.innerHTML = `
+
+            <div
+                class="student-stats-card"
+            >
+
+                <div
+                    class="student-stats-header"
+                >
+
+                    <div
+                        class="student-stats-header-title"
+                    >
+
+                        <strong>
+                            إحصائيات الـReel
+                        </strong>
+
+                        <span>
+                            أداء المحتوى الخاص بك
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="student-stats-close"
+                        id="student-stats-close"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <div
+                    class="student-stats-body"
+                >
+
+                    <div
+                        class="student-stats-grid"
+                    >
+
+                        ${statCard(
+                            "👁️",
+                            "المشاهدات",
+                            "—",
+                            "student-stat-views"
+                        )}
+
+                        ${statCard(
+                            "❤️",
+                            "الإعجابات",
+                            "—",
+                            "student-stat-likes"
+                        )}
+
+                        ${statCard(
+                            "💬",
+                            "التعليقات",
+                            "—",
+                            "student-stat-comments"
+                        )}
+
+                        ${statCard(
+                            "🔖",
+                            "المحفوظات",
+                            "—",
+                            "student-stat-saves"
+                        )}
+
+                    </div>
+
+
+                    <div
+                        class="student-stats-section"
+                    >
+
+                        <div
+                            class="student-stats-section-title"
+                        >
+                            معلومات الـReel
+                        </div>
+
+
+                        <div
+                            class="student-stats-row"
+                        >
+
+                            <span
+                                class="student-stats-row-label"
+                            >
+                                الخصوصية
+                            </span>
+
+                            <strong
+                                id="student-stat-visibility"
+                                class="student-stats-row-value"
+                            >
+                                —
+                            </strong>
+
+                        </div>
+
+
+                        <div
+                            class="student-stats-row"
+                        >
+
+                            <span
+                                class="student-stats-row-label"
+                            >
+                                تاريخ النشر
+                            </span>
+
+                            <strong
+                                id="student-stat-date"
+                                class="student-stats-row-value"
+                            >
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="student-stats-section"
+                    >
+
+                        <div
+                            class="student-stats-section-title"
+                        >
+                            ملاحظة
+                        </div>
+
+                        <div style="
+                            color:#888;
+                            font-size:12px;
+                            line-height:1.8;
+                        ">
+                            هذه الأرقام تعتمد على البيانات
+                            المحفوظة فعليًا في قاعدة البيانات.
+                            سنضيف لاحقًا الإحصائيات المتقدمة
+                            مثل نسبة إكمال الفيديو ومتوسط
+                            مدة المشاهدة والمشاركات.
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="student-stats-footer"
+                >
+
+                    <button
+                        type="button"
+                        id="student-stats-close-bottom"
+                        class="student-stats-close-button"
+                    >
+                        إغلاق
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            dialog
+        );
+
+
+        document
+            .getElementById(
+                "student-stats-close"
+            )
+            ?.addEventListener(
+                "click",
+                closeStats
+            );
+
+
+        document
+            .getElementById(
+                "student-stats-close-bottom"
+            )
+            ?.addEventListener(
+                "click",
+                closeStats
+            );
+
+
+        dialog.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    dialog
+                ) {
+                    closeStats();
+                }
+
+            }
+        );
+
+
+        return dialog;
+    }
+
+
+    /* =====================================================
+       فتح الإحصائيات
     ===================================================== */
 
     async function openStats(
@@ -467,8 +880,12 @@
 
 
             if (
-                String(reel.user_id) !==
-                String(statsUserId)
+                String(
+                    reel.user_id
+                ) !==
+                String(
+                    statsUserId
+                )
             ) {
 
                 toast(
@@ -479,51 +896,7 @@
             }
 
 
-            showStatsDialog(
-                "إحصائيات الـReel",
-                `
-                <div style="
-                    display:grid;
-                    grid-template-columns:1fr 1fr;
-                    gap:10px;
-                ">
-
-                    ${statCard(
-                        "👁️",
-                        "المشاهدات",
-                        "..."
-                    )}
-
-                    ${statCard(
-                        "❤️",
-                        "الإعجابات",
-                        "..."
-                    )}
-
-                    ${statCard(
-                        "💬",
-                        "التعليقات",
-                        "..."
-                    )}
-
-                    ${statCard(
-                        "🔖",
-                        "المحفوظات",
-                        "..."
-                    )}
-
-                </div>
-
-                <div
-                    id="student-stats-extra"
-                    style="
-                        margin-top:15px;
-                    "
-                >
-                    جاري تحميل التفاصيل...
-                </div>
-                `
-            );
+            renderStatsDialog();
 
 
             const stats =
@@ -532,25 +905,54 @@
                 );
 
 
-            setStatValue(
-                "المشاهدات",
-                stats.views
-            );
+            const views =
+                document.getElementById(
+                    "student-stat-views"
+                );
 
-            setStatValue(
-                "الإعجابات",
-                stats.likes
-            );
+            const likes =
+                document.getElementById(
+                    "student-stat-likes"
+                );
 
-            setStatValue(
-                "التعليقات",
-                stats.comments
-            );
+            const comments =
+                document.getElementById(
+                    "student-stat-comments"
+                );
 
-            setStatValue(
-                "المحفوظات",
-                stats.saves
-            );
+            const saves =
+                document.getElementById(
+                    "student-stat-saves"
+                );
+
+
+            if (views) {
+                views.textContent =
+                    formatNumber(
+                        stats.views
+                    );
+            }
+
+            if (likes) {
+                likes.textContent =
+                    formatNumber(
+                        stats.likes
+                    );
+            }
+
+            if (comments) {
+                comments.textContent =
+                    formatNumber(
+                        stats.comments
+                    );
+            }
+
+            if (saves) {
+                saves.textContent =
+                    formatNumber(
+                        stats.saves
+                    );
+            }
 
 
             const visibility =
@@ -563,76 +965,33 @@
                         : "عام";
 
 
-            const created =
-                stats.createdAt
-                    ? new Date(
-                        stats.createdAt
-                    ).toLocaleString(
-                        "ar-IQ"
-                    )
-                    : "غير معروف";
-
-
-            const extra =
+            const visibilityElement =
                 document.getElementById(
-                    "student-stats-extra"
+                    "student-stat-visibility"
                 );
 
 
-            if (extra) {
+            if (visibilityElement) {
 
-                extra.innerHTML = `
-
-                    <div style="
-                        background:#f7f8fa;
-                        border-radius:15px;
-                        padding:14px;
-                    ">
-
-                        <div style="
-                            display:flex;
-                            justify-content:space-between;
-                            gap:10px;
-                            padding:7px 0;
-                        ">
-
-                            <span>
-                                الخصوصية
-                            </span>
-
-                            <strong>
-                                ${escapeHTML(
-                                    visibility
-                                )}
-                            </strong>
-
-                        </div>
-
-
-                        <div style="
-                            display:flex;
-                            justify-content:space-between;
-                            gap:10px;
-                            padding:7px 0;
-                        ">
-
-                            <span>
-                                تاريخ النشر
-                            </span>
-
-                            <strong style="
-                                font-size:12px;
-                            ">
-                                ${escapeHTML(
-                                    created
-                                )}
-                            </strong>
-
-                        </div>
-
-                    </div>
-                `;
+                visibilityElement.textContent =
+                    visibility;
             }
+
+
+            const dateElement =
+                document.getElementById(
+                    "student-stat-date"
+                );
+
+
+            if (dateElement) {
+
+                dateElement.textContent =
+                    formatDate(
+                        stats.createdAt
+                    );
+            }
+
 
         } catch (error) {
 
@@ -640,6 +999,8 @@
                 "Stats error:",
                 error
             );
+
+            closeStats();
 
             toast(
                 error?.message ||
@@ -649,74 +1010,53 @@
     }
 
 
-    function statCard(
-        icon,
-        title,
+    /* =====================================================
+       تنسيق الأرقام
+    ===================================================== */
+
+    function formatNumber(
         value
     ) {
 
-        return `
-            <div
-                data-stat-card="${escapeHTML(
-                    title
-                )}"
-                style="
-                    background:#f7f8fa;
-                    border-radius:18px;
-                    padding:18px 12px;
-                    text-align:center;
-                "
-            >
+        const number =
+            Number(value || 0);
 
-                <div style="
-                    font-size:26px;
-                ">
-                    ${icon}
-                </div>
-
-                <div style="
-                    margin-top:7px;
-                    color:#777;
-                    font-size:12px;
-                ">
-                    ${escapeHTML(title)}
-                </div>
-
-                <strong
-                    data-stat-value="${escapeHTML(
-                        title
-                    )}"
-                    style="
-                        display:block;
-                        margin-top:5px;
-                        font-size:22px;
-                    "
-                >
-                    ${escapeHTML(value)}
-                </strong>
-
-            </div>
-        `;
+        return number.toLocaleString(
+            "ar-IQ"
+        );
     }
 
 
-    function setStatValue(
-        title,
+    /* =====================================================
+       التاريخ
+    ===================================================== */
+
+    function formatDate(
         value
     ) {
 
-        const element =
-            document.querySelector(
-                `[data-stat-value="${CSS.escape(
-                    title
-                )}"]`
-            );
-
-        if (element) {
-
-            element.textContent =
-                String(value);
+        if (!value) {
+            return "غير معروف";
         }
+
+        const date =
+            new Date(value);
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+            return "غير معروف";
+        }
+
+        return date.toLocaleString(
+            "ar-IQ",
+            {
+                dateStyle:"medium",
+                timeStyle:"short"
+            }
+        );
     }
 
 
@@ -733,25 +1073,15 @@
             .forEach(
                 function(reel) {
 
-                    /*
-                       نبحث عن قائمة المالك.
-                    */
-
                     const menu =
                         reel.querySelector(
                             "[data-menu]"
                         );
 
-
                     if (!menu) {
                         return;
                     }
 
-
-                    /*
-                       إذا كان زر الإحصائيات
-                       موجودًا فلا نكرر إضافته.
-                    */
 
                     if (
                         menu.querySelector(
@@ -762,19 +1092,13 @@
                     }
 
 
-                    /*
-                       لا نضيفه إلا إذا كانت
-                       قائمة المالك تحتوي
-                       تعديل/خصوصية/حذف.
-                    */
-
-                    const isOwner =
+                    const owner =
                         !!menu.querySelector(
                             "[data-edit], [data-privacy], [data-delete]"
                         );
 
 
-                    if (!isOwner) {
+                    if (!owner) {
                         return;
                     }
 
@@ -788,14 +1112,11 @@
                     button.type =
                         "button";
 
-
                     button.dataset.stats =
                         "true";
 
-
                     button.innerHTML =
                         "📊 إحصائيات";
-
 
                     button.style.cssText = `
                         width:100%;
@@ -819,7 +1140,7 @@
 
 
     /* =====================================================
-       زر الإحصائيات
+       التقاط الزر
     ===================================================== */
 
     function bindStatsButtons() {
@@ -832,7 +1153,6 @@
                     event.target.closest(
                         ".student-reel [data-stats]"
                     );
-
 
                 if (!button) {
                     return;
@@ -867,7 +1187,7 @@
 
 
     /* =====================================================
-       مراقبة DOM
+       مراقبة العناصر الجديدة
     ===================================================== */
 
     function observeDOM() {
@@ -875,7 +1195,6 @@
         const observer =
             new MutationObserver(
                 function() {
-
                     addStatsButtons();
                 }
             );
@@ -905,10 +1224,12 @@
 
 
     /* =====================================================
-       Start
+       تشغيل
     ===================================================== */
 
     async function start() {
+
+        injectStyles();
 
         await loadUser();
 
@@ -927,12 +1248,16 @@
 
         document.addEventListener(
             "DOMContentLoaded",
-            start
+            start,
+            {
+                once:true
+            }
         );
 
     } else {
 
         start();
     }
+
 
 })();
