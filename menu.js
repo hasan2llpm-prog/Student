@@ -1,12 +1,16 @@
 /* =========================================================
    Student - Menu System
-   القائمة الرئيسية ☰
+   ☰ القائمة الرئيسية
 ========================================================= */
 
 (function () {
+
     "use strict";
 
-    if (window.__studentMenuLoaded) return;
+    if (window.__studentMenuLoaded) {
+        return;
+    }
+
     window.__studentMenuLoaded = true;
 
     let featureCache = {};
@@ -69,7 +73,6 @@
                     let enabled =
                         feature.enabled === true;
 
-
                     if (
                         enabled &&
                         feature.release_at
@@ -81,7 +84,7 @@
                             );
 
                         if (
-                            !isNaN(
+                            !Number.isNaN(
                                 releaseDate.getTime()
                             ) &&
                             releaseDate > new Date()
@@ -90,7 +93,6 @@
                             enabled = false;
                         }
                     }
-
 
                     featureCache[
                         feature.feature_key
@@ -131,6 +133,7 @@
     ===================================================== */
 
     function clearMenuFeatureCache() {
+
         featureCache = {};
     }
 
@@ -147,7 +150,6 @@
         ) {
             return true;
         }
-
 
         if (
             document.querySelector(
@@ -176,10 +178,8 @@
                                     );
 
                                     resolve(true);
-
                                     return;
                                 }
-
 
                                 if (
                                     attempts >= 30
@@ -198,7 +198,6 @@
                 }
             );
         }
-
 
         return new Promise(
             function (resolve) {
@@ -225,6 +224,7 @@
                             typeof window.openStudentSaved ===
                             "function"
                         );
+
                     };
 
 
@@ -427,6 +427,181 @@
 
 
     /* =====================================================
+       تأكيد تسجيل الخروج
+    ===================================================== */
+
+    function confirmLogout() {
+
+        let existing =
+            document.getElementById(
+                "student-menu-confirm"
+            );
+
+        if (existing) {
+            existing.remove();
+        }
+
+
+        const overlay =
+            document.createElement(
+                "div"
+            );
+
+
+        overlay.id =
+            "student-menu-confirm";
+
+
+        overlay.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100002000;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,.5);
+            direction:rtl;
+        `;
+
+
+        overlay.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:390px;
+                background:#fff;
+                border-radius:22px;
+                padding:20px;
+                box-sizing:border-box;
+                box-shadow:0 20px 70px rgba(0,0,0,.3);
+            ">
+
+                <div style="
+                    font-size:19px;
+                    font-weight:800;
+                    color:#222;
+                    margin-bottom:10px;
+                ">
+                    تسجيل الخروج
+                </div>
+
+                <div style="
+                    color:#666;
+                    line-height:1.8;
+                    font-size:14px;
+                ">
+                    هل تريد تسجيل الخروج من حسابك؟
+                </div>
+
+                <div style="
+                    display:flex;
+                    gap:10px;
+                    margin-top:18px;
+                ">
+
+                    <button
+                        type="button"
+                        id="student-menu-logout-cancel"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:13px;
+                            background:#f1f3f5;
+                            cursor:pointer;
+                            font-weight:700;
+                        "
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        type="button"
+                        id="student-menu-logout-confirm"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:13px;
+                            background:#d93025;
+                            color:#fff;
+                            cursor:pointer;
+                            font-weight:700;
+                        "
+                    >
+                        نعم، تسجيل الخروج
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        document.body.appendChild(
+            overlay
+        );
+
+
+        overlay
+            .querySelector(
+                "#student-menu-logout-cancel"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    overlay.remove();
+
+                }
+            );
+
+
+        overlay
+            .querySelector(
+                "#student-menu-logout-confirm"
+            )
+            ?.addEventListener(
+                "click",
+                async function () {
+
+                    this.disabled =
+                        true;
+
+                    this.textContent =
+                        "جارٍ تسجيل الخروج...";
+
+
+                    try {
+
+                        if (
+                            typeof window.logoutUser ===
+                            "function"
+                        ) {
+
+                            await window.logoutUser();
+
+                        }
+
+                    } catch (error) {
+
+                        console.error(
+                            "Logout error:",
+                            error
+                        );
+
+                    } finally {
+
+                        overlay.remove();
+                    }
+
+                }
+            );
+    }
+
+
+    /* =====================================================
        بناء عناصر القائمة
     ===================================================== */
 
@@ -435,18 +610,20 @@
         const items = [];
 
 
-        /* الملف الشخصي */
-
         if (
-            isFeatureEnabled(
-                "profile"
-            )
+            isFeatureEnabled("profile")
         ) {
 
             items.push({
-                id: "menu-profile",
-                icon: "fa-regular fa-user",
-                text: "الملف الشخصي",
+
+                id:
+                    "menu-profile",
+
+                icon:
+                    "fa-regular fa-user",
+
+                text:
+                    "الملف الشخصي",
 
                 action:
                     function () {
@@ -458,23 +635,28 @@
 
                             window.showProfilePanel();
                         }
+
                     }
+
             });
+
         }
 
 
-        /* الإعدادات */
-
         if (
-            isFeatureEnabled(
-                "settings"
-            )
+            isFeatureEnabled("settings")
         ) {
 
             items.push({
-                id: "menu-settings",
-                icon: "fa-solid fa-gear",
-                text: "الإعدادات",
+
+                id:
+                    "menu-settings",
+
+                icon:
+                    "fa-solid fa-gear",
+
+                text:
+                    "الإعدادات",
 
                 action:
                     function () {
@@ -486,23 +668,28 @@
 
                             window.showSettingsPanel();
                         }
+
                     }
+
             });
+
         }
 
 
-        /* الإشعارات */
-
         if (
-            isFeatureEnabled(
-                "notifications"
-            )
+            isFeatureEnabled("notifications")
         ) {
 
             items.push({
-                id: "menu-notifications",
-                icon: "fa-regular fa-bell",
-                text: "الإشعارات",
+
+                id:
+                    "menu-notifications",
+
+                icon:
+                    "fa-regular fa-bell",
+
+                text:
+                    "الإشعارات",
 
                 action:
                     function () {
@@ -514,23 +701,28 @@
 
                             window.openNotifications();
                         }
+
                     }
+
             });
+
         }
 
 
-        /* المحفوظات */
-
         if (
-            isFeatureEnabled(
-                "saved"
-            )
+            isFeatureEnabled("saved")
         ) {
 
             items.push({
-                id: "menu-saved",
-                icon: "fa-regular fa-bookmark",
-                text: "المحفوظات",
+
+                id:
+                    "menu-saved",
+
+                icon:
+                    "fa-regular fa-bookmark",
+
+                text:
+                    "المحفوظات",
 
                 action:
                     async function () {
@@ -548,49 +740,65 @@
                         }
 
                         window.openStudentSaved();
+
                     }
+
             });
+
         }
 
 
-        /* تواصل معنا */
-
         if (
-            isFeatureEnabled(
-                "contact_us"
-            )
+            isFeatureEnabled("contact_us")
         ) {
 
             items.push({
-                id: "menu-contact",
-                icon: "fa-regular fa-comment",
-                text: "تواصل معنا",
-                action: openContact
+
+                id:
+                    "menu-contact",
+
+                icon:
+                    "fa-regular fa-comment",
+
+                text:
+                    "تواصل معنا",
+
+                action:
+                    openContact
+
             });
+
         }
 
 
-        /* حول Student */
-
         if (
-            isFeatureEnabled(
-                "about"
-            )
+            isFeatureEnabled("about")
         ) {
 
             items.push({
-                id: "menu-about",
-                icon: "fa-solid fa-circle-info",
-                text: "حول Student",
-                action: openAbout
+
+                id:
+                    "menu-about",
+
+                icon:
+                    "fa-solid fa-circle-info",
+
+                text:
+                    "حول Student",
+
+                action:
+                    openAbout
+
             });
+
         }
 
-
-        /* تسجيل الخروج */
 
         items.push({
-            id: "menu-logout",
+
+            id:
+                "menu-logout",
+
             icon:
                 "fa-solid fa-right-from-bracket",
 
@@ -601,20 +809,317 @@
                 true,
 
             action:
-                function () {
+                confirmLogout
 
-                    if (
-                        typeof window.logoutUser ===
-                        "function"
-                    ) {
-
-                        window.logoutUser();
-                    }
-                }
         });
 
 
         return items;
+    }
+
+
+    /* =====================================================
+       CSS للقائمة الجانبية
+    ===================================================== */
+
+    function injectMenuStyles() {
+
+        if (
+            document.getElementById(
+                "student-main-menu-style"
+            )
+        ) {
+            return;
+        }
+
+
+        const style =
+            document.createElement(
+                "style"
+            );
+
+
+        style.id =
+            "student-main-menu-style";
+
+
+        style.textContent = `
+
+            #student-main-menu {
+                position:fixed;
+                inset:0;
+                z-index:100001900;
+                display:none;
+                direction:rtl;
+            }
+
+            #student-main-menu.open {
+                display:block;
+            }
+
+            #student-main-menu-backdrop {
+                position:absolute;
+                inset:0;
+                background:rgba(0,0,0,.38);
+                opacity:0;
+                transition:opacity .18s ease;
+            }
+
+            #student-main-menu.open
+            #student-main-menu-backdrop {
+                opacity:1;
+            }
+
+            #student-main-menu-sheet {
+                position:absolute;
+                top:0;
+                right:0;
+                bottom:0;
+                width:min(88vw,380px);
+                background:#fff;
+                box-shadow:
+                    -12px 0 40px
+                    rgba(0,0,0,.16);
+                transform:translateX(100%);
+                transition:
+                    transform .20s
+                    cubic-bezier(.22,.8,.25,1);
+                display:flex;
+                flex-direction:column;
+                overflow:hidden;
+            }
+
+            #student-main-menu.open
+            #student-main-menu-sheet {
+                transform:translateX(0);
+            }
+
+            .student-main-menu-header {
+                padding:
+                    max(18px, env(safe-area-inset-top))
+                    18px
+                    16px;
+                border-bottom:1px solid #eee;
+                display:flex;
+                align-items:center;
+                gap:12px;
+                flex-shrink:0;
+            }
+
+            .student-main-menu-title {
+                flex:1;
+                font-size:20px;
+                font-weight:800;
+                color:#111;
+            }
+
+            .student-main-menu-close {
+                width:40px;
+                height:40px;
+                border:0;
+                border-radius:50%;
+                background:#f1f3f5;
+                font-size:20px;
+                cursor:pointer;
+            }
+
+            .student-main-menu-content {
+                flex:1;
+                overflow-y:auto;
+                padding:14px;
+            }
+
+            .student-main-menu-button {
+                width:100%;
+                border:0;
+                background:#f7f8fa;
+                color:#222;
+                padding:15px;
+                border-radius:14px;
+                text-align:right;
+                font-size:15px;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                gap:12px;
+                direction:rtl;
+                margin-bottom:9px;
+                transition:
+                    transform .12s ease,
+                    background .12s ease;
+            }
+
+            .student-main-menu-button:active {
+                transform:scale(.985);
+            }
+
+            .student-main-menu-button i {
+                width:22px;
+                text-align:center;
+                color:#0095f6;
+            }
+
+            .student-main-menu-button.danger {
+                background:#fff2f2;
+                color:#d93025;
+            }
+
+            .student-main-menu-button.danger i {
+                color:#d93025;
+            }
+
+            .student-main-menu-footer {
+                padding:
+                    10px
+                    14px
+                    max(14px, env(safe-area-inset-bottom));
+                border-top:1px solid #eee;
+                color:#aaa;
+                text-align:center;
+                font-size:11px;
+                flex-shrink:0;
+            }
+
+            @media (max-width:480px) {
+
+                #student-main-menu-sheet {
+                    width:90vw;
+                }
+
+            }
+        `;
+
+
+        document.head.appendChild(
+            style
+        );
+    }
+
+
+    /* =====================================================
+       بناء القائمة
+    ===================================================== */
+
+    function ensureMenuElement() {
+
+        let menu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+
+        if (menu) {
+            return menu;
+        }
+
+
+        menu =
+            document.createElement(
+                "div"
+            );
+
+
+        menu.id =
+            "student-main-menu";
+
+
+        menu.innerHTML = `
+
+            <div
+                id="student-main-menu-backdrop"
+            ></div>
+
+            <aside
+                id="student-main-menu-sheet"
+                aria-label="القائمة الرئيسية"
+            >
+
+                <div
+                    class="student-main-menu-header"
+                >
+
+                    <div
+                        class="student-main-menu-title"
+                    >
+                        القائمة
+                    </div>
+
+                    <button
+                        type="button"
+                        class="student-main-menu-close"
+                        id="student-main-menu-close"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+                <div
+                    class="student-main-menu-content"
+                    id="student-main-menu-content"
+                ></div>
+
+                <div
+                    class="student-main-menu-footer"
+                >
+                    Student
+                </div>
+
+            </aside>
+        `;
+
+
+        document.body.appendChild(
+            menu
+        );
+
+
+        menu
+            .querySelector(
+                "#student-main-menu-close"
+            )
+            ?.addEventListener(
+                "click",
+                closeMainMenu
+            );
+
+
+        menu
+            .querySelector(
+                "#student-main-menu-backdrop"
+            )
+            ?.addEventListener(
+                "click",
+                closeMainMenu
+            );
+
+
+        return menu;
+    }
+
+
+    /* =====================================================
+       إغلاق القائمة
+    ===================================================== */
+
+    function closeMainMenu() {
+
+        const menu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+        if (!menu) {
+            return;
+        }
+
+
+        menu.classList.remove(
+            "open"
+        );
+
+
+        document.body.style.overflow = "";
     }
 
 
@@ -624,13 +1129,50 @@
 
     async function openMenu() {
 
-        if (
-            typeof window.showFloatingPanel !==
-            "function"
-        ) {
-            return;
-        }
+        /*
+           نفتح الواجهة فورًا.
+           لا ننتظر Supabase قبل إظهارها.
+        */
 
+        injectMenuStyles();
+
+        const menu =
+            ensureMenuElement();
+
+        const content =
+            menu.querySelector(
+                "#student-main-menu-content"
+            );
+
+
+        content.innerHTML = `
+            <div style="
+                padding:25px 10px;
+                text-align:center;
+                color:#999;
+            ">
+                جاري تحميل القائمة...
+            </div>
+        `;
+
+
+        menu.classList.add(
+            "open"
+        );
+
+
+        /*
+           لا نعيد الصفحة الرئيسية
+           ولا نستخدم history.
+        */
+
+        document.body.style.overflow =
+            "hidden";
+
+
+        /*
+           نحمل البيانات بعد ظهور القائمة.
+        */
 
         await loadMenuFeatures();
 
@@ -638,6 +1180,8 @@
         if (
             !isFeatureEnabled("menu")
         ) {
+
+            closeMainMenu();
             return;
         }
 
@@ -646,102 +1190,72 @@
             buildMenuItems();
 
 
-        if (!items.length) {
-            return;
-        }
+        content.innerHTML =
+            items
+                .map(
+                    function (item) {
 
+                        return `
 
-        const buttons =
-            items.map(
-                function (item) {
-
-                    return `
-                        <button
-                            type="button"
-                            data-student-menu-id="${item.id}"
-                            style="
-                                width:100%;
-                                border:none;
-                                background:${
-                                    item.danger
-                                        ? "#fff2f2"
-                                        : "#f7f8fa"
-                                };
-                                color:${
-                                    item.danger
-                                        ? "#d93025"
-                                        : "#222"
-                                };
-                                padding:15px;
-                                border-radius:14px;
-                                text-align:right;
-                                font-size:15px;
-                                cursor:pointer;
-                                display:flex;
-                                align-items:center;
-                                gap:12px;
-                                direction:rtl;
-                            "
-                        >
-
-                            <i
-                                class="${item.icon}"
-                                style="
-                                    width:22px;
-                                    text-align:center;
-                                    color:${
+                            <button
+                                type="button"
+                                class="
+                                    student-main-menu-button
+                                    ${
                                         item.danger
-                                            ? "#d93025"
-                                            : "#0095f6"
-                                    };
+                                            ? "danger"
+                                            : ""
+                                    }
                                 "
-                            ></i>
+                                data-student-menu-id="${item.id}"
+                            >
 
-                            <span>
-                                ${item.text}
-                            </span>
+                                <i
+                                    class="${item.icon}"
+                                ></i>
 
-                        </button>
-                    `;
-                }
-            )
-            .join("");
+                                <span>
+                                    ${escapeHTML(
+                                        item.text
+                                    )}
+                                </span>
 
-
-        window.showFloatingPanel(
-            "القائمة",
-            `
-            <div style="
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            ">
-                ${buttons}
-            </div>
-            `
-        );
+                            </button>
+                        `;
+                    }
+                )
+                .join("");
 
 
         items.forEach(
             function (item) {
 
                 const button =
-                    document.querySelector(
+                    content.querySelector(
                         `[data-student-menu-id="${item.id}"]`
                     );
 
 
-                if (button) {
-
-                    button.addEventListener(
-                        "click",
-                        async function () {
-
-                            await item.action();
-
-                        }
-                    );
+                if (!button) {
+                    return;
                 }
+
+
+                button.addEventListener(
+                    "click",
+                    async function () {
+
+                        /*
+                           لا نغلق القائمة بالقوة
+                           قبل تنفيذ الإجراء.
+                           بعض الصفحات/النوافذ تبقى
+                           ضمن نفس الصفحة.
+                        */
+
+                        await item.action();
+
+                    }
+                );
             }
         );
     }
@@ -787,6 +1301,7 @@
                 event.preventDefault();
                 event.stopPropagation();
 
+
                 openMenu();
 
             }
@@ -795,26 +1310,39 @@
 
 
     /* =====================================================
-       بدء النظام
+       تشغيل
     ===================================================== */
 
     function startMenu() {
 
+        injectMenuStyles();
+
         bindMenuButton();
+
 
         setTimeout(
             bindMenuButton,
             300
         );
+
+
+        setTimeout(
+            bindMenuButton,
+            1000
+        );
     }
 
 
     /* =====================================================
-       API عامة
+       API
     ===================================================== */
 
     window.openStudentMenu =
         openMenu;
+
+
+    window.closeStudentMenu =
+        closeMainMenu;
 
 
     window.clearStudentMenuFeatureCache =
@@ -822,7 +1350,7 @@
 
 
     /* =====================================================
-       تشغيل
+       Start
     ===================================================== */
 
     if (
@@ -832,12 +1360,16 @@
 
         document.addEventListener(
             "DOMContentLoaded",
-            startMenu
+            startMenu,
+            {
+                once:true
+            }
         );
 
     } else {
 
         startMenu();
     }
+
 
 })();
