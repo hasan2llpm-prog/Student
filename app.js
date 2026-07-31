@@ -15,44 +15,27 @@ let currentProfile = null;
    الرسائل
 ========================================================= */
 
-function showMessage(
-    elementId,
-    message,
-    type = ""
-) {
+function showMessage(elementId, message, type = "") {
 
     const element =
-        document.getElementById(
-            elementId
-        );
+        document.getElementById(elementId);
 
     if (!element) return;
 
-    element.textContent =
-        message;
+    element.textContent = message;
 
-    element.className =
-        "auth-message";
+    element.className = "auth-message";
 
     if (type) {
-        element.classList.add(
-            type
-        );
+        element.classList.add(type);
     }
 }
 
 
 function clearMessages() {
 
-    showMessage(
-        "login-message",
-        ""
-    );
-
-    showMessage(
-        "register-message",
-        ""
-    );
+    showMessage("login-message", "");
+    showMessage("register-message", "");
 }
 
 
@@ -67,14 +50,11 @@ function setButtonLoading(
 ) {
 
     const button =
-        document.getElementById(
-            buttonId
-        );
+        document.getElementById(buttonId);
 
     if (!button) return;
 
-    button.disabled =
-        loading;
+    button.disabled = loading;
 
     button.textContent =
         loading
@@ -100,17 +80,11 @@ function showLogin() {
         );
 
     if (loginSection) {
-
-        loginSection.classList.remove(
-            "hidden"
-        );
+        loginSection.classList.remove("hidden");
     }
 
     if (registerSection) {
-
-        registerSection.classList.add(
-            "hidden"
-        );
+        registerSection.classList.add("hidden");
     }
 
     clearMessages();
@@ -130,17 +104,11 @@ function showRegister() {
         );
 
     if (registerSection) {
-
-        registerSection.classList.remove(
-            "hidden"
-        );
+        registerSection.classList.remove("hidden");
     }
 
     if (loginSection) {
-
-        loginSection.classList.add(
-            "hidden"
-        );
+        loginSection.classList.add("hidden");
     }
 
     clearMessages();
@@ -164,17 +132,11 @@ function showMainScreen() {
         );
 
     if (authScreen) {
-
-        authScreen.classList.add(
-            "hidden"
-        );
+        authScreen.classList.add("hidden");
     }
 
     if (mainScreen) {
-
-        mainScreen.classList.remove(
-            "hidden"
-        );
+        mainScreen.classList.remove("hidden");
     }
 }
 
@@ -192,17 +154,11 @@ function showAuthScreen() {
         );
 
     if (mainScreen) {
-
-        mainScreen.classList.add(
-            "hidden"
-        );
+        mainScreen.classList.add("hidden");
     }
 
     if (authScreen) {
-
-        authScreen.classList.remove(
-            "hidden"
-        );
+        authScreen.classList.remove("hidden");
     }
 
     showLogin();
@@ -213,14 +169,9 @@ function showAuthScreen() {
    الملف الشخصي
 ========================================================= */
 
-async function loadProfile(
-    userId
-) {
+async function loadProfile(userId) {
 
-    if (
-        !supabaseClient ||
-        !userId
-    ) {
+    if (!supabaseClient || !userId) {
         return null;
     }
 
@@ -242,10 +193,7 @@ async function loadProfile(
                     account_status,
                     role
                 `)
-                .eq(
-                    "id",
-                    userId
-                )
+                .eq("id", userId)
                 .maybeSingle();
 
         if (error) {
@@ -258,8 +206,7 @@ async function loadProfile(
             return null;
         }
 
-        currentProfile =
-            data || null;
+        currentProfile = data || null;
 
         const welcomeUser =
             document.getElementById(
@@ -269,7 +216,6 @@ async function loadProfile(
         if (!welcomeUser) {
             return data;
         }
-
 
         if (data?.full_name) {
 
@@ -302,17 +248,12 @@ async function loadProfile(
 
 
 /* =========================================================
-   إحصائيات
+   إحصائيات الملف
 ========================================================= */
 
-async function getProfileStats(
-    userId
-) {
+async function getProfileStats(userId) {
 
-    if (
-        !supabaseClient ||
-        !userId
-    ) {
+    if (!supabaseClient || !userId) {
 
         return {
             followers: 0,
@@ -329,8 +270,7 @@ async function getProfileStats(
             await supabaseClient.rpc(
                 "get_profile_stats",
                 {
-                    p_user_id:
-                        userId
+                    p_user_id: userId
                 }
             );
 
@@ -356,14 +296,12 @@ async function getProfileStats(
 
             followers:
                 Number(
-                    stats?.followers_count ||
-                    0
+                    stats?.followers_count || 0
                 ),
 
             following:
                 Number(
-                    stats?.following_count ||
-                    0
+                    stats?.following_count || 0
                 )
         };
 
@@ -386,14 +324,11 @@ async function getProfileStats(
    الجلسة
 ========================================================= */
 
-async function handleSession(
-    session
-) {
+async function handleSession(session) {
 
     if (session?.user) {
 
-        currentUser =
-            session.user;
+        currentUser = session.user;
 
         showMainScreen();
 
@@ -403,11 +338,9 @@ async function handleSession(
 
     } else {
 
-        currentUser =
-            null;
+        currentUser = null;
 
-        currentProfile =
-            null;
+        currentProfile = null;
 
         showAuthScreen();
     }
@@ -418,9 +351,7 @@ async function handleSession(
    تسجيل الدخول
 ========================================================= */
 
-async function loginUser(
-    event
-) {
+async function loginUser(event) {
 
     event.preventDefault();
 
@@ -437,7 +368,6 @@ async function loginUser(
         return;
     }
 
-
     const emailElement =
         document.getElementById(
             "login-email"
@@ -448,14 +378,9 @@ async function loginUser(
             "login-password"
         );
 
-
-    if (
-        !emailElement ||
-        !passwordElement
-    ) {
+    if (!emailElement || !passwordElement) {
         return;
     }
-
 
     const email =
         emailElement.value.trim();
@@ -463,11 +388,7 @@ async function loginUser(
     const password =
         passwordElement.value;
 
-
-    if (
-        !email ||
-        !password
-    ) {
+    if (!email || !password) {
 
         showMessage(
             "login-message",
@@ -478,13 +399,11 @@ async function loginUser(
         return;
     }
 
-
     setButtonLoading(
         "login-btn",
         true,
         "دخول"
     );
-
 
     try {
 
@@ -498,11 +417,9 @@ async function loginUser(
                     password
                 });
 
-
         if (error) {
             throw error;
         }
-
 
         if (!data?.session) {
 
@@ -511,11 +428,9 @@ async function loginUser(
             );
         }
 
-
         await handleSession(
             data.session
         );
-
 
     } catch (error) {
 
@@ -524,15 +439,11 @@ async function loginUser(
             error
         );
 
-
         showMessage(
             "login-message",
-            translateAuthError(
-                error
-            ),
+            translateAuthError(error),
             "error"
         );
-
 
     } finally {
 
@@ -546,17 +457,14 @@ async function loginUser(
 
 
 /* =========================================================
-   التسجيل
+   إنشاء الحساب
 ========================================================= */
 
-async function registerUser(
-    event
-) {
+async function registerUser(event) {
 
     event.preventDefault();
 
     clearMessages();
-
 
     if (!supabaseClient) {
 
@@ -568,7 +476,6 @@ async function registerUser(
 
         return;
     }
-
 
     const nameElement =
         document.getElementById(
@@ -590,7 +497,6 @@ async function registerUser(
             "register-password-confirm"
         );
 
-
     if (
         !nameElement ||
         !emailElement ||
@@ -607,7 +513,6 @@ async function registerUser(
         return;
     }
 
-
     const fullName =
         nameElement.value.trim();
 
@@ -620,7 +525,6 @@ async function registerUser(
     const confirmPassword =
         confirmPasswordElement.value;
 
-
     if (!fullName) {
 
         showMessage(
@@ -631,7 +535,6 @@ async function registerUser(
 
         return;
     }
-
 
     if (!email) {
 
@@ -644,10 +547,7 @@ async function registerUser(
         return;
     }
 
-
-    if (
-        password.length < 6
-    ) {
+    if (password.length < 6) {
 
         showMessage(
             "register-message",
@@ -658,11 +558,7 @@ async function registerUser(
         return;
     }
 
-
-    if (
-        password !==
-        confirmPassword
-    ) {
+    if (password !== confirmPassword) {
 
         showMessage(
             "register-message",
@@ -673,13 +569,11 @@ async function registerUser(
         return;
     }
 
-
     setButtonLoading(
         "register-btn",
         true,
         "إنشاء الحساب"
     );
-
 
     try {
 
@@ -697,18 +591,15 @@ async function registerUser(
                     options: {
 
                         data: {
-
                             full_name:
                                 fullName
                         }
                     }
                 });
 
-
         if (error) {
             throw error;
         }
-
 
         if (data?.session) {
 
@@ -725,7 +616,6 @@ async function registerUser(
             );
         }
 
-
     } catch (error) {
 
         console.error(
@@ -733,15 +623,11 @@ async function registerUser(
             error
         );
 
-
         showMessage(
             "register-message",
-            translateAuthError(
-                error
-            ),
+            translateAuthError(error),
             "error"
         );
-
 
     } finally {
 
@@ -775,16 +661,13 @@ async function logoutUser() {
             }
         }
 
-
         currentUser = null;
 
         currentProfile = null;
 
-
         closeFloatingPanel();
 
         showAuthScreen();
-
 
     } catch (error) {
 
@@ -792,7 +675,6 @@ async function logoutUser() {
             "Logout error:",
             error
         );
-
 
         showFloatingPanel(
             "تسجيل الخروج",
@@ -811,78 +693,65 @@ async function logoutUser() {
 
 
 /* =========================================================
-   أخطاء المصادقة
+   ترجمة أخطاء المصادقة
 ========================================================= */
 
-function translateAuthError(
-    error
-) {
+function translateAuthError(error) {
 
     const message =
         String(
             error?.message || ""
         ).toLowerCase();
 
-
     if (
         message.includes(
             "invalid login credentials"
         )
     ) {
-
         return (
             "البريد الإلكتروني أو كلمة المرور غير صحيحة."
         );
     }
-
 
     if (
         message.includes(
             "email not confirmed"
         )
     ) {
-
         return (
             "يجب تأكيد البريد الإلكتروني أولاً."
         );
     }
-
 
     if (
         message.includes(
             "user already registered"
         )
     ) {
-
         return (
             "هذا البريد الإلكتروني مسجل مسبقاً."
         );
     }
-
 
     if (
         message.includes(
             "invalid email"
         )
     ) {
-
         return (
             "البريد الإلكتروني غير صالح."
         );
     }
-
 
     if (
         message.includes(
             "rate limit"
         )
     ) {
-
         return (
             "تم تجاوز عدد المحاولات. حاول لاحقاً."
         );
     }
-
 
     return (
         error?.message ||
@@ -915,16 +784,13 @@ function showFloatingPanel(
 
     closeFloatingPanel();
 
-
     const panel =
         document.createElement(
             "div"
         );
 
-
     panel.id =
         "floating-panel";
-
 
     panel.style.position =
         "fixed";
@@ -955,7 +821,6 @@ function showFloatingPanel(
 
     panel.style.direction =
         "rtl";
-
 
     panel.innerHTML = `
 
@@ -1013,11 +878,9 @@ function showFloatingPanel(
         </div>
     `;
 
-
     document.body.appendChild(
         panel
     );
-
 
     document
         .getElementById(
@@ -1028,13 +891,13 @@ function showFloatingPanel(
             closeFloatingPanel
         );
 
-
     panel.addEventListener(
         "click",
         function(event) {
 
             if (
-                event.target === panel
+                event.target ===
+                panel
             ) {
                 closeFloatingPanel();
             }
@@ -1053,19 +916,16 @@ async function showProfilePanel() {
         return;
     }
 
-
     const profile =
         currentProfile ||
         await loadProfile(
             currentUser.id
         );
 
-
     const stats =
         await getProfileStats(
             currentUser.id
         );
-
 
     const fullName =
         profile?.full_name ||
@@ -1090,7 +950,6 @@ async function showProfilePanel() {
 
     const avatar =
         profile?.avatar_url;
-
 
     const avatarHTML =
         avatar
@@ -1127,7 +986,6 @@ async function showProfilePanel() {
                 </div>
             `;
 
-
     showFloatingPanel(
         "الملف الشخصي",
         `
@@ -1143,7 +1001,6 @@ async function showProfilePanel() {
                 ${avatarHTML}
             </div>
 
-
             <div style="
                 font-size:20px;
                 font-weight:700;
@@ -1154,7 +1011,6 @@ async function showProfilePanel() {
                 )}
             </div>
 
-
             <div style="
                 color:#777;
                 margin-top:4px;
@@ -1164,7 +1020,6 @@ async function showProfilePanel() {
                     username
                 )}
             </div>
-
 
             <div style="
                 display:flex;
@@ -1177,11 +1032,7 @@ async function showProfilePanel() {
             ">
 
                 <div>
-
-                    <strong>
-                        0
-                    </strong>
-
+                    <strong>0</strong>
                     <span style="
                         display:block;
                         color:#777;
@@ -1189,16 +1040,12 @@ async function showProfilePanel() {
                     ">
                         المنشورات
                     </span>
-
                 </div>
 
-
                 <div>
-
                     <strong>
                         ${stats.followers}
                     </strong>
-
                     <span style="
                         display:block;
                         color:#777;
@@ -1206,16 +1053,12 @@ async function showProfilePanel() {
                     ">
                         المتابعون
                     </span>
-
                 </div>
 
-
                 <div>
-
                     <strong>
                         ${stats.following}
                     </strong>
-
                     <span style="
                         display:block;
                         color:#777;
@@ -1223,11 +1066,9 @@ async function showProfilePanel() {
                     ">
                         يتابعهم
                     </span>
-
                 </div>
 
             </div>
-
 
             <div style="
                 background:#f7f8fa;
@@ -1253,7 +1094,6 @@ async function showProfilePanel() {
 
             </div>
 
-
             <div style="
                 background:#f7f8fa;
                 border-radius:14px;
@@ -1277,7 +1117,6 @@ async function showProfilePanel() {
                 </div>
 
             </div>
-
 
             <div style="
                 display:flex;
@@ -1310,7 +1149,6 @@ async function showProfilePanel() {
 
                 </div>
 
-
                 <button
                     id="profile-toggle-status"
                     type="button"
@@ -1331,7 +1169,6 @@ async function showProfilePanel() {
                 </button>
 
             </div>
-
 
             <div style="
                 display:grid;
@@ -1354,7 +1191,6 @@ async function showProfilePanel() {
                     تعديل الملف
                 </button>
 
-
                 <button
                     id="profile-logout-btn"
                     type="button"
@@ -1376,7 +1212,6 @@ async function showProfilePanel() {
         `
     );
 
-
     document
         .getElementById(
             "profile-edit-btn"
@@ -1390,7 +1225,6 @@ async function showProfilePanel() {
             }
         );
 
-
     document
         .getElementById(
             "profile-logout-btn"
@@ -1399,7 +1233,6 @@ async function showProfilePanel() {
             "click",
             logoutUser
         );
-
 
     document
         .getElementById(
@@ -1413,7 +1246,7 @@ async function showProfilePanel() {
 
 
 /* =========================================================
-   تعديل الملف
+   تعديل الملف الشخصي
 ========================================================= */
 
 function showEditProfilePanel(
@@ -1450,7 +1283,6 @@ function showEditProfilePanel(
                 "
             >
 
-
             <label>
                 اسم المستخدم
             </label>
@@ -1471,7 +1303,6 @@ function showEditProfilePanel(
                 "
             >
 
-
             <label>
                 النبذة
             </label>
@@ -1489,7 +1320,6 @@ function showEditProfilePanel(
             >${escapeHTML(
                 profile?.bio || ""
             )}</textarea>
-
 
             <label>
                 رابط الصورة الشخصية
@@ -1509,7 +1339,6 @@ function showEditProfilePanel(
                 "
             >
 
-
             <button
                 id="save-profile-btn"
                 type="submit"
@@ -1525,7 +1354,6 @@ function showEditProfilePanel(
                 حفظ التغييرات
             </button>
 
-
             <div
                 id="profile-edit-message"
                 style="
@@ -1537,7 +1365,6 @@ function showEditProfilePanel(
         </form>
         `
     );
-
 
     document
         .getElementById(
@@ -1556,36 +1383,30 @@ async function saveProfileChanges(
 
     event.preventDefault();
 
-
     const fullName =
         document.getElementById(
             "edit-full-name"
         )?.value.trim();
-
 
     const username =
         document.getElementById(
             "edit-username"
         )?.value.trim();
 
-
     const bio =
         document.getElementById(
             "edit-bio"
         )?.value.trim();
-
 
     const avatarURL =
         document.getElementById(
             "edit-avatar-url"
         )?.value.trim();
 
-
     const message =
         document.getElementById(
             "profile-edit-message"
         );
-
 
     if (
         !fullName ||
@@ -1604,19 +1425,14 @@ async function saveProfileChanges(
         return;
     }
 
-
     const button =
         document.getElementById(
             "save-profile-btn"
         );
 
-
-    button.disabled =
-        true;
-
+    button.disabled = true;
     button.textContent =
         "جارٍ الحفظ...";
-
 
     try {
 
@@ -1641,48 +1457,38 @@ async function saveProfileChanges(
                 }
             );
 
-
         if (error) {
             throw error;
         }
 
-
-        if (
-            data !== "updated"
-        ) {
+        if (data !== "updated") {
 
             if (
                 data ===
                 "username_taken"
             ) {
-
                 throw new Error(
                     "اسم المستخدم مستخدم بالفعل."
                 );
             }
 
-
             if (
                 data ===
                 "invalid_username"
             ) {
-
                 throw new Error(
                     "اسم المستخدم يجب أن يحتوي على 3 أحرف على الأقل."
                 );
             }
-
 
             throw new Error(
                 "تعذر تحديث الملف الشخصي."
             );
         }
 
-
         await loadProfile(
             currentUser.id
         );
-
 
         message.style.color =
             "#16803c";
@@ -1690,12 +1496,10 @@ async function saveProfileChanges(
         message.textContent =
             "تم حفظ التغييرات بنجاح.";
 
-
         setTimeout(
             showProfilePanel,
             700
         );
-
 
     } catch (error) {
 
@@ -1704,14 +1508,12 @@ async function saveProfileChanges(
             error
         );
 
-
         message.style.color =
             "#d93025";
 
         message.textContent =
             error?.message ||
             "تعذر حفظ التغييرات.";
-
 
     } finally {
 
@@ -1725,7 +1527,7 @@ async function saveProfileChanges(
 
 
 /* =========================================================
-   الخصوصية
+   خصوصية الحساب
 ========================================================= */
 
 async function toggleAccountStatus() {
@@ -1734,13 +1536,11 @@ async function toggleAccountStatus() {
         return;
     }
 
-
     const newStatus =
         currentProfile.account_status ===
         "private"
             ? "public"
             : "private";
-
 
     try {
 
@@ -1756,19 +1556,15 @@ async function toggleAccountStatus() {
                 }
             );
 
-
         if (error) {
             throw error;
         }
-
 
         await loadProfile(
             currentUser.id
         );
 
-
         showProfilePanel();
-
 
     } catch (error) {
 
@@ -1776,7 +1572,6 @@ async function toggleAccountStatus() {
             "Privacy error:",
             error
         );
-
 
         showFloatingPanel(
             "خطأ",
@@ -1831,18 +1626,14 @@ function openStage(
             icon:
                 "🎓"
         }
-
     };
-
 
     const stage =
         stages[stageName];
 
-
     if (!stage) {
         return;
     }
-
 
     showFloatingPanel(
         stage.title,
@@ -1874,55 +1665,6 @@ function openStage(
 
 window.openStage =
     openStage;
-
-
-/* =========================================================
-   حماية HTML
-========================================================= */
-
-function escapeHTML(
-    value
-) {
-
-    return String(
-        value || ""
-    )
-
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-
-        .replace(
-            /</g,
-            "&lt;"
-        )
-
-        .replace(
-            />/g,
-            "&gt;"
-        )
-
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-
-        .replace(
-            /'/g,
-            "&#039;"
-        );
-}
-
-
-function escapeAttribute(
-    value
-) {
-
-    return escapeHTML(
-        value
-    );
-}
 
 
 /* =========================================================
@@ -1962,12 +1704,10 @@ window.openNotifications =
 
 
 /* =========================================================
-   Stories الحالية
+   Stories
 ========================================================= */
 
-function openStory(
-    name
-) {
+function openStory(name) {
 
     showFloatingPanel(
         name || "الستوري",
@@ -2002,7 +1742,7 @@ window.openStory =
 
 
 /* =========================================================
-   إضافة ستوري الحالية
+   إضافة Story
 ========================================================= */
 
 function addStory() {
@@ -2052,14 +1792,14 @@ function openBottomSection(
 ) {
 
     if (
-        section === "profile"
+        section ===
+        "profile"
     ) {
 
         showProfilePanel();
 
         return;
     }
-
 
     const map = {
 
@@ -2086,14 +1826,11 @@ function openBottomSection(
             "💬",
             "سيتم بناء نظام الرسائل لاحقًا."
         ]
-
     };
-
 
     const item =
         map[section] ||
         map.home;
-
 
     showFloatingPanel(
         item[0],
@@ -2123,7 +1860,7 @@ function openBottomSection(
 
 
 /* =========================================================
-   ربط الواجهة الأساسية
+   ربط الواجهة
 ========================================================= */
 
 function bindInterfaceButtons() {
@@ -2132,7 +1869,6 @@ function bindInterfaceButtons() {
         document.querySelector(
             ".fa-bell"
         );
-
 
     if (bell) {
 
@@ -2150,12 +1886,10 @@ function bindInterfaceButtons() {
         );
     }
 
-
     const addStoryElement =
         document.querySelector(
             ".add-story"
         );
-
 
     if (addStoryElement) {
 
@@ -2173,12 +1907,10 @@ function bindInterfaceButtons() {
         );
     }
 
-
     const stories =
         document.querySelectorAll(
             ".story:not(.add-story)"
         );
-
 
     stories.forEach(
         function(story) {
@@ -2186,19 +1918,16 @@ function bindInterfaceButtons() {
             story.style.cursor =
                 "pointer";
 
-
             story.addEventListener(
                 "click",
                 function(event) {
 
                     event.preventDefault();
 
-
                     const nameElement =
                         story.querySelector(
                             ".story-name"
                         );
-
 
                     const name =
                         nameElement
@@ -2206,21 +1935,16 @@ function bindInterfaceButtons() {
                             ?.trim() ||
                         "الستوري";
 
-
-                    openStory(
-                        name
-                    );
+                    openStory(name);
                 }
             );
         }
     );
 
-
     const loginForm =
         document.getElementById(
             "login-form"
         );
-
 
     if (loginForm) {
 
@@ -2230,12 +1954,10 @@ function bindInterfaceButtons() {
         );
     }
 
-
     const registerForm =
         document.getElementById(
             "register-form"
         );
-
 
     if (registerForm) {
 
@@ -2245,12 +1967,10 @@ function bindInterfaceButtons() {
         );
     }
 
-
     const registerButton =
         document.getElementById(
             "show-register"
         );
-
 
     if (registerButton) {
 
@@ -2265,12 +1985,10 @@ function bindInterfaceButtons() {
         );
     }
 
-
     const loginButton =
         document.getElementById(
             "show-login"
         );
-
 
     if (loginButton) {
 
@@ -2288,7 +2006,7 @@ function bindInterfaceButtons() {
 
 
 /* =========================================================
-   تحميل نظام خارجي
+   تحميل ملف خارجي
 ========================================================= */
 
 function loadExternalScript(
@@ -2305,12 +2023,10 @@ function loadExternalScript(
         return;
     }
 
-
     const script =
         document.createElement(
             "script"
         );
-
 
     script.src =
         src;
@@ -2318,12 +2034,10 @@ function loadExternalScript(
     script.async =
         true;
 
-
     script.setAttribute(
         `data-${dataAttribute}`,
         "true"
     );
-
 
     script.onload =
         function() {
@@ -2333,7 +2047,6 @@ function loadExternalScript(
             );
         };
 
-
     script.onerror =
         function() {
 
@@ -2342,7 +2055,6 @@ function loadExternalScript(
             );
         };
 
-
     document.body.appendChild(
         script
     );
@@ -2350,7 +2062,7 @@ function loadExternalScript(
 
 
 /* =========================================================
-   تحميل الأنظمة
+   الأنظمة
 ========================================================= */
 
 function loadAdminSystem() {
@@ -2414,6 +2126,20 @@ function loadFeedSystem() {
 
 
 /* =========================================================
+   تحميل Reels
+========================================================= */
+
+function loadReelsSystem() {
+
+    loadExternalScript(
+        "reels.js",
+        "student-reels",
+        "Student Reels"
+    );
+}
+
+
+/* =========================================================
    Supabase
 ========================================================= */
 
@@ -2428,7 +2154,6 @@ async function initSupabase() {
         return;
     }
 
-
     try {
 
         const response =
@@ -2440,7 +2165,6 @@ async function initSupabase() {
                 }
             );
 
-
         if (!response.ok) {
 
             throw new Error(
@@ -2448,10 +2172,8 @@ async function initSupabase() {
             );
         }
 
-
         const config =
             await response.json();
-
 
         if (
             !config.supabase_url ||
@@ -2463,13 +2185,11 @@ async function initSupabase() {
             );
         }
 
-
         supabaseClient =
             window.supabase.createClient(
                 config.supabase_url,
                 config.supabase_key
             );
-
 
         console.log(
             "Supabase connected."
@@ -2502,16 +2222,11 @@ async function initSupabase() {
                         event
                     );
 
-
                     if (
-                        event ===
-                            "SIGNED_IN" ||
-                        event ===
-                            "SIGNED_OUT" ||
-                        event ===
-                            "INITIAL_SESSION" ||
-                        event ===
-                            "TOKEN_REFRESHED"
+                        event === "SIGNED_IN" ||
+                        event === "SIGNED_OUT" ||
+                        event === "INITIAL_SESSION" ||
+                        event === "TOKEN_REFRESHED"
                     ) {
 
                         await handleSession(
@@ -2520,7 +2235,6 @@ async function initSupabase() {
                     }
                 }
             );
-
 
     } catch (error) {
 
@@ -2537,24 +2251,4 @@ async function initSupabase() {
 ========================================================= */
 
 document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        bindInterfaceButtons();
-
-        initSupabase();
-
-        loadAdminSystem();
-
-        loadMenuSystem();
-
-        loadSettingsSystem();
-
-        loadPostsSystem();
-
-        loadSearchSystem();
-
-        loadFeedSystem();
-
-    }
-);
+    "
