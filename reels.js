@@ -4330,3 +4330,41 @@
     }
 
 })();
+(function () {
+
+    "use strict";
+
+    const files = [
+        "reels-core.js",
+        "reels-social.js",
+        "reels-media.js",
+        "reels-manage.js",
+        "reels-safety.js"
+    ];
+
+    files.forEach(function (src) {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-module="' +
+                src +
+                '"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src = src;
+        script.async = true;
+
+        script.dataset.studentReelsModule =
+            src;
+
+        document.body.appendChild(script);
+
+    });
+
+})();
