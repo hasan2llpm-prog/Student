@@ -1960,3 +1960,16 @@
     }
 
 })();
+(function () {
+    if (document.querySelector('script[data-student-reels="true"]')) return;
+
+    const script = document.createElement("script");
+    script.src = "reels.js";
+    script.async = true;
+    script.dataset.studentReels = "true";
+
+    script.onload = () => console.log("Student Reels loaded.");
+    script.onerror = () => console.error("تعذر تحميل reels.js");
+
+    document.body.appendChild(script);
+})();
