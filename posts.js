@@ -1,6 +1,7 @@
 /* =========================================================
    Student - Posts System
-   منشور نصي + صورة + Reels
+   منشور نصي + صورة
+   Reels يتم نشرها من داخل reels.js
 ========================================================= */
 
 (function () {
@@ -37,7 +38,6 @@
             return supabaseClient;
         }
 
-
         return null;
     }
 
@@ -46,9 +46,7 @@
        حماية
     ===================================================== */
 
-    function escapeHTML(
-        value
-    ) {
+    function escapeHTML(value) {
 
         return String(
             value || ""
@@ -302,18 +300,6 @@
                 line-height:1.7;
             }
 
-            .student-reels-create-box {
-                background:
-                    linear-gradient(
-                        145deg,
-                        #111,
-                        #2a2a2a
-                    );
-                color:#fff;
-                border-radius:18px;
-                padding:20px;
-            }
-
             .student-post-back {
                 border:none;
                 background:#f1f3f5;
@@ -321,15 +307,6 @@
                 height:40px;
                 border-radius:50%;
                 cursor:pointer;
-            }
-
-            .student-reels-video-preview {
-                width:100%;
-                max-height:380px;
-                border-radius:16px;
-                background:#000;
-                display:none;
-                margin-top:10px;
             }
 
             @media (max-width:480px) {
@@ -346,6 +323,7 @@
                     border-radius:0;
                 }
             }
+
         `;
 
 
@@ -356,7 +334,7 @@
 
 
     /* =====================================================
-       إنشاء النافذة
+       النافذة
     ===================================================== */
 
     function createOverlay() {
@@ -378,16 +356,22 @@
 
         overlay.innerHTML = `
 
-            <div class="
-                student-posts-window
-            ">
+            <div
+                class="
+                    student-posts-window
+                "
+            >
 
-                <div class="
-                    student-posts-header
-                ">
+                <div
+                    class="
+                        student-posts-header
+                    "
+                >
 
                     <div
-                        id="student-posts-title"
+                        id="
+                            student-posts-title
+                        "
                         class="
                             student-posts-title
                         "
@@ -397,23 +381,24 @@
 
 
                     <button
-                        id="student-posts-close"
+                        id="
+                            student-posts-close
+                        "
                         class="
                             student-posts-close
                         "
                         type="button"
                     >
-                        <i class="
-                            fa-solid
-                            fa-xmark
-                        "></i>
+                        ×
                     </button>
 
                 </div>
 
 
                 <div
-                    id="student-posts-body"
+                    id="
+                        student-posts-body
+                    "
                     class="
                         student-posts-body
                     "
@@ -440,7 +425,7 @@
 
 
     /* =====================================================
-       فتح
+       فتح القائمة
     ===================================================== */
 
     function openPostCreator() {
@@ -457,10 +442,6 @@
     }
 
 
-    /* =====================================================
-       إغلاق
-    ===================================================== */
-
     function closePosts() {
 
         if (overlay) {
@@ -472,25 +453,19 @@
     }
 
 
-    /* =====================================================
-       العنوان والمحتوى
-    ===================================================== */
-
     function setTitle(
         title
     ) {
 
-        const element =
-            document.getElementById(
+        document
+            .getElementById(
                 "student-posts-title"
+            )
+            ?.replaceChildren(
+                document.createTextNode(
+                    title
+                )
             );
-
-
-        if (element) {
-
-            element.textContent =
-                title;
-        }
     }
 
 
@@ -503,9 +478,7 @@
                 "student-posts-body"
             );
 
-
         if (body) {
-
             body.innerHTML =
                 html;
         }
@@ -513,7 +486,9 @@
 
 
     /* =====================================================
-       الخيارات الثلاثة
+       قائمة الإضافة
+       فقط:
+       نص + صورة
     ===================================================== */
 
     function showPostTypes() {
@@ -531,7 +506,9 @@
 
                 <button
                     id="create-text-post"
-                    class="student-post-type"
+                    class="
+                        student-post-type
+                    "
                     type="button"
                 >
 
@@ -565,7 +542,9 @@
 
                 <button
                     id="create-image-post"
-                    class="student-post-type"
+                    class="
+                        student-post-type
+                    "
                     type="button"
                 >
 
@@ -596,40 +575,6 @@
 
                 </button>
 
-
-                <button
-                    id="create-reel-post"
-                    class="student-post-type"
-                    type="button"
-                >
-
-                    <div class="
-                        student-post-type-icon
-                    ">
-                        <i class="
-                            fa-solid
-                            fa-clapperboard
-                        "></i>
-                    </div>
-
-                    <div>
-
-                        <div class="
-                            student-post-type-title
-                        ">
-                            Reels
-                        </div>
-
-                        <div class="
-                            student-post-type-desc
-                        ">
-                            انشر فيديو قصير
-                        </div>
-
-                    </div>
-
-                </button>
-
             </div>
         `);
 
@@ -651,16 +596,6 @@
             ?.addEventListener(
                 "click",
                 showImagePostForm
-            );
-
-
-        document
-            .getElementById(
-                "create-reel-post"
-            )
-            ?.addEventListener(
-                "click",
-                showReelForm
             );
     }
 
@@ -691,10 +626,7 @@
                 "
                 type="button"
             >
-                <i class="
-                    fa-solid
-                    fa-arrow-right
-                "></i>
+                ←
             </button>
 
 
@@ -703,7 +635,9 @@
                 class="
                     student-post-form
                 "
-                style="margin-top:14px;"
+                style="
+                    margin-top:14px;
+                "
             >
 
                 <textarea
@@ -821,11 +755,12 @@
         try {
 
             const {
-                data: {
+                data:{
                     user
                 }
             } =
-                await client.auth.getUser();
+                await client.auth
+                    .getUser();
 
 
             if (!user) {
@@ -919,10 +854,7 @@
                 "
                 type="button"
             >
-                <i class="
-                    fa-solid
-                    fa-arrow-right
-                "></i>
+                ←
             </button>
 
 
@@ -981,7 +913,7 @@
                     class="
                         student-post-preview
                     "
-                    alt="معاينة الصورة"
+                    alt=""
                 />
 
 
@@ -1082,14 +1014,10 @@
         }
 
 
-        const url =
+        preview.src =
             URL.createObjectURL(
                 file
             );
-
-
-        preview.src =
-            url;
 
 
         preview.style.display =
@@ -1186,7 +1114,7 @@
         try {
 
             const {
-                data: {
+                data:{
                     user
                 }
             } =
@@ -1213,8 +1141,7 @@
 
 
             const {
-                error:
-                    uploadError
+                error:uploadError
             } =
                 await client.storage
                     .from(
@@ -1242,8 +1169,7 @@
 
 
             const {
-                data:
-                    publicData
+                data:publicData
             } =
                 client.storage
                     .from(
@@ -1335,9 +1261,20 @@
 
     /* =====================================================
        Reels
+       نفس نظام الرفع السابق
+       لكن لا يظهر داخل قائمة ➕
     ===================================================== */
 
     function showReelForm() {
+
+        injectStyles();
+
+        createOverlay();
+
+        overlay.classList.add(
+            "show"
+        );
+
 
         setTitle(
             "نشر Reels"
@@ -1353,10 +1290,7 @@
                 "
                 type="button"
             >
-                <i class="
-                    fa-solid
-                    fa-arrow-right
-                "></i>
+                ←
             </button>
 
 
@@ -1364,7 +1298,6 @@
                 id="reel-form"
                 class="
                     student-post-form
-                    student-reels-create-box
                 "
                 style="
                     margin-top:14px;
@@ -1376,20 +1309,12 @@
                         student-post-file
                     "
                     for="reel-file"
-                    style="
-                        background:#181818;
-                        border-color:#444;
-                        color:#fff;
-                    "
                 >
 
                     <div class="
                         student-post-file-icon
                     ">
-                        <i class="
-                            fa-solid
-                            fa-video
-                        "></i>
+                        🎬
                     </div>
 
                     <strong>
@@ -1399,9 +1324,9 @@
                     <div style="
                         margin-top:5px;
                         font-size:12px;
-                        color:#aaa;
+                        color:#888;
                     ">
-                        Reels قصيرة
+                        فيديو قصير
                     </div>
 
                 </label>
@@ -1419,10 +1344,11 @@
                 <video
                     id="reel-preview"
                     class="
-                        student-reels-video-preview
+                        student-post-preview
                     "
                     controls
                     playsinline
+                    style="display:none;"
                 ></video>
 
 
@@ -1432,12 +1358,9 @@
                         student-post-textarea
                     "
                     maxlength="2000"
-                    placeholder="اكتب وصف الريل (اختياري)"
+                    placeholder="اكتب وصف الـReel (اختياري)"
                     style="
                         min-height:100px;
-                        background:#222;
-                        color:#fff;
-                        border-color:#444;
                     "
                 ></textarea>
 
@@ -1449,7 +1372,7 @@
                     "
                     type="submit"
                 >
-                    نشر Reels
+                    نشر Reel
                 </button>
 
 
@@ -1470,7 +1393,20 @@
             )
             ?.addEventListener(
                 "click",
-                backToTypes
+                function() {
+
+                    closePosts();
+
+                    if (
+                        typeof window.openStudentReels ===
+                        "function"
+                    ) {
+
+                        window.openStudentReels(
+                            0
+                        );
+                    }
+                }
             );
 
 
@@ -1526,24 +1462,16 @@
         }
 
 
-        const url =
+        preview.src =
             URL.createObjectURL(
                 file
             );
-
-
-        preview.src =
-            url;
 
 
         preview.style.display =
             "block";
     }
 
-
-    /* =====================================================
-       حفظ Reels
-    ===================================================== */
 
     async function submitReel(
         event
@@ -1630,7 +1558,7 @@
         try {
 
             const {
-                data: {
+                data:{
                     user
                 }
             } =
@@ -1657,8 +1585,7 @@
 
 
             const {
-                error:
-                    uploadError
+                error:uploadError
             } =
                 await client.storage
                     .from(
@@ -1680,16 +1607,13 @@
                     );
 
 
-            if (
-                uploadError
-            ) {
+            if (uploadError) {
                 throw uploadError;
             }
 
 
             const {
-                data:
-                    publicData
+                data:publicData
             } =
                 client.storage
                     .from(
@@ -1738,14 +1662,34 @@
 
             showPostMessage(
                 "reel-message",
-                "تم نشر الـReels بنجاح.",
+                "تم نشر الـReel بنجاح.",
                 false
             );
 
 
+            /*
+               بعد النشر نغلق نموذج النشر
+               ثم نفتح Reels من جديد
+               حتى يظهر الفيديو مباشرة.
+            */
+
             setTimeout(
-                closePosts,
-                700
+                async function() {
+
+                    closePosts();
+
+                    if (
+                        typeof window.openStudentReels ===
+                        "function"
+                    ) {
+
+                        await window.openStudentReels(
+                            0
+                        );
+                    }
+
+                },
+                600
             );
 
 
@@ -1760,7 +1704,7 @@
             showPostMessage(
                 "reel-message",
                 error?.message ||
-                "تعذر نشر الـReels.",
+                "تعذر نشر الـReel.",
                 true
             );
 
@@ -1771,13 +1715,13 @@
                 false;
 
             button.textContent =
-                "نشر Reels";
+                "نشر Reel";
         }
     }
 
 
     /* =====================================================
-       رسائل
+       الرسائل
     ===================================================== */
 
     function showPostMessage(
@@ -1809,7 +1753,7 @@
 
 
     /* =====================================================
-       امتداد
+       الامتداد
     ===================================================== */
 
     function getFileExtension(
@@ -1824,23 +1768,21 @@
 
 
         return (
-
             parts.length > 1
                 ? parts.pop()
                 : "bin"
-
         )
             .toLowerCase()
-
             .replace(
                 /[^a-z0-9]/g,
                 ""
-            ) || "bin";
+            ) ||
+            "bin";
     }
 
 
     /* =====================================================
-       التقاط زر ➕
+       زر ➕
     ===================================================== */
 
     function bindAddButton() {
@@ -1870,7 +1812,7 @@
 
         nav.addEventListener(
             "click",
-            function (event) {
+            function(event) {
 
                 const link =
                     event.target.closest(
@@ -1896,14 +1838,6 @@
                         link
                     );
 
-
-                /*
-                   0 = الرئيسية
-                   1 = البحث
-                   2 = الإضافة
-                   3 = الرسائل
-                   4 = الملف الشخصي
-                */
 
                 if (
                     index !== 2
@@ -1933,6 +1867,10 @@
         openPostCreator;
 
 
+    window.openStudentReelCreator =
+        showReelForm;
+
+
     window.closeStudentPostCreator =
         closePosts;
 
@@ -1959,17 +1897,57 @@
         bindAddButton();
     }
 
+
 })();
 (function () {
-    if (document.querySelector('script[data-student-reels="true"]')) return;
 
-    const script = document.createElement("script");
-    script.src = "reels.js";
-    script.async = true;
-    script.dataset.studentReels = "true";
+    if (
+        document.querySelector(
+            'script[data-student-reels="true"]'
+        )
+    ) {
+        return;
+    }
 
-    script.onload = () => console.log("Student Reels loaded.");
-    script.onerror = () => console.error("تعذر تحميل reels.js");
 
-    document.body.appendChild(script);
+    const script =
+        document.createElement(
+            "script"
+        );
+
+
+    script.src =
+        "reels.js";
+
+
+    script.async =
+        true;
+
+
+    script.dataset.studentReels =
+        "true";
+
+
+    script.onload =
+        function() {
+
+            console.log(
+                "Student Reels loaded."
+            );
+        };
+
+
+    script.onerror =
+        function() {
+
+            console.error(
+                "تعذر تحميل reels.js"
+            );
+        };
+
+
+    document.body.appendChild(
+        script
+    );
+
 })();
