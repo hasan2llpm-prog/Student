@@ -44,6 +44,7 @@
 
     /* =====================================================
        إنشاء واجهة مستقلة
+       السلوك الأصلي خارج القائمة يبقى كما هو
     ===================================================== */
 
     let overlay = null;
@@ -234,6 +235,42 @@
                 font-size:30px;
             }
 
+            /* =========================================
+               تنسيق المحفوظات داخل القائمة الرئيسية
+            ========================================= */
+
+            .student-saved-menu-container {
+                color:#222;
+            }
+
+            .student-saved-menu-container
+            .student-saved-filter {
+                margin-top:0;
+            }
+
+            .student-saved-menu-container
+            .student-saved-item {
+                background:rgba(255,255,255,.72);
+                border:1px solid rgba(255,255,255,.35);
+            }
+
+            .student-saved-menu-container
+            .student-saved-icon {
+                background:rgba(255,255,255,.75);
+                color:#07518e;
+            }
+
+            .student-saved-menu-container
+            .student-saved-type {
+                color:#07518e;
+            }
+
+            .student-saved-menu-container
+            .student-saved-empty-icon {
+                background:rgba(255,255,255,.75);
+                color:#07518e;
+            }
+
             @media (max-width:480px) {
 
                 #student-saved-overlay {
@@ -256,7 +293,7 @@
 
 
     /* =====================================================
-       إنشاء النافذة
+       إنشاء النافذة الأصلية
     ===================================================== */
 
     function createOverlay() {
@@ -319,19 +356,128 @@
 
 
     /* =====================================================
+       هل نحن داخل القائمة الرئيسية؟
+    ===================================================== */
+
+    function isInsideStudentMenu() {
+
+        const menu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+        return !!(
+            menu &&
+            menu.classList.contains(
+                "is-open"
+            )
+        );
+    }
+
+
+    /* =====================================================
+       فتح داخل القائمة الرئيسية
+    ===================================================== */
+
+    function openSavedInsideMenu() {
+
+        if (
+            typeof window.StudentMenuOpenView !==
+            "function"
+        ) {
+            return false;
+        }
+
+
+        const menuHTML = `
+
+            <div
+                id="student-saved-menu-container"
+                class="student-saved-menu-container"
+            >
+
+                <div
+                    id="student-saved-menu-body"
+                >
+                    <div style="
+                        text-align:center;
+                        padding:30px;
+                        color:#555;
+                    ">
+                        جاري تحميل المحفوظات...
+                    </div>
+                </div>
+
+            </div>
+        `;
+
+
+        window.StudentMenuOpenView(
+            "المحفوظات",
+            menuHTML,
+            function () {
+
+                const body =
+                    document.getElementById(
+                        "student-saved-menu-body"
+                    );
+
+
+                if (body) {
+
+                    renderSaved(
+                        "all",
+                        body
+                    );
+                }
+
+            }
+        );
+
+
+        return true;
+    }
+
+
+    /* =====================================================
        فتح
     ===================================================== */
 
     async function openSaved() {
 
         injectStyles();
+
+
+        /*
+           إذا كانت القائمة الرئيسية مفتوحة،
+           نستخدمها بدل النافذة العائمة.
+        */
+
+        if (
+            isInsideStudentMenu()
+        ) {
+
+            if (
+                openSavedInsideMenu()
+            ) {
+                return;
+            }
+        }
+
+
+        /*
+           السلوك الأصلي
+        */
+
         createOverlay();
 
         overlay.classList.add(
             "show"
         );
 
-        await renderSaved();
+        await renderSaved(
+            "all"
+        );
     }
 
 
@@ -505,16 +651,22 @@
 
     /* =====================================================
        العرض
+       targetBody اختياري:
+       - بدون target = النظام الأصلي
+       - مع target = داخل القائمة
     ===================================================== */
 
     async function renderSaved(
-        filter = "all"
+        filter = "all",
+        targetBody = null
     ) {
 
         const body =
+            targetBody ||
             document.getElementById(
                 "student-saved-body"
             );
+
 
         if (!body) {
             return;
@@ -526,7 +678,7 @@
             <div style="
                 text-align:center;
                 padding:30px;
-                color:#888;
+                color:#666;
             ">
                 جاري تحميل المحفوظات...
             </div>
@@ -727,7 +879,9 @@
         }
 
 
-        /* الفلاتر */
+        /* =================================================
+           الفلاتر
+        ================================================= */
 
         body
             .querySelectorAll(
@@ -742,7 +896,8 @@
 
                             await renderSaved(
                                 button.dataset
-                                    .savedFilter
+                                    .savedFilter,
+                                body
                             );
 
                         }
@@ -751,7 +906,9 @@
             );
 
 
-        /* حذف */
+        /* =================================================
+           حذف
+        ================================================= */
 
         body
             .querySelectorAll(
@@ -767,7 +924,8 @@
                             await deleteSavedItem(
                                 button.dataset
                                     .deleteSaved,
-                                filter
+                                filter,
+                                body
                             );
 
                         }
@@ -783,7 +941,8 @@
 
     async function deleteSavedItem(
         id,
-        currentFilter
+        currentFilter,
+        targetBody = null
     ) {
 
         const client =
@@ -829,7 +988,8 @@
 
 
         await renderSaved(
-            currentFilter
+            currentFilter,
+            targetBody
         );
     }
 
@@ -904,10 +1064,6 @@
 
             if (error) {
 
-                /*
-                   23505 = موجود مسبقًا
-                */
-
                 if (
                     error.code ===
                     "23505"
@@ -947,7 +1103,7 @@
 
 
     /* =====================================================
-       إلغاء حفظ عنصر بواسطة النوع والمعرف
+       إلغاء حفظ عنصر
     ===================================================== */
 
     async function unsaveItem(
