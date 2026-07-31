@@ -69,7 +69,6 @@
             return false;
         }
 
-
         window.StudentMenuOpenView(
             "الإعدادات",
             buildSettingsHomeHTML(),
@@ -79,7 +78,6 @@
 
             }
         );
-
 
         return true;
     }
@@ -526,9 +524,7 @@
 
         `;
 
-        document.head.appendChild(
-            style
-        );
+        document.head.appendChild(style);
     }
 
 
@@ -621,6 +617,7 @@
 
     /* =====================================================
        تغيير العنوان
+       يدعم القائمة الرئيسية
     ===================================================== */
 
     function setPageTitle(
@@ -628,20 +625,73 @@
         showBack
     ) {
 
+        const mainMenu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+
+        const insideMainMenu =
+            !!(
+                mainMenu &&
+                mainMenu.classList.contains(
+                    "is-open"
+                )
+            );
+
+
+        if (insideMainMenu) {
+
+            const menuTitle =
+                document.getElementById(
+                    "student-menu-title"
+                );
+
+
+            const menuBack =
+                document.getElementById(
+                    "student-menu-back"
+                );
+
+
+            if (menuTitle) {
+
+                menuTitle.textContent =
+                    title;
+            }
+
+
+            if (menuBack) {
+
+                menuBack.classList.toggle(
+                    "visible",
+                    showBack
+                );
+            }
+
+
+            return;
+        }
+
+
         const titleElement =
             document.getElementById(
                 "student-settings-title"
             );
+
 
         const backButton =
             document.getElementById(
                 "student-settings-back"
             );
 
+
         if (titleElement) {
+
             titleElement.textContent =
                 title;
         }
+
 
         if (backButton) {
 
@@ -662,11 +712,6 @@
         injectStyles();
 
 
-        /*
-           إذا كانت القائمة الرئيسية مفتوحة
-           نستخدمها بدل النافذة العائمة.
-        */
-
         if (
             isInsideStudentMenu()
         ) {
@@ -678,10 +723,6 @@
             }
         }
 
-
-        /*
-           السلوك الأصلي خارج القائمة
-        */
 
         createOverlay();
 
@@ -709,18 +750,55 @@
 
 
     /* =====================================================
-       Body
+       محتوى الصفحة
+       يدعم القائمة الرئيسية
     ===================================================== */
 
     function setBody(html) {
+
+        const mainMenu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+
+        const insideMainMenu =
+            !!(
+                mainMenu &&
+                mainMenu.classList.contains(
+                    "is-open"
+                )
+            );
+
+
+        if (insideMainMenu) {
+
+            const menuBody =
+                document.getElementById(
+                    "student-menu-content"
+                );
+
+
+            if (menuBody) {
+
+                menuBody.innerHTML =
+                    html;
+
+                return;
+            }
+        }
+
 
         const body =
             document.getElementById(
                 "student-settings-body"
             );
 
+
         if (body) {
-            body.innerHTML = html;
+
+            body.innerHTML =
+                html;
         }
     }
 
@@ -754,6 +832,18 @@
             )
             .forEach(
                 function (button) {
+
+                    if (
+                        button.dataset.settingsBound ===
+                        "true"
+                    ) {
+                        return;
+                    }
+
+
+                    button.dataset.settingsBound =
+                        "true";
+
 
                     button.addEventListener(
                         "click",
@@ -798,8 +888,7 @@
 
 
     /* =====================================================
-       بقية وظائف الإعدادات
-       لم تتغير
+       صفحة الحساب
     ===================================================== */
 
     async function showAccountPage() {
@@ -903,6 +992,10 @@
             );
     }
 
+
+    /* =====================================================
+       تغيير البريد
+    ===================================================== */
 
     function showChangeEmailPage() {
 
@@ -1042,6 +1135,10 @@
             );
     }
 
+
+    /* =====================================================
+       تغيير كلمة المرور
+    ===================================================== */
 
     function showChangePasswordPage() {
 
@@ -1233,6 +1330,10 @@
     }
 
 
+    /* =====================================================
+       الخصوصية
+    ===================================================== */
+
     function showPrivacyPage() {
 
         let status =
@@ -1406,6 +1507,10 @@
     }
 
 
+    /* =====================================================
+       الإشعارات
+    ===================================================== */
+
     function showNotificationsPage() {
 
         const stored =
@@ -1553,6 +1658,10 @@
     }
 
 
+    /* =====================================================
+       المظهر
+    ===================================================== */
+
     function applyTheme(theme) {
 
         if (
@@ -1647,6 +1756,10 @@
                             : ""
                     }"
                     data-theme="dark"
+                    style="
+                        background:#222;
+                        color:#fff;
+                    "
                 >
                     🌙 الوضع الداكن
                 </button>
@@ -1711,18 +1824,27 @@
                                 );
 
 
-                            document
-                                .getElementById(
+                            const message =
+                                document.getElementById(
                                     "settings-theme-message"
-                                )
-                                .textContent =
-                                "تم حفظ المظهر.";
+                                );
+
+
+                            if (message) {
+
+                                message.textContent =
+                                    "تم حفظ المظهر.";
+                            }
                         }
                     );
                 }
             );
     }
 
+
+    /* =====================================================
+       اللغة
+    ===================================================== */
 
     function showLanguagePage() {
 
@@ -1834,11 +1956,14 @@
                                 );
 
 
-                            message.textContent =
-                                language ===
-                                "ar"
-                                    ? "تم اختيار العربية."
-                                    : "English selected. Full translation will be added later.";
+                            if (message) {
+
+                                message.textContent =
+                                    language ===
+                                    "ar"
+                                        ? "تم اختيار العربية."
+                                        : "English selected. Full translation will be added later.";
+                            }
 
                         }
                     );
@@ -1846,6 +1971,10 @@
             );
     }
 
+
+    /* =====================================================
+       الأمان
+    ===================================================== */
 
     function showSecurityPage() {
 
@@ -2023,14 +2152,13 @@
                             error?.message ||
                             "تعذر تسجيل الخروج.";
                     }
-
                 }
             );
     }
 
 
     /* =====================================================
-       التفضيلات
+       تحميل التفضيلات
     ===================================================== */
 
     function loadPreferences() {
@@ -2069,7 +2197,7 @@
 
 
     /* =====================================================
-       API
+       API عامة
     ===================================================== */
 
     window.showSettingsPanel =
