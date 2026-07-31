@@ -1,13 +1,25 @@
-alert("posts.js يعمل");/* =========================================================
+/* =========================================================
    Student - Posts System
-   النص + الصور + Reels
+   منشور نصي + صورة + Reels
 ========================================================= */
 
 (function () {
+
     "use strict";
 
-    if (window.__studentPostsLoaded) return;
-    window.__studentPostsLoaded = true;
+
+    if (
+        window.__studentPostsLoaded
+    ) {
+        return;
+    }
+
+
+    window.__studentPostsLoaded =
+        true;
+
+
+    let overlay = null;
 
 
     /* =====================================================
@@ -17,36 +29,56 @@ alert("posts.js يعمل");/* ==================================================
     function getSupabase() {
 
         if (
-            typeof supabaseClient !== "undefined" &&
+            typeof supabaseClient !==
+                "undefined" &&
             supabaseClient
         ) {
+
             return supabaseClient;
         }
+
 
         return null;
     }
 
 
     /* =====================================================
-       حماية HTML
+       حماية
     ===================================================== */
 
-    function escapeHTML(value) {
+    function escapeHTML(
+        value
+    ) {
 
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+        return String(
+            value || ""
+        )
+
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+
+            .replace(
+                /</g,
+                "&lt;"
+            )
+
+            .replace(
+                />/g,
+                "&gt;"
+            )
+
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+
+            .replace(
+                /'/g,
+                "&#039;"
+            );
     }
-
-
-    /* =====================================================
-       الحالة
-    ===================================================== */
-
-    let overlay = null;
 
 
     /* =====================================================
@@ -60,12 +92,15 @@ alert("posts.js يعمل");/* ==================================================
                 "student-posts-style"
             )
         ) {
+
             return;
         }
 
 
         const style =
-            document.createElement("style");
+            document.createElement(
+                "style"
+            );
 
 
         style.id =
@@ -78,7 +113,8 @@ alert("posts.js يعمل");/* ==================================================
                 position:fixed;
                 inset:0;
                 z-index:9999996;
-                background:rgba(0,0,0,.42);
+                background:
+                    rgba(0,0,0,.42);
                 display:none;
                 align-items:center;
                 justify-content:center;
@@ -99,7 +135,8 @@ alert("posts.js يعمل");/* ==================================================
                 background:#fff;
                 border-radius:24px;
                 box-shadow:
-                    0 20px 70px rgba(0,0,0,.28);
+                    0 20px 70px
+                    rgba(0,0,0,.28);
                 display:flex;
                 flex-direction:column;
             }
@@ -109,7 +146,8 @@ alert("posts.js يعمل");/* ==================================================
                 align-items:center;
                 gap:12px;
                 padding:16px;
-                border-bottom:1px solid #eee;
+                border-bottom:
+                    1px solid #eee;
                 flex-shrink:0;
             }
 
@@ -276,12 +314,6 @@ alert("posts.js يعمل");/* ==================================================
                 padding:20px;
             }
 
-            .student-reels-create-label {
-                font-size:13px;
-                margin-bottom:8px;
-                color:#ddd;
-            }
-
             .student-post-back {
                 border:none;
                 background:#f1f3f5;
@@ -314,10 +346,12 @@ alert("posts.js يعمل");/* ==================================================
                     border-radius:0;
                 }
             }
-
         `;
 
-        document.head.appendChild(style);
+
+        document.head.appendChild(
+            style
+        );
     }
 
 
@@ -333,7 +367,9 @@ alert("posts.js يعمل");/* ==================================================
 
 
         overlay =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
 
         overlay.id =
@@ -342,23 +378,35 @@ alert("posts.js يعمل");/* ==================================================
 
         overlay.innerHTML = `
 
-            <div class="student-posts-window">
+            <div class="
+                student-posts-window
+            ">
 
-                <div class="student-posts-header">
+                <div class="
+                    student-posts-header
+                ">
 
                     <div
                         id="student-posts-title"
-                        class="student-posts-title"
+                        class="
+                            student-posts-title
+                        "
                     >
                         إضافة
                     </div>
 
+
                     <button
                         id="student-posts-close"
-                        class="student-posts-close"
+                        class="
+                            student-posts-close
+                        "
                         type="button"
                     >
-                        <i class="fa-solid fa-xmark"></i>
+                        <i class="
+                            fa-solid
+                            fa-xmark
+                        "></i>
                     </button>
 
                 </div>
@@ -366,7 +414,9 @@ alert("posts.js يعمل");/* ==================================================
 
                 <div
                     id="student-posts-body"
-                    class="student-posts-body"
+                    class="
+                        student-posts-body
+                    "
                 ></div>
 
             </div>
@@ -386,8 +436,6 @@ alert("posts.js يعمل");/* ==================================================
                 "click",
                 closePosts
             );
-
-        /* لا نغلق بالضغط على الخلفية */
     }
 
 
@@ -398,6 +446,7 @@ alert("posts.js يعمل");/* ==================================================
     function openPostCreator() {
 
         injectStyles();
+
         createOverlay();
 
         overlay.classList.add(
@@ -415,6 +464,7 @@ alert("posts.js يعمل");/* ==================================================
     function closePosts() {
 
         if (overlay) {
+
             overlay.classList.remove(
                 "show"
             );
@@ -423,7 +473,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       العنوان
+       العنوان والمحتوى
     ===================================================== */
 
     function setTitle(
@@ -435,16 +485,14 @@ alert("posts.js يعمل");/* ==================================================
                 "student-posts-title"
             );
 
+
         if (element) {
+
             element.textContent =
                 title;
         }
     }
 
-
-    /* =====================================================
-       المحتوى
-    ===================================================== */
 
     function setBody(
         html
@@ -455,7 +503,9 @@ alert("posts.js يعمل");/* ==================================================
                 "student-posts-body"
             );
 
+
         if (body) {
+
             body.innerHTML =
                 html;
         }
@@ -463,7 +513,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       الأنواع الثلاثة
+       الخيارات الثلاثة
     ===================================================== */
 
     function showPostTypes() {
@@ -481,9 +531,7 @@ alert("posts.js يعمل");/* ==================================================
 
                 <button
                     id="create-text-post"
-                    class="
-                        student-post-type
-                    "
+                    class="student-post-type"
                     type="button"
                 >
 
@@ -517,9 +565,7 @@ alert("posts.js يعمل");/* ==================================================
 
                 <button
                     id="create-image-post"
-                    class="
-                        student-post-type
-                    "
+                    class="student-post-type"
                     type="button"
                 >
 
@@ -553,9 +599,7 @@ alert("posts.js يعمل");/* ==================================================
 
                 <button
                     id="create-reel-post"
-                    class="
-                        student-post-type
-                    "
+                    class="student-post-type"
                     type="button"
                 >
 
@@ -621,11 +665,8 @@ alert("posts.js يعمل");/* ==================================================
     }
 
 
-    /* =====================================================
-       زر الرجوع
-    ===================================================== */
-
     function backToTypes() {
+
         showPostTypes();
     }
 
@@ -645,10 +686,15 @@ alert("posts.js يعمل");/* ==================================================
 
             <button
                 id="text-post-back"
-                class="student-post-back"
+                class="
+                    student-post-back
+                "
                 type="button"
             >
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="
+                    fa-solid
+                    fa-arrow-right
+                "></i>
             </button>
 
 
@@ -714,10 +760,6 @@ alert("posts.js يعمل");/* ==================================================
     }
 
 
-    /* =====================================================
-       حفظ منشور نصي
-    ===================================================== */
-
     async function submitTextPost(
         event
     ) {
@@ -730,11 +772,13 @@ alert("posts.js يعمل");/* ==================================================
 
 
         if (!client) {
+
             showPostMessage(
                 "text-post-message",
                 "الخدمة غير متاحة حاليًا.",
                 true
             );
+
             return;
         }
 
@@ -769,6 +813,7 @@ alert("posts.js يعمل");/* ==================================================
         button.disabled =
             true;
 
+
         button.textContent =
             "جارٍ النشر...";
 
@@ -784,6 +829,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
             if (!user) {
+
                 throw new Error(
                     "يجب تسجيل الدخول أولًا."
                 );
@@ -796,6 +842,7 @@ alert("posts.js يعمل");/* ==================================================
                 await client
                     .from("posts")
                     .insert({
+
                         user_id:
                             user.id,
 
@@ -840,6 +887,7 @@ alert("posts.js يعمل");/* ==================================================
                 true
             );
 
+
         } finally {
 
             button.disabled =
@@ -852,7 +900,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       منشور صورة
+       الصورة
     ===================================================== */
 
     function showImagePostForm() {
@@ -866,10 +914,15 @@ alert("posts.js يعمل");/* ==================================================
 
             <button
                 id="image-post-back"
-                class="student-post-back"
+                class="
+                    student-post-back
+                "
                 type="button"
             >
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="
+                    fa-solid
+                    fa-arrow-right
+                "></i>
             </button>
 
 
@@ -884,7 +937,9 @@ alert("posts.js يعمل");/* ==================================================
             >
 
                 <label
-                    class="student-post-file"
+                    class="
+                        student-post-file
+                    "
                     for="image-post-file"
                 >
 
@@ -975,16 +1030,14 @@ alert("posts.js يعمل");/* ==================================================
             );
 
 
-        const fileInput =
-            document.getElementById(
+        document
+            .getElementById(
                 "image-post-file"
+            )
+            ?.addEventListener(
+                "change",
+                previewImage
             );
-
-
-        fileInput?.addEventListener(
-            "change",
-            previewImage
-        );
 
 
         document
@@ -997,10 +1050,6 @@ alert("posts.js يعمل");/* ==================================================
             );
     }
 
-
-    /* =====================================================
-       معاينة الصورة
-    ===================================================== */
 
     function previewImage(
         event
@@ -1049,7 +1098,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       حفظ صورة
+       حفظ الصورة
     ===================================================== */
 
     async function submitImagePost(
@@ -1064,11 +1113,13 @@ alert("posts.js يعمل");/* ==================================================
 
 
         if (!client) {
+
             showPostMessage(
                 "image-post-message",
                 "الخدمة غير متاحة حاليًا.",
                 true
             );
+
             return;
         }
 
@@ -1127,6 +1178,7 @@ alert("posts.js يعمل");/* ==================================================
         button.disabled =
             true;
 
+
         button.textContent =
             "جارٍ الرفع...";
 
@@ -1138,22 +1190,16 @@ alert("posts.js يعمل");/* ==================================================
                     user
                 }
             } =
-                await client.auth.getUser();
+                await client.auth
+                    .getUser();
 
 
             if (!user) {
+
                 throw new Error(
                     "يجب تسجيل الدخول أولًا."
                 );
             }
-
-
-            /*
-               نستخدم Bucket باسم:
-               post-media
-               
-               ننشئه في Supabase في الخطوة التالية.
-            */
 
 
             const extension =
@@ -1190,9 +1236,7 @@ alert("posts.js يعمل");/* ==================================================
                     );
 
 
-            if (
-                uploadError
-            ) {
+            if (uploadError) {
                 throw uploadError;
             }
 
@@ -1215,6 +1259,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
             if (!mediaURL) {
+
                 throw new Error(
                     "تعذر الحصول على رابط الصورة."
                 );
@@ -1227,6 +1272,7 @@ alert("posts.js يعمل");/* ==================================================
                 await client
                     .from("posts")
                     .insert({
+
                         user_id:
                             user.id,
 
@@ -1234,7 +1280,8 @@ alert("posts.js يعمل");/* ==================================================
                             "image",
 
                         content:
-                            caption || null,
+                            caption ||
+                            null,
 
                         media_url:
                             mediaURL
@@ -1274,6 +1321,7 @@ alert("posts.js يعمل");/* ==================================================
                 true
             );
 
+
         } finally {
 
             button.disabled =
@@ -1300,10 +1348,15 @@ alert("posts.js يعمل");/* ==================================================
 
             <button
                 id="reel-back"
-                class="student-post-back"
+                class="
+                    student-post-back
+                "
                 type="button"
             >
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="
+                    fa-solid
+                    fa-arrow-right
+                "></i>
             </button>
 
 
@@ -1442,10 +1495,6 @@ alert("posts.js يعمل");/* ==================================================
     }
 
 
-    /* =====================================================
-       معاينة Reels
-    ===================================================== */
-
     function previewReel(
         event
     ) {
@@ -1508,11 +1557,13 @@ alert("posts.js يعمل");/* ==================================================
 
 
         if (!client) {
+
             showPostMessage(
                 "reel-message",
                 "الخدمة غير متاحة حاليًا.",
                 true
             );
+
             return;
         }
 
@@ -1571,6 +1622,7 @@ alert("posts.js يعمل");/* ==================================================
         button.disabled =
             true;
 
+
         button.textContent =
             "جارٍ رفع الفيديو...";
 
@@ -1582,10 +1634,12 @@ alert("posts.js يعمل");/* ==================================================
                     user
                 }
             } =
-                await client.auth.getUser();
+                await client.auth
+                    .getUser();
 
 
             if (!user) {
+
                 throw new Error(
                     "يجب تسجيل الدخول أولًا."
                 );
@@ -1651,6 +1705,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
             if (!videoURL) {
+
                 throw new Error(
                     "تعذر الحصول على رابط الفيديو."
                 );
@@ -1663,6 +1718,7 @@ alert("posts.js يعمل");/* ==================================================
                 await client
                     .from("reels")
                     .insert({
+
                         user_id:
                             user.id,
 
@@ -1670,7 +1726,8 @@ alert("posts.js يعمل");/* ==================================================
                             videoURL,
 
                         caption:
-                            caption || null
+                            caption ||
+                            null
                     });
 
 
@@ -1707,6 +1764,7 @@ alert("posts.js يعمل");/* ==================================================
                 true
             );
 
+
         } finally {
 
             button.disabled =
@@ -1719,7 +1777,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       الرسائل
+       رسائل
     ===================================================== */
 
     function showPostMessage(
@@ -1734,7 +1792,9 @@ alert("posts.js يعمل");/* ==================================================
             );
 
 
-        if (!element) return;
+        if (!element) {
+            return;
+        }
 
 
         element.style.color =
@@ -1749,7 +1809,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
     /* =====================================================
-       امتداد الملف
+       امتداد
     ===================================================== */
 
     function getFileExtension(
@@ -1764,20 +1824,23 @@ alert("posts.js يعمل");/* ==================================================
 
 
         return (
+
             parts.length > 1
                 ? parts.pop()
                 : "bin"
+
         )
-        .toLowerCase()
-        .replace(
-            /[^a-z0-9]/g,
-            ""
-        ) || "bin";
+            .toLowerCase()
+
+            .replace(
+                /[^a-z0-9]/g,
+                ""
+            ) || "bin";
     }
 
 
     /* =====================================================
-       ربط زر الإضافة في الشريط السفلي
+       التقاط زر ➕
     ===================================================== */
 
     function bindAddButton() {
@@ -1835,7 +1898,11 @@ alert("posts.js يعمل");/* ==================================================
 
 
                 /*
-                   index 2 = زر الإضافة
+                   0 = الرئيسية
+                   1 = البحث
+                   2 = الإضافة
+                   3 = الرسائل
+                   4 = الملف الشخصي
                 */
 
                 if (
@@ -1846,6 +1913,7 @@ alert("posts.js يعمل");/* ==================================================
 
 
                 event.preventDefault();
+
                 event.stopImmediatePropagation();
 
 
@@ -1863,6 +1931,7 @@ alert("posts.js يعمل");/* ==================================================
 
     window.openStudentPostCreator =
         openPostCreator;
+
 
     window.closeStudentPostCreator =
         closePosts;
