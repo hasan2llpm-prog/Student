@@ -1,7 +1,16 @@
+/* =========================================================
+   Student - Reels System
+   Reels فقط
+========================================================= */
+
 (function () {
+
     "use strict";
 
-    if (window.__studentReelsLoaded) return;
+    if (window.__studentReelsLoaded) {
+        return;
+    }
+
     window.__studentReelsLoaded = true;
 
     let overlay = null;
@@ -18,22 +27,29 @@
     ===================================================== */
 
     function getSupabase() {
-        return typeof supabaseClient !== "undefined"
-            ? supabaseClient
-            : null;
+
+        if (
+            typeof supabaseClient !== "undefined" &&
+            supabaseClient
+        ) {
+            return supabaseClient;
+        }
+
+        return null;
     }
 
 
     async function waitForSupabase() {
+
         for (let i = 0; i < 50; i++) {
 
             if (getSupabase()) {
                 return getSupabase();
             }
 
-            await new Promise(resolve =>
-                setTimeout(resolve, 200)
-            );
+            await new Promise(function (resolve) {
+                setTimeout(resolve, 200);
+            });
         }
 
         return null;
@@ -41,10 +57,11 @@
 
 
     /* =====================================================
-       حماية HTML
+       حماية
     ===================================================== */
 
     function escapeHTML(value) {
+
         return String(value || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -55,7 +72,7 @@
 
 
     /* =====================================================
-       التصميم
+       CSS
     ===================================================== */
 
     function injectStyles() {
@@ -76,50 +93,37 @@
 
         style.textContent = `
 
-        /* =========================================
-           زر Reels بجانب Stories
-        ========================================= */
-
         #student-reels-entry {
             flex:0 0 auto !important;
             width:auto !important;
             height:auto !important;
-            min-width:0 !important;
             margin:0 !important;
             padding:0 !important;
             border:0 !important;
-            outline:0 !important;
             background:transparent !important;
             cursor:pointer !important;
             text-align:center !important;
-            font-family:inherit !important;
         }
 
         #student-reels-entry-inner {
             display:flex;
             flex-direction:column;
             align-items:center;
-            justify-content:flex-start;
         }
 
         #student-reels-entry-circle {
             width:58px;
             height:58px;
-            border-radius:50% !important;
+            border-radius:50%;
+            background:#fff;
+            border:3px solid #111;
             display:flex;
             align-items:center;
             justify-content:center;
-            background:#fff;
-            border:3px solid #111;
             box-sizing:border-box;
-            box-shadow:0 2px 8px rgba(0,0,0,.10);
-            position:relative;
+            box-shadow:
+                0 2px 8px rgba(0,0,0,.12);
         }
-
-        /*
-           شكل يشبه شعار Reels من Instagram
-           بدون صورة.
-        */
 
         #student-reels-entry-icon {
             width:30px;
@@ -133,19 +137,18 @@
         #student-reels-entry-icon::before {
             content:"";
             position:absolute;
-            width:18px;
-            height:5px;
             left:3px;
             top:-7px;
+            width:18px;
+            height:5px;
             border-top:3px solid #111;
             border-bottom:3px solid #111;
-            transform:rotate(0deg);
         }
 
         #student-reels-entry-icon::after {
             content:"";
             position:absolute;
-            left:10px;
+            left:9px;
             top:5px;
             width:0;
             height:0;
@@ -157,15 +160,9 @@
         #student-reels-entry-name {
             margin-top:5px;
             font-size:11px;
-            line-height:1.2;
             color:#333;
             white-space:nowrap;
         }
-
-
-        /* =========================================
-           شاشة Reels
-        ========================================= */
 
         #student-reels-overlay {
             position:fixed;
@@ -193,7 +190,6 @@
             display:none;
         }
 
-
         .student-reel {
             position:relative;
             width:100%;
@@ -212,11 +208,6 @@
             display:block;
             background:#000;
         }
-
-
-        /* =========================================
-           الشريط العلوي
-        ========================================= */
 
         .student-reel-top {
             position:absolute;
@@ -243,6 +234,7 @@
         }
 
         .student-reel-publish {
+            margin-right:auto;
             border:0;
             background:#0095f6;
             color:#fff;
@@ -251,7 +243,6 @@
             font-size:13px;
             font-weight:700;
             cursor:pointer;
-            margin-right:auto;
         }
 
         .student-reel-close {
@@ -264,11 +255,6 @@
             font-size:22px;
             cursor:pointer;
         }
-
-
-        /* =========================================
-           معلومات صاحب Reel
-        ========================================= */
 
         .student-reel-user {
             position:absolute;
@@ -291,11 +277,6 @@
             line-height:1.7;
             white-space:pre-wrap;
         }
-
-
-        /* =========================================
-           أزرار التفاعل
-        ========================================= */
 
         .student-reel-actions {
             position:absolute;
@@ -329,11 +310,6 @@
             color:#ffd400;
         }
 
-
-        /* =========================================
-           قائمة صاحب الـReel
-        ========================================= */
-
         .student-reel-menu {
             position:absolute;
             left:70px;
@@ -344,8 +320,6 @@
             overflow:hidden;
             display:none;
             z-index:20;
-            box-shadow:
-                0 15px 40px rgba(0,0,0,.35);
         }
 
         .student-reel-menu.show {
@@ -370,11 +344,6 @@
         .student-reel-menu .danger {
             color:#d93025;
         }
-
-
-        /* =========================================
-           شاشة عدم وجود Reels
-        ========================================= */
 
         .student-reels-empty {
             width:100%;
@@ -406,13 +375,12 @@
             border:3px solid #fff;
             border-radius:8px;
             position:relative;
-            box-sizing:border-box;
         }
 
         .student-reels-empty-reels-icon::after {
             content:"";
             position:absolute;
-            left:11px;
+            left:10px;
             top:6px;
             width:0;
             height:0;
@@ -450,7 +418,7 @@
 
 
     /* =====================================================
-       إيجاد Stories
+       مكان Reels بجانب Stories
     ===================================================== */
 
     function findStoriesContainer() {
@@ -466,10 +434,6 @@
     }
 
 
-    /* =====================================================
-       إنشاء أيقونة Reels
-    ===================================================== */
-
     function createReelsEntry() {
 
         const container =
@@ -479,7 +443,6 @@
             return false;
         }
 
-
         const story =
             container.querySelector(".story");
 
@@ -487,19 +450,15 @@
             return false;
         }
 
-
         let entry =
             document.getElementById(
                 "student-reels-entry"
             );
 
-
         if (!entry) {
 
             entry =
-                document.createElement(
-                    "button"
-                );
+                document.createElement("button");
 
             entry.id =
                 "student-reels-entry";
@@ -507,33 +466,30 @@
             entry.type =
                 "button";
 
-
             entry.innerHTML = `
 
-                <span
-                    id="student-reels-entry-inner"
-                >
+                <span id="
+                    student-reels-entry-inner
+                ">
 
-                    <span
-                        id="student-reels-entry-circle"
-                    >
+                    <span id="
+                        student-reels-entry-circle
+                    ">
 
-                        <span
-                            id="student-reels-entry-icon"
-                        ></span>
+                        <span id="
+                            student-reels-entry-icon
+                        "></span>
 
                     </span>
 
-
-                    <span
-                        id="student-reels-entry-name"
-                    >
+                    <span id="
+                        student-reels-entry-name
+                    ">
                         Reels
                     </span>
 
                 </span>
             `;
-
 
             entry.addEventListener(
                 "click",
@@ -547,10 +503,8 @@
             );
         }
 
-
         /*
-           نضعه في البداية بصريًا في RTL
-           بحيث يكون في جهة اليمين.
+           الجهة اليمنى في RTL
         */
 
         container.insertBefore(
@@ -558,30 +512,21 @@
             container.firstChild
         );
 
-
-        resizeReelsEntry();
-
+        resizeEntry();
 
         return true;
     }
 
 
-    /* =====================================================
-       حجم الأيقونة = حجم Story
-    ===================================================== */
-
-    function resizeReelsEntry() {
+    function resizeEntry() {
 
         const story =
-            document.querySelector(
-                ".story"
-            );
+            document.querySelector(".story");
 
         const circle =
             document.getElementById(
                 "student-reels-entry-circle"
             );
-
 
         if (
             !story ||
@@ -590,16 +535,11 @@
             return;
         }
 
-
         const rect =
             story.getBoundingClientRect();
 
-
         const size =
-            Math.round(
-                rect.width
-            );
-
+            Math.round(rect.width);
 
         circle.style.width =
             `${size}px`;
@@ -609,18 +549,13 @@
     }
 
 
-    /* =====================================================
-       حماية الزر من الاختفاء
-    ===================================================== */
-
-    function startObserver() {
+    function protectEntry() {
 
         if (observerStarted) {
             return;
         }
 
         observerStarted = true;
-
 
         const observer =
             new MutationObserver(
@@ -630,14 +565,13 @@
                         function() {
 
                             createReelsEntry();
-                            resizeReelsEntry();
+                            resizeEntry();
 
                         },
                         100
                     );
                 }
             );
-
 
         observer.observe(
             document.body,
@@ -647,16 +581,15 @@
             }
         );
 
-
         window.addEventListener(
             "resize",
-            resizeReelsEntry
+            resizeEntry
         );
     }
 
 
     /* =====================================================
-       Overlay
+       النافذة
     ===================================================== */
 
     function createOverlay() {
@@ -665,24 +598,19 @@
             return;
         }
 
-
         overlay =
-            document.createElement(
-                "div"
-            );
-
+            document.createElement("div");
 
         overlay.id =
             "student-reels-overlay";
-
 
         overlay.innerHTML = `
 
             <div
                 id="student-reels-scroll"
             ></div>
-        `;
 
+        `;
 
         document.body.appendChild(
             overlay
@@ -691,7 +619,7 @@
 
 
     /* =====================================================
-       فتح Reels
+       فتح
     ===================================================== */
 
     async function openReels(
@@ -702,19 +630,14 @@
             return;
         }
 
-
         injectStyles();
-
         createOverlay();
-
 
         overlay.classList.add(
             "show"
         );
 
-
         await loadReels();
-
 
         if (!reels.length) {
 
@@ -722,7 +645,6 @@
 
             return;
         }
-
 
         currentIndex =
             Math.max(
@@ -733,9 +655,7 @@
                 )
             );
 
-
         renderReels();
-
 
         setTimeout(
             function() {
@@ -751,29 +671,21 @@
     }
 
 
-    /* =====================================================
-       إغلاق
-    ===================================================== */
-
     function closeReels() {
 
         if (!overlay) {
             return;
         }
 
-
         overlay
             .querySelectorAll("video")
             .forEach(
                 function(video) {
 
-                    try {
-                        video.pause();
-                    } catch (e) {}
+                    video.pause();
 
                 }
             );
-
 
         overlay.classList.remove(
             "show"
@@ -783,26 +695,30 @@
 
     /* =====================================================
        تحميل Reels
+       الأعمدة الموجودة فعلًا:
+       id
+       user_id
+       video_url
+       caption
+       thumbnail_url
+       created_at
+       updated_at
     ===================================================== */
 
     async function loadReels() {
 
         loading = true;
 
-
         const client =
             await waitForSupabase();
-
 
         if (!client) {
 
             reels = [];
-
             loading = false;
 
             return;
         }
-
 
         try {
 
@@ -813,10 +729,8 @@
             } =
                 await client.auth.getUser();
 
-
             currentUserId =
                 user?.id || null;
-
 
             const {
                 data,
@@ -830,120 +744,27 @@
                         video_url,
                         caption,
                         thumbnail_url,
-                        visibility,
-                        is_archived,
-                        created_at
+                        created_at,
+                        updated_at
                     `)
-                    .eq(
-                        "visibility",
-                        "public"
-                    )
-                    .eq(
-                        "is_archived",
-                        false
-                    )
                     .order(
                         "created_at",
                         {
                             ascending:false
                         }
                     )
-                    .limit(50);
-
+                    .limit(100);
 
             if (error) {
                 throw error;
             }
 
-
             reels =
                 data || [];
-
-
-            /*
-               إظهار Reels الخاصة بالمستخدم نفسه
-            */
-
-            if (currentUserId) {
-
-                const {
-                    data:mine
-                } =
-                    await client
-                        .from("reels")
-                        .select(`
-                            id,
-                            user_id,
-                            video_url,
-                            caption,
-                            thumbnail_url,
-                            visibility,
-                            is_archived,
-                            created_at
-                        `)
-                        .eq(
-                            "user_id",
-                            currentUserId
-                        )
-                        .neq(
-                            "visibility",
-                            "public"
-                        )
-                        .eq(
-                            "is_archived",
-                            false
-                        );
-
-
-                (mine || []).forEach(
-                    function(item) {
-
-                        const exists =
-                            reels.some(
-                                function(r) {
-
-                                    return (
-                                        String(
-                                            r.id
-                                        ) ===
-                                        String(
-                                            item.id
-                                        )
-                                    );
-                                }
-                            );
-
-
-                        if (!exists) {
-
-                            reels.push(
-                                item
-                            );
-                        }
-                    }
-                );
-            }
-
-
-            reels.sort(
-                function(a,b) {
-
-                    return (
-                        new Date(
-                            b.created_at
-                        ) -
-                        new Date(
-                            a.created_at
-                        )
-                    );
-                }
-            );
-
 
             await loadProfiles(
                 client
             );
-
 
         } catch (error) {
 
@@ -952,8 +773,11 @@
                 error
             );
 
-
             reels = [];
+
+            toast(
+                "تعذر تحميل الـReels."
+            );
 
         } finally {
 
@@ -972,24 +796,20 @@
 
         profiles = {};
 
-
         const ids =
             Array.from(
                 new Set(
                     reels.map(
                         function(item) {
-
                             return item.user_id;
                         }
                     )
                 )
             );
 
-
         if (!ids.length) {
             return;
         }
-
 
         const {
             data,
@@ -1008,82 +828,47 @@
                     ids
                 );
 
-
         if (error) {
             return;
         }
-
 
         (data || []).forEach(
             function(profile) {
 
                 profiles[
                     profile.id
-                ] =
-                    profile;
+                ] = profile;
             }
         );
     }
 
 
     /* =====================================================
-       فتح نافذة النشر
+       نشر Reel مباشرة
     ===================================================== */
 
     function openPublishReel() {
 
         closeReels();
 
-
-        /*
-           نحاول استخدام نظام النشر الموجود.
-        */
-
         if (
-            typeof window.openStudentPostCreator ===
+            typeof window.openStudentReelCreator ===
             "function"
         ) {
 
-            window.openStudentPostCreator();
+            window.openStudentReelCreator();
 
             return;
         }
-
-
-        /*
-           في حال كان posts.js يستخدم
-           دالة مختلفة نبحث عن زر الإضافة
-           الموجود أصلًا في التطبيق.
-        */
-
-        const addButton =
-            document.querySelector(
-                '[data-action="add"]'
-            ) ||
-            document.querySelector(
-                "#add-post-btn"
-            ) ||
-            document.querySelector(
-                ".add-post-btn"
-            );
-
-
-        if (addButton) {
-
-            addButton.click();
-
-            return;
-        }
-
 
         toast(
-            "افتح زر ➕ في التطبيق لنشر Reel."
+            "تعذر فتح نشر الـReel."
         );
     }
 
 
     /* =====================================================
-       عرض الشاشة الفارغة
+       الشاشة الفارغة
     ===================================================== */
 
     function showEmpty() {
@@ -1093,11 +878,9 @@
                 "student-reels-scroll"
             );
 
-
         if (!container) {
             return;
         }
-
 
         container.innerHTML = `
 
@@ -1121,7 +904,6 @@
 
                 </div>
 
-
                 <div
                     class="
                         student-reels-empty-title
@@ -1130,7 +912,6 @@
                     لا توجد Reels بعد
                 </div>
 
-
                 <div
                     class="
                         student-reels-empty-text
@@ -1138,7 +919,6 @@
                 >
                     كن أول من ينشر Reel في Student
                 </div>
-
 
                 <button
                     type="button"
@@ -1153,7 +933,6 @@
             </div>
         `;
 
-
         container
             .querySelector(
                 "[data-empty-publish]"
@@ -1166,7 +945,7 @@
 
 
     /* =====================================================
-       رسم Reels
+       عرض Reels
     ===================================================== */
 
     function renderReels() {
@@ -1176,29 +955,23 @@
                 "student-reels-scroll"
             );
 
-
         if (!container) {
             return;
         }
 
-
         container.innerHTML =
             reels.map(
-                function(
-                    reel,
-                    index
-                ) {
+                function(reel,index) {
 
                     const profile =
                         profiles[
                             reel.user_id
                         ] || {};
 
-
                     const username =
                         profile.username ||
-                        "username";
-
+                        profile.full_name ||
+                        "مستخدم";
 
                     const owner =
                         String(
@@ -1207,7 +980,6 @@
                         String(
                             currentUserId
                         );
-
 
                     return `
 
@@ -1249,7 +1021,7 @@
                                     student-reel-title
                                 "
                             >
-                                🎬 Reels
+                                Reels
                             </div>
 
 
@@ -1399,23 +1171,6 @@
                                             ✏️ تعديل
                                         </button>
 
-
-                                        <button
-                                            type="button"
-                                            data-visibility
-                                        >
-                                            🔒 الخصوصية
-                                        </button>
-
-
-                                        <button
-                                            type="button"
-                                            data-archive
-                                        >
-                                            📦 أرشفة
-                                        </button>
-
-
                                         <button
                                             type="button"
                                             class="danger"
@@ -1430,18 +1185,69 @@
                         }
 
                     </section>
+
                     `;
                 }
             )
             .join("");
 
-
         bindButtons();
+    }
 
+
+    /* =====================================================
+       التمرير
+    ===================================================== */
+
+    let scrollTimer = null;
+
+
+    function bindScroll() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (!container) {
+            return;
+        }
 
         container.addEventListener(
             "scroll",
-            handleScroll,
+            function() {
+
+                clearTimeout(
+                    scrollTimer
+                );
+
+                scrollTimer =
+                    setTimeout(
+                        function() {
+
+                            const index =
+                                Math.round(
+                                    container.scrollTop /
+                                    window.innerHeight
+                                );
+
+                            if (
+                                index !==
+                                currentIndex
+                            ) {
+
+                                currentIndex =
+                                    index;
+
+                                playCurrent();
+
+                            }
+
+                        },
+                        100
+                    );
+
+            },
             {
                 passive:true
             }
@@ -1449,62 +1255,9 @@
     }
 
 
-    /* =====================================================
-       Scroll
-    ===================================================== */
-
-    let scrollTimer = null;
-
-
-    function handleScroll() {
-
-        clearTimeout(
-            scrollTimer
-        );
-
-
-        scrollTimer =
-            setTimeout(
-                function() {
-
-                    const container =
-                        document.getElementById(
-                            "student-reels-scroll"
-                        );
-
-
-                    if (!container) {
-                        return;
-                    }
-
-
-                    const index =
-                        Math.round(
-                            container.scrollTop /
-                            window.innerHeight
-                        );
-
-
-                    if (
-                        index !==
-                        currentIndex
-                    ) {
-
-                        currentIndex =
-                            index;
-
-                        playCurrent();
-                    }
-
-                },
-                120
-            );
-    }
-
-
     function scrollToReel(
         index,
-        smooth
+        smooth = true
     ) {
 
         const container =
@@ -1512,28 +1265,22 @@
                 "student-reels-scroll"
             );
 
-
         if (!container) {
             return;
         }
 
-
         container.scrollTo({
-
             top:
                 index *
                 window.innerHeight,
-
             behavior:
                 smooth
                     ? "smooth"
                     : "auto"
         });
 
-
         currentIndex =
             index;
-
 
         setTimeout(
             playCurrent,
@@ -1548,14 +1295,10 @@
             return;
         }
 
-
         overlay
             .querySelectorAll("video")
             .forEach(
-                function(
-                    video,
-                    index
-                ) {
+                function(video,index) {
 
                     if (
                         index ===
@@ -1563,31 +1306,12 @@
                     ) {
 
                         video.muted =
-                            false;
+                            true;
 
-
-                        const promise =
-                            video.play();
-
-
-                        if (
-                            promise &&
-                            promise.catch
-                        ) {
-
-                            promise.catch(
-                                function() {
-
-                                    video.muted =
-                                        true;
-
-                                    video.play()
-                                        .catch(
-                                            function(){}
-                                        );
-                                }
+                        video.play()
+                            .catch(
+                                function(){}
                             );
-                        }
 
                     } else {
 
@@ -1612,13 +1336,10 @@
                 "student-reels-scroll"
             );
 
-
         if (!container) {
             return;
         }
 
-
-        /* نشر Reel */
 
         container
             .querySelectorAll(
@@ -1639,8 +1360,6 @@
             );
 
 
-        /* إغلاق */
-
         container
             .querySelectorAll(
                 "[data-close]"
@@ -1653,8 +1372,6 @@
                 }
             );
 
-
-        /* إعجاب */
 
         container
             .querySelectorAll(
@@ -1674,8 +1391,6 @@
             );
 
 
-        /* تعليق */
-
         container
             .querySelectorAll(
                 "[data-comment]"
@@ -1693,8 +1408,6 @@
                 }
             );
 
-
-        /* حفظ */
 
         container
             .querySelectorAll(
@@ -1718,23 +1431,19 @@
                                 return;
                             }
 
-
                             const slide =
                                 button.closest(
                                     ".student-reel"
                                 );
 
-
                             const id =
                                 slide?.dataset.id;
-
 
                             const result =
                                 await window.saveStudentItem(
                                     "reel",
                                     id
                                 );
-
 
                             if (
                                 result?.success
@@ -1760,8 +1469,6 @@
             );
 
 
-        /* مشاركة */
-
         container
             .querySelectorAll(
                 "[data-share]"
@@ -1784,7 +1491,7 @@
                                             "Student Reels",
 
                                         text:
-                                            "شاهد هذا الـReel في Student",
+                                            "شاهد هذا الـReel",
 
                                         url:
                                             location.href
@@ -1802,8 +1509,6 @@
                 }
             );
 
-
-        /* القائمة */
 
         container
             .querySelectorAll(
@@ -1833,8 +1538,6 @@
             );
 
 
-        /* حذف */
-
         container
             .querySelectorAll(
                 "[data-delete]"
@@ -1843,14 +1546,14 @@
                 function(button) {
 
                     button.onclick =
-                        function() {
+                        async function() {
 
                             const slide =
                                 button.closest(
                                     ".student-reel"
                                 );
 
-                            deleteReel(
+                            await deleteReel(
                                 slide?.dataset.id
                             );
                         };
@@ -1858,98 +1561,36 @@
             );
 
 
-        /* أرشفة */
-
-        container
-            .querySelectorAll(
-                "[data-archive]"
-            )
-            .forEach(
-                function(button) {
-
-                    button.onclick =
-                        function() {
-
-                            const slide =
-                                button.closest(
-                                    ".student-reel"
-                                );
-
-                            archiveReel(
-                                slide?.dataset.id
-                            );
-                        };
-                }
-            );
-
-
-        /* تعديل */
-
-        container
-            .querySelectorAll(
-                "[data-edit]"
-            )
-            .forEach(
-                function(button) {
-
-                    button.onclick =
-                        function() {
-
-                            toast(
-                                "التعديل سيُفعّل مع محرر الـReels."
-                            );
-                        };
-                }
-            );
-
-
-        /* الخصوصية */
-
-        container
-            .querySelectorAll(
-                "[data-visibility]"
-            )
-            .forEach(
-                function(button) {
-
-                    button.onclick =
-                        function() {
-
-                            toast(
-                                "إعداد الخصوصية سيُفعّل هنا."
-                            );
-                        };
-                }
-            );
+        bindScroll();
     }
 
 
     /* =====================================================
-       حذف Reel
+       حذف
     ===================================================== */
 
-    async function deleteReel(id) {
+    async function deleteReel(
+        id
+    ) {
 
-        if (!id) return;
-
+        if (!id) {
+            return;
+        }
 
         if (
             !confirm(
-                "هل تريد حذف هذا الـReel نهائيًا؟"
+                "هل تريد حذف هذا الـReel؟"
             )
         ) {
             return;
         }
 
-
         const client =
             getSupabase();
-
 
         if (!client) {
             return;
         }
-
 
         const {
             error
@@ -1966,7 +1607,6 @@
                     currentUserId
                 );
 
-
         if (error) {
 
             toast(
@@ -1977,11 +1617,9 @@
             return;
         }
 
-
         toast(
             "تم حذف الـReel."
         );
-
 
         await openReels(
             Math.max(
@@ -1989,62 +1627,6 @@
                 currentIndex - 1
             )
         );
-    }
-
-
-    /* =====================================================
-       أرشفة
-    ===================================================== */
-
-    async function archiveReel(id) {
-
-        if (!id) return;
-
-
-        const client =
-            getSupabase();
-
-
-        if (!client) {
-            return;
-        }
-
-
-        const {
-            error
-        } =
-            await client
-                .from("reels")
-                .update({
-                    is_archived:true
-                })
-                .eq(
-                    "id",
-                    id
-                )
-                .eq(
-                    "user_id",
-                    currentUserId
-                );
-
-
-        if (error) {
-
-            toast(
-                error.message ||
-                "تعذر الأرشفة."
-            );
-
-            return;
-        }
-
-
-        toast(
-            "تمت أرشفة الـReel."
-        );
-
-
-        await openReels(0);
     }
 
 
@@ -2059,10 +1641,8 @@
                 "div"
             );
 
-
         element.textContent =
             message;
-
 
         element.style.position =
             "fixed";
@@ -2097,20 +1677,13 @@
         element.style.direction =
             "rtl";
 
-        element.style.boxShadow =
-            "0 8px 30px rgba(0,0,0,.25)";
-
-
         document.body.appendChild(
             element
         );
 
-
         setTimeout(
             function() {
-
                 element.remove();
-
             },
             2200
         );
@@ -2138,7 +1711,7 @@
 
         createReelsEntry();
 
-        startObserver();
+        protectEntry();
 
     }
 
