@@ -37,538 +37,62 @@
 
 
     /* =====================================================
-       إنشاء CSS
+       معرفة هل الإعدادات داخل القائمة الرئيسية
     ===================================================== */
 
-    function injectStyles() {
+    function isInsideStudentMenu() {
+
+        const menu =
+            document.getElementById(
+                "student-main-menu"
+            );
+
+        return !!(
+            menu &&
+            menu.classList.contains(
+                "is-open"
+            )
+        );
+    }
+
+
+    /* =====================================================
+       فتح داخل القائمة الرئيسية
+    ===================================================== */
+
+    function openSettingsInsideMenu() {
 
         if (
-            document.getElementById(
-                "student-settings-style"
-            )
+            typeof window.StudentMenuOpenView !==
+            "function"
         ) {
-            return;
+            return false;
         }
 
-        const style =
-            document.createElement("style");
 
-        style.id =
-            "student-settings-style";
-
-        style.textContent = `
-
-            /* =========================================
-               الإعدادات
-            ========================================= */
-
-            #student-settings-overlay {
-                position:fixed;
-                inset:0;
-                z-index:9999999;
-                background:rgba(0,0,0,.40);
-                display:none;
-                align-items:center;
-                justify-content:center;
-                padding:15px;
-                box-sizing:border-box;
-                direction:rtl;
-            }
-
-            #student-settings-overlay.show {
-                display:flex;
-            }
-
-            .student-settings-window {
-                width:100%;
-                max-width:520px;
-                max-height:92vh;
-                overflow:hidden;
-                background:#fff;
-                border-radius:22px;
-                box-shadow:0 20px 60px rgba(0,0,0,.25);
-                display:flex;
-                flex-direction:column;
-            }
-
-            .student-settings-header {
-                flex-shrink:0;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                padding:16px 18px;
-                border-bottom:1px solid #eee;
-                background:#fff;
-            }
-
-            .student-settings-title {
-                flex:1;
-                font-size:20px;
-                font-weight:700;
-                color:#222;
-            }
-
-            .student-settings-close,
-            .student-settings-back {
-                width:40px;
-                height:40px;
-                border:none;
-                border-radius:50%;
-                background:#f1f3f5;
-                color:#333;
-                cursor:pointer;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:16px;
-                flex-shrink:0;
-            }
-
-            .student-settings-back {
-                display:none;
-            }
-
-            .student-settings-body {
-                flex:1;
-                overflow-y:auto;
-                padding:15px;
-                background:#fff;
-            }
-
-            .student-settings-list {
-                display:flex;
-                flex-direction:column;
-                gap:10px;
-            }
-
-            .student-settings-item {
-                width:100%;
-                border:none;
-                background:#f7f8fa;
-                padding:14px;
-                border-radius:15px;
-                display:flex;
-                align-items:center;
-                gap:13px;
-                direction:rtl;
-                text-align:right;
-                cursor:pointer;
-                color:#222;
-            }
-
-            .student-settings-item:hover {
-                background:#f0f2f5;
-            }
-
-            .student-settings-icon {
-                width:42px;
-                height:42px;
-                border-radius:12px;
-                background:#eaf5ff;
-                color:#0095f6;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                flex-shrink:0;
-                font-size:17px;
-            }
-
-            .student-settings-item-text {
-                flex:1;
-            }
-
-            .student-settings-item-title {
-                font-weight:700;
-                font-size:15px;
-            }
-
-            .student-settings-item-description {
-                margin-top:4px;
-                font-size:12px;
-                color:#888;
-            }
-
-            .student-settings-chevron {
-                color:#aaa;
-                font-size:12px;
-            }
-
-            .student-settings-card {
-                background:#f7f8fa;
-                border-radius:15px;
-                padding:15px;
-                margin-bottom:12px;
-            }
-
-            .student-settings-label {
-                display:block;
-                margin-bottom:7px;
-                font-size:13px;
-                color:#555;
-                font-weight:600;
-            }
-
-            .student-settings-input,
-            .student-settings-select,
-            .student-settings-textarea {
-                width:100%;
-                box-sizing:border-box;
-                padding:13px;
-                border:1px solid #ddd;
-                border-radius:11px;
-                outline:none;
-                font-size:14px;
-                background:#fff;
-            }
-
-            .student-settings-input:focus,
-            .student-settings-select:focus,
-            .student-settings-textarea:focus {
-                border-color:#0095f6;
-            }
-
-            .student-settings-button {
-                width:100%;
-                border:none;
-                background:#0095f6;
-                color:#fff;
-                padding:13px;
-                border-radius:11px;
-                cursor:pointer;
-                font-size:14px;
-            }
-
-            .student-settings-button:disabled {
-                opacity:.6;
-                cursor:not-allowed;
-            }
-
-            .student-settings-danger {
-                width:100%;
-                border:none;
-                background:#fff2f2;
-                color:#d93025;
-                padding:15px;
-                border-radius:14px;
-                text-align:right;
-                cursor:pointer;
-            }
-
-            .student-settings-message {
-                min-height:20px;
-                margin-top:10px;
-                text-align:center;
-                font-size:13px;
-                line-height:1.6;
-            }
-
-            .student-theme-button,
-            .student-language-button {
-                width:100%;
-                border-radius:14px;
-                padding:15px;
-                text-align:right;
-                cursor:pointer;
-                font-size:14px;
-                background:#f7f8fa;
-                color:#222;
-            }
-
-            .student-theme-button.active,
-            .student-language-button.active {
-                border:2px solid #0095f6;
-            }
-
-            .student-theme-button:not(.active),
-            .student-language-button:not(.active) {
-                border:2px solid transparent;
-            }
-
-
-            /* =========================================
-               الوضع الداكن
-            ========================================= */
-
-            html[data-student-theme="dark"]
-            #student-settings-overlay {
-                background:rgba(0,0,0,.65);
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-window,
-            html[data-student-theme="dark"]
-            .student-settings-header,
-            html[data-student-theme="dark"]
-            .student-settings-body {
-                background:#121212;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-header {
-                border-bottom-color:#2b2b2b;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-title,
-            html[data-student-theme="dark"]
-            .student-settings-item-title {
-                color:#fff;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-item,
-            html[data-student-theme="dark"]
-            .student-settings-card,
-            html[data-student-theme="dark"]
-            .student-theme-button,
-            html[data-student-theme="dark"]
-            .student-language-button {
-                background:#1d1d1d;
-                color:#fff;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-item-description,
-            html[data-student-theme="dark"]
-            .student-settings-label,
-            html[data-student-theme="dark"]
-            .student-settings-item-description {
-                color:#aaa;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-close,
-            html[data-student-theme="dark"]
-            .student-settings-back {
-                background:#252525;
-                color:#fff;
-            }
-
-            html[data-student-theme="dark"]
-            .student-settings-input,
-            html[data-student-theme="dark"]
-            .student-settings-select,
-            html[data-student-theme="dark"]
-            .student-settings-textarea {
-                background:#1d1d1d;
-                color:#fff;
-                border-color:#3a3a3a;
-            }
-
-
-            @media (max-width:480px) {
-
-                #student-settings-overlay {
-                    padding:0;
-                    align-items:stretch;
-                }
-
-                .student-settings-window {
-                    max-width:none;
-                    max-height:none;
-                    height:100%;
-                    border-radius:0;
-                }
-
-                .student-settings-body {
-                    padding:15px;
-                }
-            }
-        `;
-
-        document.head.appendChild(style);
-    }
-
-
-    /* =====================================================
-       إنشاء النافذة
-    ===================================================== */
-
-    function createOverlay() {
-
-        if (settingsOverlay) {
-            return;
-        }
-
-        settingsOverlay =
-            document.createElement("div");
-
-        settingsOverlay.id =
-            "student-settings-overlay";
-
-        settingsOverlay.innerHTML = `
-
-            <div
-                class="student-settings-window"
-                role="dialog"
-                aria-modal="true"
-            >
-
-                <div class="student-settings-header">
-
-                    <button
-                        id="student-settings-back"
-                        class="student-settings-back"
-                        type="button"
-                        aria-label="رجوع"
-                    >
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
-
-                    <div
-                        id="student-settings-title"
-                        class="student-settings-title"
-                    >
-                        الإعدادات
-                    </div>
-
-                    <button
-                        id="student-settings-close"
-                        class="student-settings-close"
-                        type="button"
-                        aria-label="إغلاق"
-                    >
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-
-                </div>
-
-                <div
-                    id="student-settings-body"
-                    class="student-settings-body"
-                ></div>
-
-            </div>
-        `;
-
-        document.body.appendChild(
-            settingsOverlay
-        );
-
-
-        /* مهم:
-           لا يوجد أي event لإغلاق النافذة
-           عند الضغط على الخلفية.
-        */
-
-
-        document
-            .getElementById(
-                "student-settings-close"
-            )
-            .addEventListener(
-                "click",
-                closeSettings
-            );
-
-
-        document
-            .getElementById(
-                "student-settings-back"
-            )
-            .addEventListener(
-                "click",
-                showSettingsHome
-            );
-    }
-
-
-    /* =====================================================
-       تغيير العنوان
-    ===================================================== */
-
-    function setPageTitle(
-        title,
-        showBack
-    ) {
-
-        const titleElement =
-            document.getElementById(
-                "student-settings-title"
-            );
-
-        const backButton =
-            document.getElementById(
-                "student-settings-back"
-            );
-
-        if (titleElement) {
-            titleElement.textContent =
-                title;
-        }
-
-        if (backButton) {
-
-            backButton.style.display =
-                showBack
-                    ? "flex"
-                    : "none";
-        }
-    }
-
-
-    /* =====================================================
-       فتح
-    ===================================================== */
-
-    function openSettings() {
-
-        injectStyles();
-        createOverlay();
-
-        showSettingsHome();
-
-        settingsOverlay.classList.add(
-            "show"
-        );
-    }
-
-
-    /* =====================================================
-       إغلاق صريح فقط
-    ===================================================== */
-
-    function closeSettings() {
-
-        if (settingsOverlay) {
-
-            settingsOverlay.classList.remove(
-                "show"
-            );
-        }
-    }
-
-
-    /* =====================================================
-       محتوى النافذة
-    ===================================================== */
-
-    function setBody(html) {
-
-        const body =
-            document.getElementById(
-                "student-settings-body"
-            );
-
-        if (body) {
-            body.innerHTML = html;
-        }
-    }
-
-
-    /* =====================================================
-       الرئيسية
-    ===================================================== */
-
-    function showSettingsHome() {
-
-        setPageTitle(
+        window.StudentMenuOpenView(
             "الإعدادات",
-            false
+            buildSettingsHomeHTML(),
+            function () {
+
+                bindSettingsHomeButtons();
+
+            }
         );
 
 
-        setBody(`
+        return true;
+    }
+
+
+    /* =====================================================
+       الرئيسية HTML
+    ===================================================== */
+
+    function buildSettingsHomeHTML() {
+
+        return `
+
             <div class="student-settings-list">
 
                 <button
@@ -727,56 +251,555 @@
                 </button>
 
             </div>
-        `);
+        `;
+    }
 
+
+    /* =====================================================
+       CSS
+    ===================================================== */
+
+    function injectStyles() {
+
+        if (
+            document.getElementById(
+                "student-settings-style"
+            )
+        ) {
+            return;
+        }
+
+        const style =
+            document.createElement("style");
+
+        style.id =
+            "student-settings-style";
+
+        style.textContent = `
+
+            .student-settings-list {
+                display:flex;
+                flex-direction:column;
+                gap:10px;
+            }
+
+            .student-settings-item {
+                width:100%;
+                border:none;
+                background:rgba(255,255,255,.48);
+                padding:14px;
+                border-radius:15px;
+                display:flex;
+                align-items:center;
+                gap:13px;
+                direction:rtl;
+                text-align:right;
+                cursor:pointer;
+                color:#222;
+                box-sizing:border-box;
+            }
+
+            .student-settings-item:hover {
+                background:rgba(255,255,255,.62);
+            }
+
+            .student-settings-icon {
+                width:42px;
+                height:42px;
+                border-radius:12px;
+                background:rgba(255,255,255,.60);
+                color:#444;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                flex-shrink:0;
+                font-size:17px;
+            }
+
+            .student-settings-item-text {
+                flex:1;
+            }
+
+            .student-settings-item-title {
+                font-weight:700;
+                font-size:15px;
+            }
+
+            .student-settings-item-description {
+                margin-top:4px;
+                font-size:12px;
+                color:#666;
+            }
+
+            .student-settings-chevron {
+                color:#777;
+                font-size:12px;
+            }
+
+            .student-settings-card {
+                background:rgba(255,255,255,.48);
+                border-radius:15px;
+                padding:15px;
+                margin-bottom:12px;
+            }
+
+            .student-settings-label {
+                display:block;
+                margin-bottom:7px;
+                font-size:13px;
+                color:#555;
+                font-weight:600;
+            }
+
+            .student-settings-input,
+            .student-settings-select,
+            .student-settings-textarea {
+                width:100%;
+                box-sizing:border-box;
+                padding:13px;
+                border:1px solid rgba(0,0,0,.10);
+                border-radius:11px;
+                outline:none;
+                font-size:14px;
+                background:#fff;
+            }
+
+            .student-settings-input:focus,
+            .student-settings-select:focus,
+            .student-settings-textarea:focus {
+                border-color:#777;
+            }
+
+            .student-settings-button {
+                width:100%;
+                border:none;
+                background:#555;
+                color:#fff;
+                padding:13px;
+                border-radius:11px;
+                cursor:pointer;
+                font-size:14px;
+            }
+
+            .student-settings-button:disabled {
+                opacity:.6;
+                cursor:not-allowed;
+            }
+
+            .student-settings-danger {
+                width:100%;
+                border:none;
+                background:#fff2f2;
+                color:#d93025;
+                padding:15px;
+                border-radius:14px;
+                text-align:right;
+                cursor:pointer;
+            }
+
+            .student-settings-message {
+                min-height:20px;
+                margin-top:10px;
+                text-align:center;
+                font-size:13px;
+                line-height:1.6;
+            }
+
+            .student-theme-button,
+            .student-language-button {
+                width:100%;
+                border-radius:14px;
+                padding:15px;
+                text-align:right;
+                cursor:pointer;
+                font-size:14px;
+                background:rgba(255,255,255,.48);
+                color:#222;
+            }
+
+            .student-theme-button.active,
+            .student-language-button.active {
+                border:2px solid #555;
+            }
+
+            .student-theme-button:not(.active),
+            .student-language-button:not(.active) {
+                border:2px solid transparent;
+            }
+
+
+            /* =========================================
+               Overlay الأصلي
+            ========================================= */
+
+            #student-settings-overlay {
+                position:fixed;
+                inset:0;
+                z-index:9999999;
+                background:rgba(0,0,0,.40);
+                display:none;
+                align-items:center;
+                justify-content:center;
+                padding:15px;
+                box-sizing:border-box;
+                direction:rtl;
+            }
+
+            #student-settings-overlay.show {
+                display:flex;
+            }
+
+            .student-settings-window {
+                width:100%;
+                max-width:520px;
+                max-height:92vh;
+                overflow:hidden;
+                background:#fff;
+                border-radius:22px;
+                box-shadow:0 20px 60px rgba(0,0,0,.25);
+                display:flex;
+                flex-direction:column;
+            }
+
+            .student-settings-header {
+                flex-shrink:0;
+                display:flex;
+                align-items:center;
+                gap:12px;
+                padding:16px 18px;
+                border-bottom:1px solid #eee;
+                background:#fff;
+            }
+
+            .student-settings-title {
+                flex:1;
+                font-size:20px;
+                font-weight:700;
+                color:#222;
+            }
+
+            .student-settings-close,
+            .student-settings-back {
+                width:40px;
+                height:40px;
+                border:none;
+                border-radius:50%;
+                background:#f1f3f5;
+                color:#333;
+                cursor:pointer;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:16px;
+                flex-shrink:0;
+            }
+
+            .student-settings-back {
+                display:none;
+            }
+
+            .student-settings-body {
+                flex:1;
+                overflow-y:auto;
+                padding:15px;
+                background:#fff;
+            }
+
+            @media (max-width:480px) {
+
+                #student-settings-overlay {
+                    padding:0;
+                    align-items:stretch;
+                }
+
+                .student-settings-window {
+                    max-width:none;
+                    max-height:none;
+                    height:100%;
+                    border-radius:0;
+                }
+
+                .student-settings-body {
+                    padding:15px;
+                }
+            }
+
+        `;
+
+        document.head.appendChild(
+            style
+        );
+    }
+
+
+    /* =====================================================
+       إنشاء Overlay الأصلي
+    ===================================================== */
+
+    function createOverlay() {
+
+        if (settingsOverlay) {
+            return;
+        }
+
+        settingsOverlay =
+            document.createElement("div");
+
+        settingsOverlay.id =
+            "student-settings-overlay";
+
+        settingsOverlay.innerHTML = `
+
+            <div
+                class="student-settings-window"
+                role="dialog"
+                aria-modal="true"
+            >
+
+                <div class="student-settings-header">
+
+                    <button
+                        id="student-settings-back"
+                        class="student-settings-back"
+                        type="button"
+                        aria-label="رجوع"
+                    >
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+
+                    <div
+                        id="student-settings-title"
+                        class="student-settings-title"
+                    >
+                        الإعدادات
+                    </div>
+
+                    <button
+                        id="student-settings-close"
+                        class="student-settings-close"
+                        type="button"
+                        aria-label="إغلاق"
+                    >
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+
+                </div>
+
+                <div
+                    id="student-settings-body"
+                    class="student-settings-body"
+                ></div>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            settingsOverlay
+        );
+
+
+        document
+            .getElementById(
+                "student-settings-close"
+            )
+            .addEventListener(
+                "click",
+                closeSettings
+            );
+
+
+        document
+            .getElementById(
+                "student-settings-back"
+            )
+            .addEventListener(
+                "click",
+                showSettingsHome
+            );
+    }
+
+
+    /* =====================================================
+       تغيير العنوان
+    ===================================================== */
+
+    function setPageTitle(
+        title,
+        showBack
+    ) {
+
+        const titleElement =
+            document.getElementById(
+                "student-settings-title"
+            );
+
+        const backButton =
+            document.getElementById(
+                "student-settings-back"
+            );
+
+        if (titleElement) {
+            titleElement.textContent =
+                title;
+        }
+
+        if (backButton) {
+
+            backButton.style.display =
+                showBack
+                    ? "flex"
+                    : "none";
+        }
+    }
+
+
+    /* =====================================================
+       فتح
+    ===================================================== */
+
+    function openSettings() {
+
+        injectStyles();
+
+
+        /*
+           إذا كانت القائمة الرئيسية مفتوحة
+           نستخدمها بدل النافذة العائمة.
+        */
+
+        if (
+            isInsideStudentMenu()
+        ) {
+
+            if (
+                openSettingsInsideMenu()
+            ) {
+                return;
+            }
+        }
+
+
+        /*
+           السلوك الأصلي خارج القائمة
+        */
+
+        createOverlay();
+
+        showSettingsHome();
+
+        settingsOverlay.classList.add(
+            "show"
+        );
+    }
+
+
+    /* =====================================================
+       إغلاق
+    ===================================================== */
+
+    function closeSettings() {
+
+        if (settingsOverlay) {
+
+            settingsOverlay.classList.remove(
+                "show"
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Body
+    ===================================================== */
+
+    function setBody(html) {
+
+        const body =
+            document.getElementById(
+                "student-settings-body"
+            );
+
+        if (body) {
+            body.innerHTML = html;
+        }
+    }
+
+
+    /* =====================================================
+       الرئيسية
+    ===================================================== */
+
+    function showSettingsHome() {
+
+        setPageTitle(
+            "الإعدادات",
+            false
+        );
+
+
+        setBody(
+            buildSettingsHomeHTML()
+        );
+
+
+        bindSettingsHomeButtons();
+    }
+
+
+    function bindSettingsHomeButtons() {
 
         document
             .querySelectorAll(
                 "[data-settings-page]"
             )
-            .forEach(function (button) {
+            .forEach(
+                function (button) {
 
-                button.addEventListener(
-                    "click",
-                    function () {
+                    button.addEventListener(
+                        "click",
+                        function () {
 
-                        const page =
-                            button.dataset.settingsPage;
+                            const page =
+                                button.dataset.settingsPage;
 
-                        switch (page) {
 
-                            case "account":
-                                showAccountPage();
-                                break;
+                            switch (page) {
 
-                            case "privacy":
-                                showPrivacyPage();
-                                break;
+                                case "account":
+                                    showAccountPage();
+                                    break;
 
-                            case "notifications":
-                                showNotificationsPage();
-                                break;
+                                case "privacy":
+                                    showPrivacyPage();
+                                    break;
 
-                            case "appearance":
-                                showAppearancePage();
-                                break;
+                                case "notifications":
+                                    showNotificationsPage();
+                                    break;
 
-                            case "language":
-                                showLanguagePage();
-                                break;
+                                case "appearance":
+                                    showAppearancePage();
+                                    break;
 
-                            case "security":
-                                showSecurityPage();
-                                break;
+                                case "language":
+                                    showLanguagePage();
+                                    break;
+
+                                case "security":
+                                    showSecurityPage();
+                                    break;
+                            }
+
                         }
-                    }
-                );
-            });
+                    );
+                }
+            );
     }
 
 
     /* =====================================================
-       صفحة الحساب
+       بقية وظائف الإعدادات
+       لم تتغير
     ===================================================== */
 
     async function showAccountPage() {
@@ -817,9 +840,7 @@
 
             <div class="student-settings-card">
 
-                <div
-                    class="student-settings-label"
-                >
+                <div class="student-settings-label">
                     البريد الإلكتروني الحالي
                 </div>
 
@@ -882,10 +903,6 @@
             );
     }
 
-
-    /* =====================================================
-       تغيير البريد
-    ===================================================== */
 
     function showChangeEmailPage() {
 
@@ -976,6 +993,7 @@
 
 
                     button.disabled = true;
+
                     button.textContent =
                         "جارٍ الحفظ...";
 
@@ -986,7 +1004,8 @@
                             error
                         } =
                             await client.auth.updateUser({
-                                email: email
+                                email:
+                                    email
                             });
 
 
@@ -1018,14 +1037,11 @@
                         button.textContent =
                             "حفظ";
                     }
+
                 }
             );
     }
 
-
-    /* =====================================================
-       تغيير كلمة المرور
-    ===================================================== */
 
     function showChangePasswordPage() {
 
@@ -1118,6 +1134,7 @@
                             "settings-password"
                         ).value;
 
+
                     const confirm =
                         document.getElementById(
                             "settings-password-confirm"
@@ -1128,6 +1145,7 @@
                         document.getElementById(
                             "settings-password-save"
                         );
+
 
                     const message =
                         document.getElementById(
@@ -1165,6 +1183,7 @@
 
 
                     button.disabled = true;
+
                     button.textContent =
                         "جارٍ التحديث...";
 
@@ -1208,14 +1227,11 @@
                         button.textContent =
                             "تحديث كلمة المرور";
                     }
+
                 }
             );
     }
 
-
-    /* =====================================================
-       الخصوصية
-    ===================================================== */
 
     function showPrivacyPage() {
 
@@ -1225,7 +1241,7 @@
 
         if (
             typeof currentProfile !==
-                "undefined" &&
+            "undefined" &&
             currentProfile
         ) {
 
@@ -1259,7 +1275,8 @@
                     <option
                         value="public"
                         ${
-                            status === "public"
+                            status ===
+                            "public"
                                 ? "selected"
                                 : ""
                         }
@@ -1270,7 +1287,8 @@
                     <option
                         value="private"
                         ${
-                            status === "private"
+                            status ===
+                            "private"
                                 ? "selected"
                                 : ""
                         }
@@ -1349,6 +1367,7 @@
                             data !== "public" &&
                             data !== "private"
                         ) {
+
                             throw new Error(
                                 "تعذر تحديث الخصوصية."
                             );
@@ -1386,10 +1405,6 @@
             );
     }
 
-
-    /* =====================================================
-       الإشعارات
-    ===================================================== */
 
     function showNotificationsPage() {
 
@@ -1467,8 +1482,8 @@
                                 border-radius:30px;
                                 background:${
                                     enabled
-                                        ? "#0095f6"
-                                        : "#ccc"
+                                        ? "#555"
+                                        : "#aaa"
                                 };
                                 cursor:pointer;
                             "
@@ -1493,10 +1508,12 @@
                 "settings-notification-toggle"
             );
 
+
         const switchElement =
             document.getElementById(
                 "settings-notification-switch"
             );
+
 
         const message =
             document.getElementById(
@@ -1520,8 +1537,8 @@
 
                 switchElement.style.background =
                     value
-                        ? "#0095f6"
-                        : "#ccc";
+                        ? "#555"
+                        : "#aaa";
 
 
                 message.style.color =
@@ -1536,10 +1553,6 @@
     }
 
 
-    /* =====================================================
-       المظهر
-    ===================================================== */
-
     function applyTheme(theme) {
 
         if (
@@ -1547,7 +1560,9 @@
             theme !== "dark" &&
             theme !== "system"
         ) {
-            theme = "light";
+
+            theme =
+                "light";
         }
 
 
@@ -1564,7 +1579,10 @@
             );
 
 
-        if (theme === "dark") {
+        if (
+            theme ===
+            "dark"
+        ) {
 
             document.documentElement
                 .style
@@ -1572,7 +1590,8 @@
                 "dark";
 
         } else if (
-            theme === "light"
+            theme ===
+            "light"
         ) {
 
             document.documentElement
@@ -1628,10 +1647,6 @@
                             : ""
                     }"
                     data-theme="dark"
-                    style="
-                        background:#222;
-                        color:#fff;
-                    "
                 >
                     🌙 الوضع الداكن
                 </button>
@@ -1708,10 +1723,6 @@
             );
     }
 
-
-    /* =====================================================
-       اللغة
-    ===================================================== */
 
     function showLanguagePage() {
 
@@ -1790,9 +1801,11 @@
                                 .lang =
                                 language;
 
+
                             document.documentElement
                                 .dir =
-                                language === "en"
+                                language ===
+                                "en"
                                     ? "ltr"
                                     : "rtl";
 
@@ -1822,19 +1835,17 @@
 
 
                             message.textContent =
-                                language === "ar"
+                                language ===
+                                "ar"
                                     ? "تم اختيار العربية."
                                     : "English selected. Full translation will be added later.";
+
                         }
                     );
                 }
             );
     }
 
-
-    /* =====================================================
-       الأمان
-    ===================================================== */
 
     function showSecurityPage() {
 
@@ -1855,7 +1866,14 @@
                 >
 
                     <div class="student-settings-icon">
-                        <i class="fa-solid fa-mobile-screen-button"></i>
+
+                        <i
+                            class="
+                                fa-solid
+                                fa-mobile-screen-button
+                            "
+                        ></i>
+
                     </div>
 
                     <div class="student-settings-item-text">
@@ -1902,6 +1920,7 @@
                     const client =
                         getSupabase();
 
+
                     const message =
                         document.getElementById(
                             "settings-security-message"
@@ -1914,7 +1933,8 @@
                             error
                         } =
                             await client.auth.signOut({
-                                scope: "others"
+                                scope:
+                                    "others"
                             });
 
 
@@ -1926,18 +1946,22 @@
                         message.style.color =
                             "#16803c";
 
+
                         message.textContent =
                             "تم تسجيل الخروج من الأجهزة الأخرى.";
+
 
                     } catch (error) {
 
                         message.style.color =
                             "#d93025";
 
+
                         message.textContent =
                             error?.message ||
                             "تعذر تنفيذ العملية.";
                     }
+
                 }
             );
 
@@ -1982,6 +2006,7 @@
                             throw error;
                         }
 
+
                     } catch (error) {
 
                         const message =
@@ -1989,20 +2014,23 @@
                                 "settings-security-message"
                             );
 
+
                         message.style.color =
                             "#d93025";
+
 
                         message.textContent =
                             error?.message ||
                             "تعذر تسجيل الخروج.";
                     }
+
                 }
             );
     }
 
 
     /* =====================================================
-       تحميل التفضيلات
+       التفضيلات
     ===================================================== */
 
     function loadPreferences() {
@@ -2014,7 +2042,9 @@
             "light";
 
 
-        applyTheme(theme);
+        applyTheme(
+            theme
+        );
 
 
         const language =
@@ -2028,36 +2058,42 @@
             .lang =
             language;
 
+
         document.documentElement
             .dir =
-            language === "en"
+            language ===
+            "en"
                 ? "ltr"
                 : "rtl";
     }
 
 
     /* =====================================================
-       API عامة
+       API
     ===================================================== */
 
     window.showSettingsPanel =
         openSettings;
 
+
     window.openStudentSettings =
         openSettings;
 
+
     window.closeStudentSettings =
         closeSettings;
+
 
     window.applyStudentTheme =
         applyTheme;
 
 
     /* =====================================================
-       بدء النظام
+       تشغيل
     ===================================================== */
 
     injectStyles();
+
     loadPreferences();
 
 })();
