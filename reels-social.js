@@ -77,6 +77,7 @@
 
 
     function getUserId() {
+
         return socialUserId;
     }
 
@@ -112,6 +113,37 @@
 
 
     /* =====================================================
+       التاريخ
+    ===================================================== */
+
+    function formatDate(value) {
+
+        if (!value) {
+            return "";
+        }
+
+        const date =
+            new Date(value);
+
+        if (
+            Number.isNaN(
+                date.getTime()
+            )
+        ) {
+            return "";
+        }
+
+        return date.toLocaleString(
+            "ar-IQ",
+            {
+                dateStyle: "medium",
+                timeStyle: "short"
+            }
+        );
+    }
+
+
+    /* =====================================================
        Toast
     ===================================================== */
 
@@ -142,7 +174,7 @@
             left:50%;
             bottom:30px;
             transform:translateX(-50%);
-            z-index:100000300;
+            z-index:100000500;
             background:#222;
             color:#fff;
             padding:11px 16px;
@@ -160,12 +192,172 @@
 
         setTimeout(
             function () {
-
                 element.remove();
-
             },
             2200
         );
+    }
+
+
+    /* =====================================================
+       نافذة عائمة عامة
+    ===================================================== */
+
+    function showSocialDialog(
+        title,
+        content,
+        actionText,
+        actionStyle,
+        onAction
+    ) {
+
+        const old =
+            document.getElementById(
+                "student-social-dialog"
+            );
+
+        if (old) {
+            old.remove();
+        }
+
+        const dialog =
+            document.createElement(
+                "div"
+            );
+
+        dialog.id =
+            "student-social-dialog";
+
+        dialog.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100000400;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,.5);
+            direction:rtl;
+        `;
+
+        dialog.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:430px;
+                background:#fff;
+                border-radius:22px;
+                padding:20px;
+                box-sizing:border-box;
+                box-shadow:
+                    0 20px 60px
+                    rgba(0,0,0,.3);
+            ">
+
+                <div style="
+                    font-size:19px;
+                    font-weight:800;
+                    color:#222;
+                    margin-bottom:14px;
+                ">
+                    ${escapeHTML(title)}
+                </div>
+
+                <div
+                    id="student-social-dialog-content"
+                >
+                    ${content}
+                </div>
+
+                <div style="
+                    display:flex;
+                    gap:10px;
+                    margin-top:17px;
+                ">
+
+                    <button
+                        id="student-social-dialog-cancel"
+                        type="button"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:12px;
+                            background:#f1f3f5;
+                            color:#333;
+                            cursor:pointer;
+                            font-weight:700;
+                        "
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        id="student-social-dialog-action"
+                        type="button"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:12px;
+                            cursor:pointer;
+                            font-weight:700;
+                            ${actionStyle}
+                        "
+                    >
+                        ${escapeHTML(actionText)}
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            dialog
+        );
+
+        document
+            .getElementById(
+                "student-social-dialog-cancel"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    dialog.remove();
+
+                }
+            );
+
+        dialog.addEventListener(
+            "click",
+            function (event) {
+
+                if (
+                    event.target ===
+                    dialog
+                ) {
+
+                    dialog.remove();
+
+                }
+
+            }
+        );
+
+        document
+            .getElementById(
+                "student-social-dialog-action"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    onAction(dialog);
+
+                }
+            );
     }
 
 
@@ -312,7 +504,6 @@
             box
         );
 
-
         document
             .getElementById(
                 "student-social-comments-close"
@@ -322,20 +513,19 @@
                 closeComments
             );
 
-
         box.addEventListener(
             "click",
             function (event) {
 
                 if (
-                    event.target === box
+                    event.target ===
+                    box
                 ) {
                     closeComments();
                 }
 
             }
         );
-
 
         document
             .getElementById(
@@ -345,7 +535,6 @@
                 "submit",
                 submitComment
             );
-
 
         return box;
     }
@@ -384,7 +573,6 @@
             return;
         }
 
-
         const box =
             createCommentsBox();
 
@@ -393,7 +581,6 @@
 
         box.style.display =
             "flex";
-
 
         await loadComments(
             reelId
@@ -417,14 +604,12 @@
                 "student-social-comments-list"
             );
 
-
         if (
             !client ||
             !list
         ) {
             return;
         }
-
 
         list.innerHTML = `
             <div style="
@@ -436,21 +621,14 @@
             </div>
         `;
 
-
         try {
 
-            /* ---------------------------------------------
-               التعليقات فقط
-            --------------------------------------------- */
-
             const {
-                data: comments,
-                error: commentsError
+                data:comments,
+                error
             } =
                 await client
-                    .from(
-                        "reel_comments"
-                    )
+                    .from("reel_comments")
                     .select(`
                         id,
                         reel_id,
@@ -469,15 +647,12 @@
                         }
                     );
 
-
-            if (commentsError) {
-                throw commentsError;
+            if (error) {
+                throw error;
             }
-
 
             const rows =
                 comments || [];
-
 
             if (!rows.length) {
 
@@ -495,9 +670,7 @@
             }
 
 
-            /* ---------------------------------------------
-               تحميل ملفات المستخدمين بشكل اختياري
-            --------------------------------------------- */
+            /* Profiles */
 
             const userIds =
                 Array.from(
@@ -509,21 +682,17 @@
                     )
                 );
 
-
             let profiles = {};
-
 
             if (userIds.length) {
 
                 try {
 
                     const {
-                        data: profileRows
+                        data:profileRows
                     } =
                         await client
-                            .from(
-                                "profiles"
-                            )
+                            .from("profiles")
                             .select(`
                                 id,
                                 full_name,
@@ -535,7 +704,6 @@
                                 userIds
                             );
 
-
                     (profileRows || [])
                         .forEach(
                             function(profile) {
@@ -544,7 +712,6 @@
                                     profile.id
                                 ] =
                                     profile;
-
                             }
                         );
 
@@ -558,9 +725,7 @@
             }
 
 
-            /* ---------------------------------------------
-               إعجابات التعليقات بشكل اختياري
-            --------------------------------------------- */
+            /* Comment Likes */
 
             const commentIds =
                 rows.map(
@@ -568,17 +733,15 @@
                         item.id
                 );
 
-
             let likesMap = {};
             let myLikes = {};
-
 
             if (commentIds.length) {
 
                 try {
 
                     const {
-                        data: likeRows
+                        data:likeRows
                     } =
                         await client
                             .from(
@@ -593,7 +756,6 @@
                                 commentIds
                             );
 
-
                     (likeRows || [])
                         .forEach(
                             function(like) {
@@ -601,13 +763,11 @@
                                 const id =
                                     like.comment_id;
 
-
                                 likesMap[id] =
                                     (
                                         likesMap[id] ||
                                         0
                                     ) + 1;
-
 
                                 if (
                                     String(
@@ -635,229 +795,221 @@
             }
 
 
-            /* ---------------------------------------------
-               رسم التعليقات
-            --------------------------------------------- */
+            /* Render */
 
             list.innerHTML =
-                rows.map(
-                    function(comment) {
+                rows
+                    .map(
+                        function(comment) {
 
-                        const profile =
-                            profiles[
-                                comment.user_id
-                            ] || {};
+                            const profile =
+                                profiles[
+                                    comment.user_id
+                                ] || {};
 
+                            const name =
+                                profile.username ||
+                                profile.full_name ||
+                                "مستخدم";
 
-                        const name =
-                            profile.username ||
-                            profile.full_name ||
-                            "مستخدم";
+                            const mine =
+                                String(
+                                    comment.user_id
+                                ) ===
+                                String(
+                                    getUserId()
+                                );
 
+                            const liked =
+                                !!myLikes[
+                                    comment.id
+                                ];
 
-                        const mine =
-                            String(
-                                comment.user_id
-                            ) ===
-                            String(
-                                getUserId()
-                            );
+                            const likeCount =
+                                likesMap[
+                                    comment.id
+                                ] || 0;
 
-
-                        const liked =
-                            !!myLikes[
-                                comment.id
-                            ];
-
-
-                        const likeCount =
-                            likesMap[
-                                comment.id
-                            ] || 0;
-
-
-                        const avatarHTML =
-                            profile.avatar_url
-                                ? `
-                                    <img
-                                        src="${escapeHTML(
-                                            profile.avatar_url
-                                        )}"
-                                        alt=""
-                                        style="
+                            const avatar =
+                                profile.avatar_url
+                                    ? `
+                                        <img
+                                            src="${escapeHTML(
+                                                profile.avatar_url
+                                            )}"
+                                            alt=""
+                                            style="
+                                                width:40px;
+                                                height:40px;
+                                                border-radius:50%;
+                                                object-fit:cover;
+                                                flex-shrink:0;
+                                            "
+                                        >
+                                      `
+                                    : `
+                                        <div style="
                                             width:40px;
                                             height:40px;
                                             border-radius:50%;
-                                            object-fit:cover;
+                                            background:#eaf5ff;
+                                            color:#0095f6;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
                                             flex-shrink:0;
-                                        "
-                                    >
-                                  `
-                                : `
-                                    <div style="
-                                        width:40px;
-                                        height:40px;
-                                        border-radius:50%;
-                                        background:#eaf5ff;
-                                        color:#0095f6;
+                                        ">
+                                            <i class="
+                                                fa-solid
+                                                fa-user
+                                            "></i>
+                                        </div>
+                                      `;
+
+                            return `
+
+                                <div
+                                    data-social-comment
+                                    data-comment-id="${escapeHTML(
+                                        comment.id
+                                    )}"
+                                    style="
                                         display:flex;
-                                        align-items:center;
-                                        justify-content:center;
-                                        flex-shrink:0;
-                                    ">
-                                        <i class="
-                                            fa-solid
-                                            fa-user
-                                        "></i>
-                                    </div>
-                                  `;
+                                        gap:10px;
+                                        padding:12px 3px;
+                                    "
+                                >
 
-
-                        return `
-
-                            <div
-                                data-social-comment
-                                data-comment-id="${escapeHTML(
-                                    comment.id
-                                )}"
-                                style="
-                                    display:flex;
-                                    gap:10px;
-                                    padding:12px 3px;
-                                "
-                            >
-
-                                ${avatarHTML}
-
-
-                                <div style="
-                                    flex:1;
-                                    min-width:0;
-                                ">
+                                    ${avatar}
 
                                     <div style="
-                                        font-size:13px;
-                                        font-weight:800;
-                                        color:#222;
+                                        flex:1;
+                                        min-width:0;
                                     ">
-                                        @${escapeHTML(
-                                            name
-                                        )}
-                                    </div>
 
-
-                                    <div
-                                        data-comment-text
-                                        style="
-                                            margin-top:4px;
-                                            color:#444;
+                                        <div style="
                                             font-size:13px;
-                                            line-height:1.7;
-                                            white-space:pre-wrap;
-                                            word-break:break-word;
-                                        "
-                                    >
-                                        ${escapeHTML(
-                                            comment.content
-                                        )}
-                                    </div>
+                                            font-weight:800;
+                                        ">
+                                            @${escapeHTML(
+                                                name
+                                            )}
+                                        </div>
 
 
-                                    <div style="
-                                        display:flex;
-                                        align-items:center;
-                                        gap:14px;
-                                        margin-top:7px;
-                                    ">
-
-                                        <button
-                                            type="button"
-                                            data-comment-like
+                                        <div
+                                            data-comment-text
                                             style="
-                                                border:0;
-                                                background:transparent;
-                                                padding:0;
-                                                cursor:pointer;
-                                                color:${
-                                                    liked
-                                                        ? "#ff3040"
-                                                        : "#777"
-                                                };
+                                                margin-top:4px;
+                                                color:#444;
+                                                font-size:13px;
+                                                line-height:1.7;
+                                                white-space:pre-wrap;
+                                                word-break:break-word;
                                             "
                                         >
+                                            ${escapeHTML(
+                                                comment.content
+                                            )}
+                                        </div>
 
-                                            <i class="
-                                                ${
-                                                    liked
-                                                        ? "fa-solid"
-                                                        : "fa-regular"
-                                                }
-                                                fa-heart
-                                            "></i>
 
-                                            <span
-                                                data-comment-like-count
+                                        <div style="
+                                            display:flex;
+                                            align-items:center;
+                                            gap:13px;
+                                            margin-top:8px;
+                                        ">
+
+                                            <button
+                                                type="button"
+                                                data-comment-like
+                                                style="
+                                                    border:0;
+                                                    background:transparent;
+                                                    padding:0;
+                                                    cursor:pointer;
+                                                    color:${
+                                                        liked
+                                                            ? "#ff3040"
+                                                            : "#777"
+                                                    };
+                                                "
                                             >
-                                                ${likeCount}
-                                            </span>
 
-                                        </button>
+                                                <i class="
+                                                    ${
+                                                        liked
+                                                            ? "fa-solid"
+                                                            : "fa-regular"
+                                                    }
+                                                    fa-heart
+                                                "></i>
 
+                                                <span
+                                                    data-comment-like-count
+                                                >
+                                                    ${likeCount}
+                                                </span>
 
-                                        ${
-                                            mine
-                                                ? `
-                                                    <button
-                                                        type="button"
-                                                        data-comment-edit
-                                                        style="
-                                                            border:0;
-                                                            background:transparent;
-                                                            color:#777;
-                                                            cursor:pointer;
-                                                            padding:0;
-                                                        "
-                                                    >
-                                                        ✏️ تعديل
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        data-comment-delete
-                                                        style="
-                                                            border:0;
-                                                            background:transparent;
-                                                            color:#d93025;
-                                                            cursor:pointer;
-                                                            padding:0;
-                                                        "
-                                                    >
-                                                        🗑️ حذف
-                                                    </button>
-                                                  `
-                                                : ""
-                                        }
-
-                                    </div>
+                                            </button>
 
 
-                                    <div style="
-                                        margin-top:5px;
-                                        color:#999;
-                                        font-size:10px;
-                                    ">
-                                        ${formatDate(
-                                            comment.created_at
-                                        )}
+                                            ${
+                                                mine
+                                                    ? `
+                                                        <button
+                                                            type="button"
+                                                            data-comment-edit
+                                                            style="
+                                                                border:0;
+                                                                background:transparent;
+                                                                color:#777;
+                                                                cursor:pointer;
+                                                                padding:0;
+                                                            "
+                                                        >
+                                                            ✏️ تعديل
+                                                        </button>
+
+
+                                                        <button
+                                                            type="button"
+                                                            data-comment-delete
+                                                            style="
+                                                                border:0;
+                                                                background:transparent;
+                                                                color:#d93025;
+                                                                cursor:pointer;
+                                                                padding:0;
+                                                            "
+                                                        >
+                                                            🗑️ حذف
+                                                        </button>
+                                                      `
+                                                    : ""
+                                            }
+
+                                        </div>
+
+
+                                        <div style="
+                                            margin-top:5px;
+                                            color:#999;
+                                            font-size:10px;
+                                        ">
+                                            ${formatDate(
+                                                comment.created_at
+                                            )}
+                                        </div>
+
                                     </div>
 
                                 </div>
-
-                            </div>
-                        `;
-                    }
-                )
-                .join("");
+                            `;
+                        }
+                    )
+                    .join("");
 
 
             bindCommentActions(
@@ -868,10 +1020,9 @@
         } catch (error) {
 
             console.error(
-                "FINAL COMMENTS ERROR:",
+                "Comments error:",
                 error
             );
-
 
             list.innerHTML = `
                 <div style="
@@ -894,7 +1045,7 @@
 
 
     /* =====================================================
-       أزرار التعليقات
+       Bind comment actions
     ===================================================== */
 
     function bindCommentActions(
@@ -905,7 +1056,6 @@
             document.getElementById(
                 "student-social-comments-list"
             );
-
 
         if (!list) return;
 
@@ -926,7 +1076,6 @@
                                     "[data-social-comment]"
                                 );
 
-
                             toggleCommentLike(
                                 item?.dataset.commentId,
                                 button
@@ -934,6 +1083,7 @@
 
                         }
                     );
+
                 }
             );
 
@@ -954,13 +1104,13 @@
                                     "[data-social-comment]"
                                 );
 
-
                             openEditComment(
                                 item
                             );
 
                         }
                     );
+
                 }
             );
 
@@ -981,7 +1131,6 @@
                                     "[data-social-comment]"
                                 );
 
-
                             deleteComment(
                                 item?.dataset.commentId,
                                 reelId
@@ -989,6 +1138,7 @@
 
                         }
                     );
+
                 }
             );
     }
@@ -1009,7 +1159,6 @@
         const userId =
             getUserId();
 
-
         if (
             !client ||
             !userId ||
@@ -1023,15 +1172,13 @@
             return;
         }
 
-
         button.disabled =
             true;
-
 
         try {
 
             const {
-                data: existing
+                data:existing
             } =
                 await client
                     .from(
@@ -1070,7 +1217,6 @@
                             userId
                         );
 
-
                 if (error) {
                     throw error;
                 }
@@ -1091,8 +1237,8 @@
 
                             user_id:
                                 userId
-                        });
 
+                        });
 
                 if (error) {
                     throw error;
@@ -1101,7 +1247,7 @@
 
 
             const {
-                count: totalLikes
+                count:totalLikes
             } =
                 await client
                     .from(
@@ -1123,7 +1269,7 @@
 
 
             const {
-                data: currentLike
+                data:currentLike
             } =
                 await client
                     .from(
@@ -1151,7 +1297,6 @@
                 button.querySelector(
                     "i"
                 );
-
 
             const counter =
                 button.querySelector(
@@ -1195,12 +1340,10 @@
                 error
             );
 
-
             toast(
                 error?.message ||
                 "تعذر تحديث إعجاب التعليق."
             );
-
 
         } finally {
 
@@ -1218,52 +1361,83 @@
         element
     ) {
 
-        if (!element) return;
+        if (!element) {
+            return;
+        }
 
 
-        const text =
+        const textElement =
             element.querySelector(
                 "[data-comment-text]"
             );
 
 
         const oldText =
-            text?.textContent.trim() ||
+            textElement?.textContent.trim() ||
             "";
 
 
-        const value =
-            prompt(
-                "تعديل التعليق:",
+        showSocialDialog(
+            "تعديل التعليق",
+
+            `
+            <textarea
+                id="student-social-edit-input"
+                maxlength="1000"
+                style="
+                    width:100%;
+                    min-height:115px;
+                    box-sizing:border-box;
+                    border:1px solid #ddd;
+                    border-radius:14px;
+                    padding:13px;
+                    resize:none;
+                    outline:none;
+                    font-size:14px;
+                "
+            >${escapeHTML(
                 oldText
-            );
+            )}</textarea>
+            `,
+
+            "حفظ",
+
+            `
+            background:#0095f6;
+            color:#fff;
+            `,
+
+            async function(dialog) {
+
+                const input =
+                    dialog.querySelector(
+                        "#student-social-edit-input"
+                    );
 
 
-        if (
-            value ===
-            null
-        ) {
-            return;
-        }
+                const content =
+                    input?.value.trim();
 
 
-        const content =
-            value.trim();
+                if (!content) {
+
+                    toast(
+                        "التعليق لا يمكن أن يكون فارغًا."
+                    );
+
+                    return;
+                }
 
 
-        if (!content) {
-
-            toast(
-                "التعليق لا يمكن أن يكون فارغًا."
-            );
-
-            return;
-        }
+                dialog.remove();
 
 
-        updateComment(
-            element.dataset.commentId,
-            content
+                await updateComment(
+                    element.dataset.commentId,
+                    content
+                );
+
+            }
         );
     }
 
@@ -1278,7 +1452,6 @@
 
         const userId =
             getUserId();
-
 
         if (
             !client ||
@@ -1304,6 +1477,7 @@
 
                         updated_at:
                             new Date().toISOString()
+
                     })
                     .eq(
                         "id",
@@ -1343,7 +1517,7 @@
         } catch (error) {
 
             console.error(
-                "Edit comment error:",
+                "Update comment error:",
                 error
             );
 
@@ -1365,83 +1539,106 @@
         reelId
     ) {
 
-        const client =
-            getSupabase();
+        showSocialDialog(
+            "حذف التعليق",
 
-        const userId =
-            getUserId();
+            `
+            <div style="
+                color:#666;
+                line-height:1.8;
+            ">
+                هل أنت متأكد من حذف هذا التعليق؟
+            </div>
+            `,
+
+            "حذف",
+
+            `
+            background:#d93025;
+            color:#fff;
+            `,
+
+            async function(dialog) {
+
+                dialog.remove();
 
 
-        if (
-            !client ||
-            !userId
-        ) {
-            return;
-        }
+                const client =
+                    getSupabase();
+
+                const userId =
+                    getUserId();
 
 
-        if (
-            !confirm(
-                "هل تريد حذف التعليق؟"
-            )
-        ) {
-            return;
-        }
+                if (
+                    !client ||
+                    !userId
+                ) {
+
+                    toast(
+                        "يجب تسجيل الدخول أولًا."
+                    );
+
+                    return;
+                }
 
 
-        try {
+                try {
 
-            const {
-                error
-            } =
-                await client
-                    .from(
-                        "reel_comments"
-                    )
-                    .delete()
-                    .eq(
-                        "id",
-                        commentId
-                    )
-                    .eq(
-                        "user_id",
-                        userId
+                    const {
+                        error
+                    } =
+                        await client
+                            .from(
+                                "reel_comments"
+                            )
+                            .delete()
+                            .eq(
+                                "id",
+                                commentId
+                            )
+                            .eq(
+                                "user_id",
+                                userId
+                            );
+
+
+                    if (error) {
+                        throw error;
+                    }
+
+
+                    await loadComments(
+                        reelId
                     );
 
 
-            if (error) {
-                throw error;
+                    await updateReelCommentCount(
+                        reelId
+                    );
+
+
+                    toast(
+                        "تم حذف التعليق."
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Delete comment error:",
+                        error
+                    );
+
+
+                    toast(
+                        error?.message ||
+                        "تعذر حذف التعليق."
+                    );
+                }
+
             }
-
-
-            await loadComments(
-                reelId
-            );
-
-
-            await updateReelCommentCount(
-                reelId
-            );
-
-
-            toast(
-                "تم حذف التعليق."
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Delete comment error:",
-                error
-            );
-
-
-            toast(
-                error?.message ||
-                "تعذر حذف التعليق."
-            );
-        }
+        );
     }
 
 
@@ -1523,6 +1720,7 @@
 
                         content:
                             content
+
                     });
 
 
@@ -1562,7 +1760,7 @@
 
 
     /* =====================================================
-       عداد تعليقات الـReel
+       عداد التعليقات
     ===================================================== */
 
     async function updateReelCommentCount(
@@ -1573,7 +1771,9 @@
             getSupabase();
 
 
-        if (!client) return;
+        if (!client) {
+            return;
+        }
 
 
         const {
@@ -1658,7 +1858,7 @@
         try {
 
             const {
-                data: existing
+                data:existing
             } =
                 await client
                     .from(
@@ -1718,6 +1918,7 @@
 
                             user_id:
                                 userId
+
                         });
 
 
@@ -1728,7 +1929,7 @@
 
 
             const {
-                count: totalLikes
+                count:totalLikes
             } =
                 await client
                     .from(
@@ -1750,7 +1951,7 @@
 
 
             const {
-                data: likedRow
+                data:likedRow
             } =
                 await client
                     .from(
@@ -1871,6 +2072,7 @@
 
                     url:
                         url
+
                 });
 
                 return;
@@ -1899,31 +2101,7 @@
         }
     }
 
-function formatDate(value) {
 
-    if (!value) {
-        return "";
-    }
-
-    const date =
-        new Date(value);
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return "";
-    }
-
-    return date.toLocaleString(
-        "ar-IQ",
-        {
-            dateStyle: "medium",
-            timeStyle: "short"
-        }
-    );
-}
     /* =====================================================
        API
     ===================================================== */
@@ -1964,10 +2142,6 @@ function formatDate(value) {
         "click",
         function (event) {
 
-            /* ------------------------------
-               Comments
-            ------------------------------ */
-
             const commentButton =
                 event.target.closest(
                     "[data-comments]"
@@ -2000,10 +2174,6 @@ function formatDate(value) {
                 }
             }
 
-
-            /* ------------------------------
-               Like
-            ------------------------------ */
 
             const likeButton =
                 event.target.closest(
@@ -2038,10 +2208,6 @@ function formatDate(value) {
                 }
             }
 
-
-            /* ------------------------------
-               Share
-            ------------------------------ */
 
             const shareButton =
                 event.target.closest(
