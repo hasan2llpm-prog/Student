@@ -453,6 +453,11 @@
                 opacity:1;
             }
 
+
+            /* =========================================
+               القائمة الرئيسية
+            ========================================= */
+
             #student-main-menu-sheet {
                 position:absolute;
                 top:0;
@@ -466,21 +471,20 @@
                     linear-gradient(
                         180deg,
                         #063b73 0%,
-                        #0a5ca8 42%,
-                        #dfeeff 76%,
+                        #0a5ca8 38%,
+                        #dcecff 72%,
                         #ffffff 100%
                     );
 
                 box-shadow:
                     12px 0 35px
-                    rgba(0,0,0,.15);
+                    rgba(0,0,0,.18);
 
                 transform:
                     translateX(-100%);
 
                 transition:
-                    transform
-                    .18s
+                    transform .18s
                     cubic-bezier(
                         .22,
                         .8,
@@ -499,6 +503,11 @@
                 transform:
                     translateX(0);
             }
+
+
+            /* =========================================
+               الهيدر
+            ========================================= */
 
             .student-menu-header {
                 min-height:64px;
@@ -521,16 +530,17 @@
                 background:
                     linear-gradient(
                         180deg,
-                        #063b73,
-                        #0a5ca8
+                        #042f5c,
+                        #075a9f
                     );
 
                 border-bottom:
                     1px solid
-                    rgba(255,255,255,.18);
+                    rgba(255,255,255,.20);
 
                 flex-shrink:0;
             }
+
 
             .student-menu-back {
                 width:42px;
@@ -540,9 +550,9 @@
                 border-radius:50%;
 
                 background:
-                    rgba(255,255,255,.45);
+                    rgba(255,255,255,.88);
 
-                color:#222;
+                color:#063b73;
 
                 display:flex;
                 align-items:center;
@@ -559,15 +569,17 @@
                     opacity .15s ease;
             }
 
+
             .student-menu-back.visible {
                 opacity:1;
                 pointer-events:auto;
             }
 
+
             .student-menu-title {
                 flex:1;
 
-                color:#fff;
+                color:#ffffff;
 
                 font-size:19px;
 
@@ -575,6 +587,7 @@
 
                 text-align:right;
             }
+
 
             .student-menu-close {
                 width:42px;
@@ -584,9 +597,9 @@
                 border-radius:50%;
 
                 background:
-                    rgba(255,255,255,.45);
+                    rgba(255,255,255,.88);
 
-                color:#222;
+                color:#063b73;
 
                 display:flex;
                 align-items:center;
@@ -596,6 +609,11 @@
 
                 cursor:pointer;
             }
+
+
+            /* =========================================
+               محتوى القائمة
+            ========================================= */
 
             .student-menu-content {
                 flex:1;
@@ -607,21 +625,27 @@
                 -webkit-overflow-scrolling:touch;
             }
 
+
+            /* =========================================
+               عناصر القائمة
+            ========================================= */
+
             .student-menu-item {
                 width:100%;
 
-                border:1px solid
-                    rgba(255,255,255,.35);
+                border:
+                    1px solid
+                    rgba(255,255,255,.75);
 
                 background:
                     rgba(
                         255,
                         255,
                         255,
-                        .72
+                        .92
                     );
 
-                color:#222;
+                color:#18324a;
 
                 padding:15px;
 
@@ -631,7 +655,7 @@
 
                 font-size:15px;
 
-                font-weight:650;
+                font-weight:700;
 
                 cursor:pointer;
 
@@ -645,56 +669,73 @@
                 margin-bottom:9px;
 
                 box-shadow:
-                    0 2px 7px
-                    rgba(0,0,0,.05);
+                    0 3px 10px
+                    rgba(0,55,110,.10);
 
                 transition:
                     transform .10s ease,
                     background .10s ease;
             }
 
-            .student-menu-item:active {
 
+            .student-menu-item:active {
                 transform:
                     scale(.985);
 
                 background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        .88
-                    );
+                    #ffffff;
             }
 
-            .student-menu-item i {
 
+            .student-menu-item i {
                 width:23px;
 
                 text-align:center;
 
-                color:#07518e;
+                color:#0878c9;
 
-                font-size:16px;
+                font-size:17px;
             }
+
+
+            .student-menu-item span {
+                color:#18324a;
+
+                font-weight:700;
+            }
+
+
+            /* =========================================
+               تسجيل الخروج
+            ========================================= */
 
             .student-menu-item.danger {
 
-                color:#8f2222;
+                color:#9b2525;
 
                 background:
                     rgba(
                         255,
-                        240,
-                        240,
-                        .82
+                        245,
+                        245,
+                        .96
                     );
             }
 
-            .student-menu-item.danger i {
 
-                color:#a52525;
+            .student-menu-item.danger i {
+                color:#c62828;
             }
+
+
+            .student-menu-item.danger span {
+                color:#9b2525;
+            }
+
+
+            /* =========================================
+               التحميل
+            ========================================= */
 
             .student-menu-loading {
 
@@ -702,10 +743,13 @@
 
                 text-align:center;
 
-                color:#555;
+                color:#18324a;
 
                 font-size:13px;
+
+                font-weight:600;
             }
+
 
             .student-menu-empty {
 
@@ -713,10 +757,17 @@
 
                 text-align:center;
 
-                color:#555;
+                color:#18324a;
 
                 font-size:13px;
+
+                font-weight:600;
             }
+
+
+            /* =========================================
+               أسفل القائمة
+            ========================================= */
 
             .student-menu-footer {
 
@@ -730,34 +781,44 @@
                         )
                     );
 
-                color:#555;
+                color:#31546f;
 
                 text-align:center;
 
                 font-size:11px;
 
+                font-weight:600;
+
                 border-top:
                     1px solid
-                    rgba(255,255,255,.35);
+                    rgba(255,255,255,.55);
 
                 background:
                     rgba(
                         255,
                         255,
                         255,
-                        .35
+                        .55
                     );
 
                 flex-shrink:0;
             }
 
 
+            /* =========================================
+               إخفاء النوافذ العائمة عند الدخول داخل
+               القائمة
+            ========================================= */
+
             body.student-menu-inner-open
             > .floating-panel,
+
             body.student-menu-inner-open
             > [id*="floating"],
+
             body.student-menu-inner-open
             > [class*="floating-panel"] {
+
                 display:none !important;
             }
 
@@ -1032,8 +1093,8 @@
         return `
             <div
                 style="
-                    color:#222;
-                    font-weight:500;
+                    color:#18324a;
+                    font-weight:600;
                 "
             >
                 ${content}
@@ -1917,7 +1978,7 @@
             <div style="
                 text-align:center;
                 padding:20px 10px;
-                color:#222;
+                color:#18324a;
             ">
 
                 <div style="
@@ -1925,8 +1986,8 @@
                     height:70px;
                     margin:0 auto 15px;
                     border-radius:20px;
-                    background:#eafff0;
-                    color:#25D366;
+                    background:#e8f4ff;
+                    color:#0878c9;
                     display:flex;
                     align-items:center;
                     justify-content:center;
@@ -1943,7 +2004,7 @@
 
                 <p style="
                     margin:0 0 20px;
-                    color:#555;
+                    color:#64788c;
                     line-height:1.8;
                 ">
                     هل لديك مشكلة أو اقتراح؟
@@ -2021,7 +2082,7 @@
             <div style="
                 text-align:center;
                 padding:10px;
-                color:#222;
+                color:#18324a;
             ">
 
                 <div style="
@@ -2029,8 +2090,8 @@
                     height:82px;
                     margin:0 auto 15px;
                     border-radius:22px;
-                    background:#e0e0e0;
-                    color:#333;
+                    background:#e8f4ff;
+                    color:#0878c9;
                     display:flex;
                     align-items:center;
                     justify-content:center;
@@ -2047,7 +2108,7 @@
                 </h2>
 
                 <div style="
-                    color:#666;
+                    color:#64788c;
                     font-size:13px;
                     margin-bottom:18px;
                 ">
@@ -2055,11 +2116,11 @@
                 </div>
 
                 <div style="
-                    background:rgba(255,255,255,.50);
+                    background:#f2f8ff;
                     border-radius:14px;
                     padding:15px;
                     text-align:right;
-                    color:#444;
+                    color:#34526b;
                     line-height:1.9;
                 ">
                     تطبيق عراقي صُمم لتطوير الطلاب
@@ -2069,7 +2130,7 @@
 
                 <div style="
                     margin-top:15px;
-                    color:#666;
+                    color:#64788c;
                     font-size:12px;
                 ">
                     جميع الحقوق محفوظة لـ Student
