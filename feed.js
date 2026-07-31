@@ -1,27 +1,76 @@
 /* =========================================================
    Student - Feed System
-   عرض المنشورات والصور وReels
+   Text Posts + Images ONLY
+   Reels are displayed in reels.js
 ========================================================= */
 
 (function () {
+
     "use strict";
 
-    if (window.__studentFeedLoaded) return;
-    window.__studentFeedLoaded = true;
+
+    if (
+        window.__studentFeedLoaded
+    ) {
+        return;
+    }
+
+
+    window.__studentFeedLoaded =
+        true;
+
 
     let feedContainer = null;
     let loading = false;
+    let started = false;
+
 
     /* =====================================================
        Supabase
     ===================================================== */
 
     function getSupabase() {
+
         if (
-            typeof supabaseClient !== "undefined" &&
+            typeof supabaseClient !==
+                "undefined" &&
             supabaseClient
         ) {
+
             return supabaseClient;
+        }
+
+        return null;
+    }
+
+
+    async function waitForSupabase(
+        maxAttempts = 50
+    ) {
+
+        for (
+            let i = 0;
+            i < maxAttempts;
+            i++
+        ) {
+
+            if (
+                getSupabase()
+            ) {
+
+                return getSupabase();
+            }
+
+            await new Promise(
+                function(resolve) {
+
+                    setTimeout(
+                        resolve,
+                        200
+                    );
+
+                }
+            );
         }
 
         return null;
@@ -32,13 +81,38 @@
        حماية HTML
     ===================================================== */
 
-    function escapeHTML(value) {
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    function escapeHTML(
+        value
+    ) {
+
+        return String(
+            value || ""
+        )
+
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+
+            .replace(
+                /</g,
+                "&lt;"
+            )
+
+            .replace(
+                />/g,
+                "&gt;"
+            )
+
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+
+            .replace(
+                /'/g,
+                "&#039;"
+            );
     }
 
 
@@ -53,30 +127,38 @@
                 "student-feed-style"
             )
         ) {
+
             return;
         }
 
+
         const style =
-            document.createElement("style");
+            document.createElement(
+                "style"
+            );
+
 
         style.id =
             "student-feed-style";
+
 
         style.textContent = `
 
             .student-feed-container {
                 width:100%;
                 max-width:680px;
-                margin:0 auto;
+                margin:18px auto 0;
                 padding:0 10px 100px;
                 box-sizing:border-box;
             }
+
 
             .student-feed-loading {
                 text-align:center;
                 padding:35px 15px;
                 color:#888;
             }
+
 
             .student-feed-spinner {
                 width:32px;
@@ -86,20 +168,26 @@
                 border-radius:50%;
                 margin:0 auto 12px;
                 animation:
-                    studentFeedSpin .7s linear infinite;
+                    studentFeedSpin
+                    .7s linear infinite;
             }
 
+
             @keyframes studentFeedSpin {
+
                 to {
                     transform:rotate(360deg);
                 }
+
             }
+
 
             .student-feed-empty {
                 text-align:center;
                 padding:45px 15px;
                 color:#888;
             }
+
 
             .student-feed-empty-icon {
                 width:75px;
@@ -114,6 +202,28 @@
                 font-size:30px;
             }
 
+
+            .student-feed-error {
+                text-align:center;
+                padding:30px 15px;
+                color:#d93025;
+                line-height:1.8;
+            }
+
+
+            .student-feed-refresh {
+                width:100%;
+                border:none;
+                background:#f7f8fa;
+                color:#0095f6;
+                padding:11px;
+                border-radius:12px;
+                cursor:pointer;
+                font-size:13px;
+                margin-bottom:10px;
+            }
+
+
             .student-feed-card {
                 background:#fff;
                 border:1px solid #eee;
@@ -125,12 +235,14 @@
                     rgba(0,0,0,.04);
             }
 
+
             .student-feed-header {
                 display:flex;
                 align-items:center;
                 gap:10px;
                 padding:13px;
             }
+
 
             .student-feed-avatar {
                 width:42px;
@@ -140,6 +252,7 @@
                 background:#eaf5ff;
                 flex-shrink:0;
             }
+
 
             .student-feed-avatar-placeholder {
                 width:42px;
@@ -153,16 +266,22 @@
                 flex-shrink:0;
             }
 
+
             .student-feed-user {
                 flex:1;
                 min-width:0;
             }
 
+
             .student-feed-name {
                 font-size:14px;
                 font-weight:800;
                 color:#222;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
             }
+
 
             .student-feed-username {
                 margin-top:3px;
@@ -172,68 +291,52 @@
                 text-align:right;
             }
 
+
             .student-feed-time {
-                font-size:11px;
+                font-size:10px;
                 color:#999;
                 white-space:nowrap;
             }
 
+
             .student-feed-text {
                 padding:
-                    0 14px 14px;
+                    0 14px 15px;
                 color:#333;
-                line-height:1.8;
+                line-height:1.9;
                 white-space:pre-wrap;
                 word-break:break-word;
+                font-size:15px;
             }
+
 
             .student-feed-image {
                 width:100%;
-                max-height:650px;
+                max-height:680px;
                 display:block;
                 object-fit:cover;
                 background:#f3f4f6;
             }
 
+
             .student-feed-caption {
                 padding:13px 14px;
                 color:#444;
-                line-height:1.7;
+                line-height:1.8;
+                font-size:14px;
+                white-space:pre-wrap;
+                word-break:break-word;
             }
 
-            .student-feed-reel {
-                position:relative;
-                width:100%;
-                background:#000;
-            }
-
-            .student-feed-reel video {
-                width:100%;
-                max-height:650px;
-                display:block;
-                background:#000;
-                object-fit:cover;
-            }
-
-            .student-feed-reel-label {
-                position:absolute;
-                top:12px;
-                right:12px;
-                padding:6px 9px;
-                border-radius:10px;
-                background:rgba(0,0,0,.6);
-                color:#fff;
-                font-size:11px;
-                font-weight:700;
-            }
 
             .student-feed-actions {
                 display:flex;
                 align-items:center;
-                gap:5px;
-                padding:10px 12px;
+                gap:4px;
+                padding:9px 10px;
                 border-top:1px solid #f0f0f0;
             }
+
 
             .student-feed-action {
                 width:42px;
@@ -244,18 +347,23 @@
                 color:#444;
                 cursor:pointer;
                 font-size:17px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
             }
+
 
             .student-feed-action:hover {
                 background:#f3f5f7;
             }
 
+
             .student-feed-action.save {
                 margin-right:auto;
             }
 
+
             .student-feed-type {
-                margin-right:3px;
                 padding:5px 8px;
                 border-radius:8px;
                 background:#f1f3f5;
@@ -263,17 +371,6 @@
                 font-size:10px;
             }
 
-            .student-feed-refresh {
-                width:100%;
-                border:none;
-                background:#f7f8fa;
-                color:#0095f6;
-                padding:11px;
-                border-radius:12px;
-                cursor:pointer;
-                font-size:13px;
-                margin-bottom:8px;
-            }
 
             @media (max-width:680px) {
 
@@ -282,118 +379,93 @@
                     padding-right:5px;
                 }
 
+
                 .student-feed-card {
                     border-radius:14px;
                 }
+
             }
 
         `;
 
-        document.head.appendChild(style);
-    }
 
-
-    /* =====================================================
-       الوقت
-    ===================================================== */
-
-    function formatDate(value) {
-
-        if (!value) return "";
-
-        const date = new Date(value);
-
-        if (isNaN(date.getTime())) {
-            return "";
-        }
-
-        return date.toLocaleString(
-            "ar-IQ",
-            {
-                dateStyle:"medium",
-                timeStyle:"short"
-            }
+        document.head.appendChild(
+            style
         );
     }
 
 
     /* =====================================================
-       إنشاء Feed
+       إنشاء مكان Feed
     ===================================================== */
 
     function createFeedContainer() {
 
-        if (feedContainer) {
+        if (
+            feedContainer &&
+            document.body.contains(
+                feedContainer
+            )
+        ) {
+
             return feedContainer;
         }
 
-        const mainContent =
+
+        const host =
             document.querySelector(
                 ".main-content"
+            ) ||
+            document.querySelector(
+                "#main-screen"
+            ) ||
+            document.querySelector(
+                "main"
             );
 
-        if (!mainContent) {
+
+        if (!host) {
+
+            console.warn(
+                "Feed host not found."
+            );
+
             return null;
         }
 
-        /*
-           نضع الـFeed أسفل البطاقات الحالية
-        */
 
         feedContainer =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         feedContainer.id =
             "student-feed-container";
 
+
         feedContainer.className =
             "student-feed-container";
 
-        mainContent.appendChild(
+
+        host.appendChild(
             feedContainer
         );
+
 
         return feedContainer;
     }
 
 
     /* =====================================================
-       حالة التحميل
+       تحميل المنشورات فقط
+       مهم:
+       لا نحمل جدول reels هنا
     ===================================================== */
 
-    function showLoading() {
-
-        if (!feedContainer) return;
-
-        feedContainer.innerHTML = `
-
-            <div class="
-                student-feed-loading
-            ">
-
-                <div class="
-                    student-feed-spinner
-                "></div>
-
-                جاري تحميل المنشورات...
-
-            </div>
-        `;
-    }
-
-
-    /* =====================================================
-       تحميل Posts
-    ===================================================== */
-
-    async function loadPosts() {
-
-        const client =
-            getSupabase();
-
-        if (!client) {
-            return [];
-        }
+    async function loadPosts(
+        client
+    ) {
 
         const {
             data,
@@ -410,83 +482,52 @@
                     created_at,
                     updated_at
                 `)
+
+                .in(
+                    "post_type",
+                    [
+                        "text",
+                        "image"
+                    ]
+                )
+
                 .order(
                     "created_at",
                     {
                         ascending:false
                     }
                 )
-                .limit(30);
+
+                .limit(
+                    50
+                );
+
 
         if (error) {
             throw error;
         }
+
 
         return data || [];
     }
 
 
     /* =====================================================
-       تحميل Reels
-    ===================================================== */
-
-    async function loadReels() {
-
-        const client =
-            getSupabase();
-
-        if (!client) {
-            return [];
-        }
-
-        const {
-            data,
-            error
-        } =
-            await client
-                .from("reels")
-                .select(`
-                    id,
-                    user_id,
-                    video_url,
-                    caption,
-                    thumbnail_url,
-                    created_at,
-                    updated_at
-                `)
-                .order(
-                    "created_at",
-                    {
-                        ascending:false
-                    }
-                )
-                .limit(30);
-
-        if (error) {
-            throw error;
-        }
-
-        return data || [];
-    }
-
-
-    /* =====================================================
-       تحميل Profiles
+       Profiles
     ===================================================== */
 
     async function loadProfiles(
-        userIds
+        client,
+        ids
     ) {
 
-        const client =
-            getSupabase();
-
         if (
-            !client ||
-            !userIds.length
+            !ids.length
         ) {
+
             return {};
         }
+
 
         const {
             data,
@@ -502,91 +543,42 @@
                 `)
                 .in(
                     "id",
-                    userIds
+                    ids
                 );
 
+
         if (error) {
+
             console.error(
-                "Profiles feed error:",
+                "Feed profiles error:",
                 error
             );
 
             return {};
         }
 
-        const map = {};
 
-        (data || []).forEach(
-            function(profile) {
-
-                map[
-                    profile.id
-                ] = profile;
-            }
-        );
-
-        return map;
-    }
+        const result = {};
 
 
-    /* =====================================================
-       دمج المحتوى
-    ===================================================== */
+        (data || [])
+            .forEach(
+                function(profile) {
 
-    function combineContent(
-        posts,
-        reels
-    ) {
-
-        const postItems =
-            posts.map(
-                function(post) {
-
-                    return {
-                        kind:"post",
-                        sortDate:
-                            post.created_at,
-                        data:post
-                    };
+                    result[
+                        profile.id
+                    ] =
+                        profile;
                 }
             );
 
 
-        const reelItems =
-            reels.map(
-                function(reel) {
-
-                    return {
-                        kind:"reel",
-                        sortDate:
-                            reel.created_at,
-                        data:reel
-                    };
-                }
-            );
-
-
-        return [
-            ...postItems,
-            ...reelItems
-        ].sort(
-            function(a,b) {
-
-                return (
-                    new Date(
-                        b.sortDate
-                    ) -
-                    new Date(
-                        a.sortDate
-                    )
-                );
-            }
-        );
+        return result;
     }
 
 
     /* =====================================================
-       صورة المستخدم
+       Avatar
     ===================================================== */
 
     function avatarHTML(
@@ -598,6 +590,7 @@
         ) {
 
             return `
+
                 <img
                     class="
                         student-feed-avatar
@@ -608,158 +601,176 @@
                     alt=""
                     loading="lazy"
                 >
+
             `;
         }
 
 
         return `
+
             <div class="
                 student-feed-avatar-placeholder
             ">
+
                 <i class="
                     fa-solid
                     fa-user
                 "></i>
+
             </div>
+
         `;
     }
 
 
     /* =====================================================
-       بطاقة المحتوى
+       التاريخ
+    ===================================================== */
+
+    function formatDate(
+        value
+    ) {
+
+        if (!value) {
+            return "";
+        }
+
+
+        const date =
+            new Date(
+                value
+            );
+
+
+        if (
+            isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return "";
+        }
+
+
+        return date.toLocaleString(
+            "ar-IQ",
+            {
+                dateStyle:
+                    "medium",
+
+                timeStyle:
+                    "short"
+            }
+        );
+    }
+
+
+    /* =====================================================
+       بطاقة المنشور
     ===================================================== */
 
     function renderCard(
-        item,
+        post,
         profiles
     ) {
 
-        const data =
-            item.data;
-
         const profile =
             profiles[
-                data.user_id
+                post.user_id
             ] || {};
+
 
         const name =
             profile.full_name ||
             profile.username ||
             "مستخدم";
 
+
         const username =
             profile.username ||
             "username";
 
 
-        let body = "";
+        let contentHTML =
+            "";
+
+
+        let typeLabel =
+            "نص";
 
 
         if (
-            item.kind ===
-            "post"
+            post.post_type ===
+            "image"
         ) {
 
-            if (
-                data.post_type ===
-                "image" &&
-                data.media_url
-            ) {
+            typeLabel =
+                "صورة";
 
-                body = `
 
-                    <img
-                        class="
-                            student-feed-image
-                        "
-                        src="${escapeHTML(
-                            data.media_url
-                        )}"
-                        alt=""
-                        loading="lazy"
-                    >
+            contentHTML = `
 
-                    ${
-                        data.content
-                            ? `
-                                <div class="
-                                    student-feed-caption
-                                ">
-                                    ${escapeHTML(
-                                        data.content
-                                    )}
-                                </div>
-                              `
-                            : ""
-                    }
-                `;
+                ${
+                    post.media_url
+                        ? `
 
-            } else {
+                            <img
+                                class="
+                                    student-feed-image
+                                "
+                                src="${escapeHTML(
+                                    post.media_url
+                                )}"
+                                alt=""
+                                loading="lazy"
+                            >
 
-                body = `
-
-                    <div class="
-                        student-feed-text
-                    ">
-                        ${escapeHTML(
-                            data.content ||
-                            ""
-                        )}
-                    </div>
-                `;
-            }
-
-        } else {
-
-            body = `
-
-                <div class="
-                    student-feed-reel
-                ">
-
-                    <video
-                        src="${escapeHTML(
-                            data.video_url
-                        )}"
-                        controls
-                        playsinline
-                        preload="metadata"
-                    ></video>
-
-                    <div class="
-                        student-feed-reel-label
-                    ">
-                        🎬 Reels
-                    </div>
-
-                </div>
+                        `
+                        : ""
+                }
 
 
                 ${
-                    data.caption
+                    post.content
                         ? `
+
                             <div class="
                                 student-feed-caption
                             ">
+
                                 ${escapeHTML(
-                                    data.caption
+                                    post.content
                                 )}
+
                             </div>
-                          `
+
+                        `
                         : ""
                 }
+
+            `;
+
+        } else {
+
+            typeLabel =
+                "نص";
+
+
+            contentHTML = `
+
+                <div class="
+                    student-feed-text
+                ">
+
+                    ${escapeHTML(
+                        post.content ||
+                        ""
+                    )}
+
+                </div>
+
             `;
         }
-
-
-        const typeLabel =
-            item.kind ===
-            "reel"
-                ? "Reels"
-                : data.post_type ===
-                  "image"
-                    ? "صورة"
-                    : "نص";
 
 
         return `
@@ -768,10 +779,10 @@
                 class="
                     student-feed-card
                 "
-                data-feed-kind="${item.kind}"
                 data-feed-id="${escapeHTML(
-                    data.id
+                    post.id
                 )}"
+                data-feed-kind="post"
             >
 
                 <div class="
@@ -790,17 +801,22 @@
                         <div class="
                             student-feed-name
                         ">
+
                             ${escapeHTML(
                                 name
                             )}
+
                         </div>
+
 
                         <div class="
                             student-feed-username
                         ">
+
                             @${escapeHTML(
                                 username
                             )}
+
                         </div>
 
                     </div>
@@ -809,17 +825,19 @@
                     <div class="
                         student-feed-time
                     ">
+
                         ${escapeHTML(
                             formatDate(
-                                data.created_at
+                                post.created_at
                             )
                         )}
+
                     </div>
 
                 </div>
 
 
-                ${body}
+                ${contentHTML}
 
 
                 <div class="
@@ -834,74 +852,139 @@
 
 
                     <button
+                        type="button"
                         class="
                             student-feed-action
                         "
-                        type="button"
-                        title="إعجاب"
                         data-feed-like
+                        title="إعجاب"
                     >
+
                         <i class="
                             fa-regular
                             fa-heart
                         "></i>
+
                     </button>
 
 
                     <button
+                        type="button"
                         class="
                             student-feed-action
                         "
-                        type="button"
-                        title="تعليق"
                         data-feed-comment
+                        title="تعليق"
                     >
+
                         <i class="
                             fa-regular
                             fa-comment
                         "></i>
+
                     </button>
 
 
                     <button
+                        type="button"
                         class="
                             student-feed-action
                         "
-                        type="button"
-                        title="مشاركة"
                         data-feed-share
+                        title="مشاركة"
                     >
+
                         <i class="
                             fa-solid
                             fa-share
                         "></i>
+
                     </button>
 
 
                     <button
+                        type="button"
                         class="
                             student-feed-action
                             save
                         "
-                        type="button"
-                        title="حفظ"
                         data-feed-save
+                        title="حفظ"
                     >
+
                         <i class="
                             fa-regular
                             fa-bookmark
                         "></i>
+
                     </button>
 
                 </div>
 
             </article>
+
         `;
     }
 
 
     /* =====================================================
-       العرض
+       حالة فارغة
+    ===================================================== */
+
+    function renderEmpty() {
+
+        if (!feedContainer) {
+            return;
+        }
+
+
+        feedContainer.innerHTML = `
+
+            <div class="
+                student-feed-empty
+            ">
+
+                <div class="
+                    student-feed-empty-icon
+                ">
+
+                    <i class="
+                        fa-regular
+                        fa-newspaper
+                    "></i>
+
+                </div>
+
+
+                <div style="
+                    font-weight:800;
+                    color:#555;
+                    margin-bottom:7px;
+                ">
+
+                    لا توجد منشورات بعد
+
+                </div>
+
+
+                <div style="
+                    font-size:13px;
+                    line-height:1.8;
+                ">
+
+                    كن أول من ينشر شيئًا
+                    في Student.
+
+                </div>
+
+            </div>
+
+        `;
+    }
+
+
+    /* =====================================================
+       تحميل Feed
     ===================================================== */
 
     async function loadFeed() {
@@ -910,86 +993,83 @@
             return;
         }
 
-        loading = true;
+
+        loading =
+            true;
 
 
         try {
 
-            if (!feedContainer) {
+            const client =
+                await waitForSupabase();
+
+
+            if (!client) {
+
+                throw new Error(
+                    "Supabase لم يجهز بعد."
+                );
+            }
+
+
+            const container =
                 createFeedContainer();
+
+
+            if (!container) {
+
+                throw new Error(
+                    "لم يتم العثور على مكان Feed."
+                );
             }
 
 
-            if (!feedContainer) {
-                return;
-            }
+            container.innerHTML = `
+
+                <div class="
+                    student-feed-loading
+                ">
+
+                    <div class="
+                        student-feed-spinner
+                    "></div>
+
+                    جاري تحميل المنشورات...
+
+                </div>
+
+            `;
 
 
-            showLoading();
+            /*
+               مهم جدًا:
+               هنا نحمل posts فقط.
+               لا يوجد loadReels().
+            */
 
-
-            const [
-                posts,
-                reels
-            ] =
-                await Promise.all([
-                    loadPosts(),
-                    loadReels()
-                ]);
-
-
-            const allItems =
-                combineContent(
-                    posts,
-                    reels
+            const posts =
+                await loadPosts(
+                    client
                 );
 
 
-            if (!allItems.length) {
+            if (
+                !posts.length
+            ) {
 
-                feedContainer.innerHTML = `
-
-                    <div class="
-                        student-feed-empty
-                    ">
-
-                        <div class="
-                            student-feed-empty-icon
-                        ">
-                            <i class="
-                                fa-regular
-                                fa-newspaper
-                            "></i>
-                        </div>
-
-                        <div style="
-                            font-weight:800;
-                            color:#555;
-                            margin-bottom:7px;
-                        ">
-                            لا توجد منشورات بعد
-                        </div>
-
-                        <div style="
-                            font-size:13px;
-                            line-height:1.8;
-                        ">
-                            كن أول من ينشر شيئًا في Student.
-                        </div>
-
-                    </div>
-                `;
+                renderEmpty();
 
                 return;
             }
 
 
-            const ids =
+            const userIds =
                 Array.from(
                     new Set(
-                        allItems.map(
-                            function(item) {
-                                return item.data.user_id;
+                        posts.map(
+                            function(post) {
+
+                                return post.user_id;
                             }
                         )
                     )
@@ -998,7 +1078,8 @@
 
             const profiles =
                 await loadProfiles(
-                    ids
+                    client,
+                    userIds
                 );
 
 
@@ -1006,26 +1087,33 @@
 
                 <button
                     id="student-feed-refresh"
-                    class="student-feed-refresh"
+                    class="
+                        student-feed-refresh
+                    "
                     type="button"
                 >
+
                     <i class="
                         fa-solid
                         fa-rotate
                     "></i>
+
                     تحديث المنشورات
+
                 </button>
 
 
-                ${allItems.map(
-                    function(item) {
+                ${posts.map(
+                    function(post) {
 
                         return renderCard(
-                            item,
+                            post,
                             profiles
                         );
+
                     }
                 ).join("")}
+
             `;
 
 
@@ -1055,46 +1143,193 @@
                 feedContainer.innerHTML = `
 
                     <div class="
-                        student-feed-empty
+                        student-feed-error
                     ">
 
-                        <div class="
-                            student-feed-empty-icon
-                        ">
-                            ⚠️
+                        ⚠️
+
+                        <div>
+                            تعذر تحميل المنشورات حاليًا.
                         </div>
 
-                        <div style="
-                            font-weight:800;
-                            color:#555;
-                            margin-bottom:7px;
-                        ">
-                            تعذر تحميل المنشورات
-                        </div>
 
                         <div style="
-                            font-size:12px;
-                            line-height:1.8;
+                            color:#999;
+                            font-size:11px;
+                            margin-top:8px;
                         ">
-                            تحقق من اتصال التطبيق
-                            وقواعد الوصول إلى البيانات.
+
+                            ${escapeHTML(
+                                error?.message ||
+                                ""
+                            )}
+
                         </div>
+
+
+                        <button
+                            id="student-feed-retry"
+                            style="
+                                margin-top:12px;
+                                border:none;
+                                background:#0095f6;
+                                color:white;
+                                padding:10px 18px;
+                                border-radius:10px;
+                                cursor:pointer;
+                            "
+                        >
+                            إعادة المحاولة
+                        </button>
 
                     </div>
+
                 `;
+
+
+                document
+                    .getElementById(
+                        "student-feed-retry"
+                    )
+                    ?.addEventListener(
+                        "click",
+                        loadFeed
+                    );
             }
 
         } finally {
 
-            loading = false;
+            loading =
+                false;
         }
     }
 
 
     /* =====================================================
-       إجراءات الواجهة
-       لا ننفذ الإعجاب والتعليق والحفظ الآن
-       حتى نبني جداولها بالشكل الصحيح.
+       المحفوظات
+    ===================================================== */
+
+    async function ensureSavedSystem() {
+
+        if (
+            typeof window.saveStudentItem ===
+            "function"
+        ) {
+
+            return true;
+        }
+
+
+        return new Promise(
+            function(resolve) {
+
+                const existing =
+                    document.querySelector(
+                        'script[data-student-saved="true"]'
+                    );
+
+
+                if (existing) {
+
+                    let attempts =
+                        0;
+
+
+                    const timer =
+                        setInterval(
+                            function() {
+
+                                attempts++;
+
+
+                                if (
+                                    typeof window.saveStudentItem ===
+                                    "function"
+                                ) {
+
+                                    clearInterval(
+                                        timer
+                                    );
+
+                                    resolve(
+                                        true
+                                    );
+
+                                    return;
+                                }
+
+
+                                if (
+                                    attempts >=
+                                    30
+                                ) {
+
+                                    clearInterval(
+                                        timer
+                                    );
+
+                                    resolve(
+                                        false
+                                    );
+                                }
+
+                            },
+                            100
+                        );
+
+
+                    return;
+                }
+
+
+                const script =
+                    document.createElement(
+                        "script"
+                    );
+
+
+                script.src =
+                    "saved.js";
+
+
+                script.async =
+                    true;
+
+
+                script.dataset.studentSaved =
+                    "true";
+
+
+                script.onload =
+                    function() {
+
+                        resolve(
+                            typeof window.saveStudentItem ===
+                            "function"
+                        );
+                    };
+
+
+                script.onerror =
+                    function() {
+
+                        resolve(
+                            false
+                        );
+                    };
+
+
+                document.body.appendChild(
+                    script
+                );
+
+            }
+        );
+    }
+
+
+    /* =====================================================
+       إجراءات Feed
     ===================================================== */
 
     function bindFeedActions() {
@@ -1103,6 +1338,8 @@
             return;
         }
 
+
+        /* إعجاب */
 
         feedContainer
             .querySelectorAll(
@@ -1115,14 +1352,24 @@
                         "click",
                         function() {
 
-                            showTemporaryMessage(
-                                "سيتم تفعيل الإعجاب قريبًا."
+                            button.classList.toggle(
+                                "active"
+                            );
+
+                            toast(
+                                button.classList.contains(
+                                    "active"
+                                )
+                                    ? "❤️ تمت الإعجاب"
+                                    : "تم إلغاء الإعجاب"
                             );
                         }
                     );
                 }
             );
 
+
+        /* تعليق */
 
         feedContainer
             .querySelectorAll(
@@ -1135,14 +1382,17 @@
                         "click",
                         function() {
 
-                            showTemporaryMessage(
-                                "سيتم تفعيل التعليقات قريبًا."
+                            toast(
+                                "التعليقات ستُفعّل قريبًا."
                             );
+
                         }
                     );
                 }
             );
 
+
+        /* مشاركة */
 
         feedContainer
             .querySelectorAll(
@@ -1155,14 +1405,6 @@
                         "click",
                         async function() {
 
-                            const card =
-                                button.closest(
-                                    "[data-feed-id]"
-                                );
-
-                            const id =
-                                card?.dataset.feedId;
-
                             if (
                                 navigator.share
                             ) {
@@ -1170,14 +1412,16 @@
                                 try {
 
                                     await navigator.share({
+
                                         title:
                                             "Student",
+
                                         text:
-                                            "شاهد هذا المحتوى في Student",
+                                            "شاهد هذا المنشور في Student",
+
                                         url:
-                                            window.location.href +
-                                            "#content-" +
-                                            id
+                                            window.location.href
+
                                     });
 
                                 } catch (error) {
@@ -1187,16 +1431,17 @@
                                         "AbortError"
                                     ) {
 
-                                        showTemporaryMessage(
+                                        toast(
                                             "تعذر المشاركة."
                                         );
                                     }
+
                                 }
 
                             } else {
 
-                                showTemporaryMessage(
-                                    "المشاركة ستتوفر قريبًا."
+                                toast(
+                                    "المشاركة غير متاحة."
                                 );
                             }
                         }
@@ -1204,6 +1449,8 @@
                 }
             );
 
+
+        /* حفظ */
 
         feedContainer
             .querySelectorAll(
@@ -1216,57 +1463,64 @@
                         "click",
                         async function() {
 
+                            const ready =
+                                await ensureSavedSystem();
+
+
+                            if (!ready) {
+
+                                toast(
+                                    "تعذر تحميل المحفوظات."
+                                );
+
+                                return;
+                            }
+
+
                             const card =
                                 button.closest(
                                     "[data-feed-id]"
                                 );
 
-                            const kind =
-                                card?.dataset.feedKind;
 
                             const id =
                                 card?.dataset.feedId;
 
 
+                            const result =
+                                await window.saveStudentItem(
+                                    "post",
+                                    id
+                                );
+
+
                             if (
-                                typeof window.saveStudentItem ===
-                                "function"
+                                result?.success
                             ) {
 
-                                const result =
-                                    await window.saveStudentItem(
-                                        kind ===
-                                            "reel"
-                                            ? "reel"
-                                            : "post",
-                                        id
-                                    );
+                                button.innerHTML =
+                                    `
+                                    <i class="
+                                        fa-solid
+                                        fa-bookmark
+                                    "></i>
+                                    `;
 
 
-                                if (
-                                    result?.success
-                                ) {
+                                toast(
+                                    result.alreadySaved
+                                        ? "المحتوى محفوظ مسبقًا."
+                                        : "تم حفظ المنشور."
+                                );
 
-                                    button.innerHTML =
-                                        `
-                                        <i class="
-                                            fa-solid
-                                            fa-bookmark
-                                        "></i>
-                                        `;
+                            } else {
 
-                                    showTemporaryMessage(
-                                        "تم حفظ المحتوى."
-                                    );
-
-                                    return;
-                                }
+                                toast(
+                                    result?.error ||
+                                    "تعذر الحفظ."
+                                );
                             }
 
-
-                            showTemporaryMessage(
-                                "تعذر حفظ المحتوى حاليًا."
-                            );
                         }
                     );
                 }
@@ -1278,7 +1532,7 @@
        رسالة مؤقتة
     ===================================================== */
 
-    function showTemporaryMessage(
+    function toast(
         message
     ) {
 
@@ -1322,11 +1576,11 @@
         element.style.fontSize =
             "13px";
 
-        element.style.boxShadow =
-            "0 8px 30px rgba(0,0,0,.2)";
-
         element.style.direction =
             "rtl";
+
+        element.style.boxShadow =
+            "0 8px 30px rgba(0,0,0,.2)";
 
 
         document.body.appendChild(
@@ -1346,28 +1600,6 @@
 
 
     /* =====================================================
-       إعادة تحميل تلقائية عند العودة للرئيسية
-    ===================================================== */
-
-    function startFeed() {
-
-        injectStyles();
-
-        createFeedContainer();
-
-        /*
-           ننتظر قليلًا حتى تكون
-           واجهة التطبيق جاهزة.
-        */
-
-        setTimeout(
-            loadFeed,
-            700
-        );
-    }
-
-
-    /* =====================================================
        API
     ===================================================== */
 
@@ -1378,6 +1610,30 @@
     /* =====================================================
        تشغيل
     ===================================================== */
+
+    function startFeed() {
+
+        if (started) {
+            return;
+        }
+
+
+        started =
+            true;
+
+
+        injectStyles();
+
+
+        createFeedContainer();
+
+
+        setTimeout(
+            loadFeed,
+            1000
+        );
+    }
+
 
     if (
         document.readyState ===
@@ -1393,5 +1649,6 @@
 
         startFeed();
     }
+
 
 })();
