@@ -2,13 +2,15 @@
    Student - Reels Advanced
 
    📌 تثبيت / إلغاء تثبيت
-   🛠️ تحرير متقدم
-   #️⃣ استخراج الهاشتاغ
-   @️⃣ استخراج المنشن
+   🛠️ تحرير الوصف
+   #️⃣ هاشتاغ
+   @️⃣ منشن
+   🎬 استبدال الفيديو
+   🖼️ تغيير الغلاف
 
-   ملاحظات:
-   - تغيير الفيديو والغلاف والموسيقى يحتاج Storage.
-   - لا يوجد تنقّل إلى الصفحة الرئيسية عند إغلاق أي نافذة.
+   Storage:
+   post-media/reels/
+   post-media/reels/covers/
 ========================================================= */
 
 (function () {
@@ -93,24 +95,6 @@
 
 
     /* =====================================================
-       Reel helpers
-    ===================================================== */
-
-    function getReel(button) {
-
-        return button?.closest(
-            ".student-reel"
-        );
-    }
-
-
-    function getReelId(reel) {
-
-        return reel?.dataset?.id || "";
-    }
-
-
-    /* =====================================================
        Toast
     ===================================================== */
 
@@ -126,9 +110,7 @@
         }
 
         const element =
-            document.createElement(
-                "div"
-            );
+            document.createElement("div");
 
         element.id =
             "student-advanced-toast";
@@ -151,21 +133,37 @@
             box-shadow:0 10px 35px rgba(0,0,0,.28);
         `;
 
-        document.body.appendChild(
-            element
-        );
+        document.body.appendChild(element);
 
         setTimeout(
             function () {
                 element.remove();
             },
-            2200
+            2500
         );
     }
 
 
     /* =====================================================
-       Dialog helpers
+       Reel Helpers
+    ===================================================== */
+
+    function getReel(button) {
+
+        return button?.closest(
+            ".student-reel"
+        );
+    }
+
+
+    function getReelId(reel) {
+
+        return reel?.dataset?.id || "";
+    }
+
+
+    /* =====================================================
+       Dialog
     ===================================================== */
 
     function closeDialog() {
@@ -179,12 +177,7 @@
             dialog.remove();
         }
 
-        /*
-           مهم:
-           لا يوجد history.back()
-           ولا location.href
-           ولا أي انتقال للصفحة الرئيسية.
-        */
+        /* لا يوجد history.back() */
     }
 
 
@@ -212,8 +205,8 @@
             display:flex;
             align-items:center;
             justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.55);
+            padding:18px;
+            background:rgba(0,0,0,.58);
             direction:rtl;
         `;
 
@@ -221,14 +214,14 @@
 
             <div style="
                 width:100%;
-                max-width:460px;
-                max-height:90vh;
+                max-width:470px;
+                max-height:92vh;
                 overflow:auto;
                 background:#fff;
                 border-radius:24px;
                 padding:20px;
                 box-sizing:border-box;
-                box-shadow:0 20px 70px rgba(0,0,0,.3);
+                box-shadow:0 20px 70px rgba(0,0,0,.32);
             ">
 
                 <div style="
@@ -276,9 +269,7 @@
             </div>
         `;
 
-        document.body.appendChild(
-            dialog
-        );
+        document.body.appendChild(dialog);
 
         dialog
             .querySelector(
@@ -309,6 +300,156 @@
         ) {
             ready(dialog);
         }
+
+        return dialog;
+    }
+
+
+    /* =====================================================
+       Confirmation
+    ===================================================== */
+
+    function confirmAction(
+        title,
+        message,
+        actionText,
+        actionColor,
+        onConfirm
+    ) {
+
+        const existing =
+            document.getElementById(
+                "student-advanced-confirm"
+            );
+
+        if (existing) {
+            existing.remove();
+        }
+
+        const dialog =
+            document.createElement(
+                "div"
+            );
+
+        dialog.id =
+            "student-advanced-confirm";
+
+        dialog.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100001800;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,.55);
+            direction:rtl;
+        `;
+
+        dialog.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:390px;
+                background:#fff;
+                border-radius:22px;
+                padding:20px;
+                box-sizing:border-box;
+                box-shadow:0 20px 70px rgba(0,0,0,.3);
+            ">
+
+                <div style="
+                    font-size:19px;
+                    font-weight:800;
+                    color:#111;
+                    margin-bottom:12px;
+                ">
+                    ${escapeHTML(title)}
+                </div>
+
+                <div style="
+                    color:#666;
+                    line-height:1.8;
+                    font-size:14px;
+                ">
+                    ${escapeHTML(message)}
+                </div>
+
+                <div style="
+                    display:flex;
+                    gap:10px;
+                    margin-top:18px;
+                ">
+
+                    <button
+                        type="button"
+                        id="advanced-confirm-cancel"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:13px;
+                            background:#f1f3f5;
+                            cursor:pointer;
+                            font-weight:700;
+                        "
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        type="button"
+                        id="advanced-confirm-action"
+                        style="
+                            flex:1;
+                            border:0;
+                            padding:13px;
+                            border-radius:13px;
+                            background:${actionColor};
+                            color:#fff;
+                            cursor:pointer;
+                            font-weight:700;
+                        "
+                    >
+                        ${escapeHTML(actionText)}
+                    </button>
+
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+
+        dialog
+            .querySelector(
+                "#advanced-confirm-cancel"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+                    dialog.remove();
+                }
+            );
+
+        dialog
+            .querySelector(
+                "#advanced-confirm-action"
+            )
+            ?.addEventListener(
+                "click",
+                async function () {
+
+                    this.disabled = true;
+                    this.textContent = "جارٍ التنفيذ...";
+
+                    try {
+                        await onConfirm();
+                    } finally {
+                        dialog.remove();
+                    }
+
+                }
+            );
     }
 
 
@@ -424,11 +565,6 @@
 
         } catch (error) {
 
-            console.error(
-                "Load advanced reel error:",
-                error
-            );
-
             toast(
                 error?.message ||
                 "تعذر تحميل الـReel."
@@ -466,7 +602,7 @@
                 maxlength="2000"
                 style="
                     width:100%;
-                    min-height:140px;
+                    min-height:130px;
                     box-sizing:border-box;
                     border:1px solid #ddd;
                     border-radius:15px;
@@ -490,21 +626,79 @@
                     color:#777;
                     line-height:1.8;
                 "
-            >
-                سيتم استخراج الهاشتاغ والمنشن تلقائيًا.
-            </div>
+            ></div>
+
 
             <div style="
-                margin-top:14px;
-                padding:14px;
-                background:#f7f8fa;
-                border-radius:15px;
-                line-height:1.8;
-                color:#777;
-                font-size:12px;
+                margin-top:16px;
+                display:grid;
+                gap:10px;
             ">
-                🖼️ تغيير الغلاف و🎵 الموسيقى و🎬 استبدال
-                الفيديو تحتاج ربط Storage.
+
+                <button
+                    type="button"
+                    id="advanced-video"
+                    style="
+                        width:100%;
+                        border:1px solid #e4e7eb;
+                        background:#fff;
+                        padding:14px;
+                        border-radius:14px;
+                        text-align:right;
+                        cursor:pointer;
+                        font-weight:700;
+                    "
+                >
+                    🎬 استبدال الفيديو
+                </button>
+
+
+                <button
+                    type="button"
+                    id="advanced-cover"
+                    style="
+                        width:100%;
+                        border:1px solid #e4e7eb;
+                        background:#fff;
+                        padding:14px;
+                        border-radius:14px;
+                        text-align:right;
+                        cursor:pointer;
+                        font-weight:700;
+                    "
+                >
+                    🖼️ تغيير الغلاف
+                </button>
+
+
+                <input
+                    id="advanced-video-input"
+                    type="file"
+                    accept="video/*"
+                    style="display:none"
+                >
+
+
+                <input
+                    id="advanced-cover-input"
+                    type="file"
+                    accept="image/*"
+                    style="display:none"
+                >
+
+            </div>
+
+
+            <div
+                id="advanced-file-status"
+                style="
+                    margin-top:10px;
+                    color:#777;
+                    font-size:12px;
+                    line-height:1.7;
+                "
+            >
+                لا توجد تغييرات على الفيديو أو الغلاف.
             </div>
             `,
 
@@ -539,7 +733,7 @@
                     font-weight:700;
                 "
             >
-                حفظ
+                حفظ التغييرات
             </button>
             `,
 
@@ -555,6 +749,35 @@
                         "#advanced-tags"
                     );
 
+                const videoButton =
+                    dialog.querySelector(
+                        "#advanced-video"
+                    );
+
+                const coverButton =
+                    dialog.querySelector(
+                        "#advanced-cover"
+                    );
+
+                const videoInput =
+                    dialog.querySelector(
+                        "#advanced-video-input"
+                    );
+
+                const coverInput =
+                    dialog.querySelector(
+                        "#advanced-cover-input"
+                    );
+
+                const status =
+                    dialog.querySelector(
+                        "#advanced-file-status"
+                    );
+
+
+                let selectedVideo = null;
+                let selectedCover = null;
+
 
                 function updateTags() {
 
@@ -562,7 +785,6 @@
                         extractTags(
                             caption.value
                         );
-
 
                     tags.innerHTML = `
 
@@ -573,9 +795,7 @@
                         ${
                             result.hashtags.length
                                 ? escapeHTML(
-                                    result.hashtags.join(
-                                        " "
-                                    )
+                                    result.hashtags.join(" ")
                                 )
                                 : "لا يوجد"
                         }
@@ -589,14 +809,15 @@
                         ${
                             result.mentions.length
                                 ? escapeHTML(
-                                    result.mentions.join(
-                                        " "
-                                    )
+                                    result.mentions.join(" ")
                                 )
                                 : "لا يوجد"
                         }
                     `;
                 }
+
+
+                updateTags();
 
 
                 caption.addEventListener(
@@ -605,7 +826,82 @@
                 );
 
 
-                updateTags();
+                videoButton.addEventListener(
+                    "click",
+                    function () {
+
+                        videoInput.click();
+
+                    }
+                );
+
+
+                coverButton.addEventListener(
+                    "click",
+                    function () {
+
+                        coverInput.click();
+
+                    }
+                );
+
+
+                videoInput.addEventListener(
+                    "change",
+                    function () {
+
+                        selectedVideo =
+                            this.files?.[0] ||
+                            null;
+
+
+                        updateFileStatus();
+
+                    }
+                );
+
+
+                coverInput.addEventListener(
+                    "change",
+                    function () {
+
+                        selectedCover =
+                            this.files?.[0] ||
+                            null;
+
+
+                        updateFileStatus();
+
+                    }
+                );
+
+
+                function updateFileStatus() {
+
+                    const parts = [];
+
+
+                    if (selectedVideo) {
+
+                        parts.push(
+                            `🎬 فيديو جديد: ${selectedVideo.name}`
+                        );
+                    }
+
+
+                    if (selectedCover) {
+
+                        parts.push(
+                            `🖼️ غلاف جديد: ${selectedCover.name}`
+                        );
+                    }
+
+
+                    status.innerHTML =
+                        parts.length
+                            ? parts.join("<br>")
+                            : "لا توجد تغييرات على الفيديو أو الغلاف.";
+                }
 
 
                 dialog
@@ -624,11 +920,13 @@
                     )
                     ?.addEventListener(
                         "click",
-                        async function () {
+                        function () {
 
-                            await saveAdvancedEdit(
+                            confirmSaveChanges(
                                 reelId,
                                 caption.value,
+                                selectedVideo,
+                                selectedCover,
                                 this
                             );
 
@@ -639,284 +937,615 @@
     }
 
 
-    async function saveAdvancedEdit(
+    /* =====================================================
+       Confirm edit
+    ===================================================== */
+
+    function confirmSaveChanges(
         reelId,
         caption,
+        selectedVideo,
+        selectedCover,
+        button
+    ) {
+
+        const changes = [];
+
+
+        if (
+            caption.trim()
+        ) {
+            changes.push(
+                "تعديل الوصف"
+            );
+        }
+
+
+        if (selectedVideo) {
+            changes.push(
+                "استبدال الفيديو"
+            );
+        }
+
+
+        if (selectedCover) {
+            changes.push(
+                "تغيير الغلاف"
+            );
+        }
+
+
+        if (!changes.length) {
+
+            toast(
+                "لم يتم اختيار أي تغيير."
+            );
+
+            return;
+        }
+
+
+        confirmAction(
+            "تأكيد التغييرات",
+            `سيتم تنفيذ: ${changes.join("، ")}. هل تريد المتابعة؟`,
+            "نعم، حفظ",
+            "#0095f6",
+            async function () {
+
+                await saveAdvancedChanges(
+                    reelId,
+                    caption,
+                    selectedVideo,
+                    selectedCover,
+                    button
+                );
+
+            }
+        );
+    }
+
+
+    /* =====================================================
+       Storage Path
+    ===================================================== */
+
+    function makeSafeFileName(
+        file
+    ) {
+
+        const extension =
+            file.name.includes(".")
+                ? file.name
+                    .split(".")
+                    .pop()
+                    .toLowerCase()
+                : "bin";
+
+
+        return (
+            Date.now() +
+            "-" +
+            crypto.randomUUID() +
+            "." +
+            extension
+        );
+    }
+
+
+    /* =====================================================
+       Upload Video
+    ===================================================== */
+
+    async function uploadVideo(
+        file,
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        const path =
+            `${currentUserId}/reels/${makeSafeFileName(file)}`;
+
+
+        const {
+            error
+        } =
+            await client
+                .storage
+                .from("post-media")
+                .upload(
+                    path,
+                    file,
+                    {
+                        cacheControl:
+                            "3600",
+
+                        upsert:
+                            false,
+
+                        contentType:
+                            file.type
+                    }
+                );
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        const {
+            data
+        } =
+            client
+                .storage
+                .from("post-media")
+                .getPublicUrl(
+                    path
+                );
+
+
+        return {
+            url:
+                data.publicUrl,
+
+            path:
+                path
+        };
+    }
+
+
+    /* =====================================================
+       Upload Cover
+    ===================================================== */
+
+    async function uploadCover(
+        file
+    ) {
+
+        const client =
+            getSupabase();
+
+        const path =
+            `${currentUserId}/reels/covers/${makeSafeFileName(file)}`;
+
+
+        const {
+            error
+        } =
+            await client
+                .storage
+                .from("post-media")
+                .upload(
+                    path,
+                    file,
+                    {
+                        cacheControl:
+                            "3600",
+
+                        upsert:
+                            false,
+
+                        contentType:
+                            file.type
+                    }
+                );
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        const {
+            data
+        } =
+            client
+                .storage
+                .from("post-media")
+                .getPublicUrl(
+                    path
+                );
+
+
+        return {
+            url:
+                data.publicUrl,
+
+            path:
+                path
+        };
+    }
+
+
+    /* =====================================================
+       Extract Storage Path From Public URL
+    ===================================================== */
+
+    function extractStoragePath(
+        url
+    ) {
+
+        if (!url) {
+            return null;
+        }
+
+
+        const marker =
+            "/storage/v1/object/public/post-media/";
+
+
+        const index =
+            url.indexOf(
+                marker
+            );
+
+
+        if (
+            index ===
+            -1
+        ) {
+            return null;
+        }
+
+
+        return decodeURIComponent(
+            url.substring(
+                index +
+                marker.length
+            )
+        );
+    }
+
+
+    /* =====================================================
+       Delete Old Storage Object
+    ===================================================== */
+
+    async function deleteOldObject(
+        path
+    ) {
+
+        const client =
+            getSupabase();
+
+
+        if (!client || !path) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .storage
+                    .from("post-media")
+                    .remove([
+                        path
+                    ]);
+
+
+            if (error) {
+
+                console.warn(
+                    "Old file removal skipped:",
+                    error
+                );
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Old file removal error:",
+                error
+            );
+        }
+    }
+
+
+    /* =====================================================
+       Save Changes
+    ===================================================== */
+
+    async function saveAdvancedChanges(
+        reelId,
+        caption,
+        selectedVideo,
+        selectedCover,
         button
     ) {
 
         const client =
             getSupabase();
 
+
         if (
             !client ||
             !currentUserId
         ) {
+
+            toast(
+                "يجب تسجيل الدخول أولًا."
+            );
+
             return;
         }
 
-        /*
-           تأكيد قبل الحفظ
-        */
 
-        const confirmation =
-            createConfirmation(
-                "حفظ التعديل",
-                "هل تريد حفظ التعديل على هذا الـReel؟",
-                "نعم، حفظ",
-                async function () {
+        button.disabled =
+            true;
 
-                    button.disabled =
-                        true;
-
-                    button.textContent =
-                        "جارٍ الحفظ...";
-
-                    try {
-
-                        const {
-                            error
-                        } =
-                            await client
-                                .from("reels")
-                                .update({
-
-                                    caption:
-                                        caption.trim() ||
-                                        null,
-
-                                    updated_at:
-                                        new Date()
-                                            .toISOString()
-                                })
-                                .eq(
-                                    "id",
-                                    reelId
-                                )
-                                .eq(
-                                    "user_id",
-                                    currentUserId
-                                );
-
-                        if (error) {
-                            throw error;
-                        }
+        button.textContent =
+            "جارٍ الحفظ...";
 
 
-                        const reel =
-                            document.querySelector(
-                                `.student-reel[data-id="${CSS.escape(
-                                    String(reelId)
-                                )}"]`
-                            );
+        let newVideo = null;
+        let newCover = null;
 
 
-                        const captionElement =
-                            reel?.querySelector(
-                                ".student-reel-caption"
-                            );
+        try {
+
+            const reel =
+                await getOwnReel(
+                    reelId
+                );
 
 
-                        if (captionElement) {
+            if (!reel) {
 
-                            captionElement.textContent =
-                                caption.trim();
-                        }
+                throw new Error(
+                    "لا يمكنك تعديل هذا الـReel."
+                );
+            }
 
 
-                        closeDialog();
+            /* ---------------------------------------------
+               Upload video
+            --------------------------------------------- */
 
-                        toast(
-                            "تم تحديث الـReel."
+            if (selectedVideo) {
+
+                newVideo =
+                    await uploadVideo(
+                        selectedVideo,
+                        reelId
+                    );
+            }
+
+
+            /* ---------------------------------------------
+               Upload cover
+            --------------------------------------------- */
+
+            if (selectedCover) {
+
+                newCover =
+                    await uploadCover(
+                        selectedCover
+                    );
+            }
+
+
+            const updateData = {
+
+                caption:
+                    caption.trim() ||
+                    null,
+
+                updated_at:
+                    new Date()
+                        .toISOString()
+            };
+
+
+            if (newVideo) {
+
+                updateData.video_url =
+                    newVideo.url;
+            }
+
+
+            if (newCover) {
+
+                updateData.thumbnail_url =
+                    newCover.url;
+            }
+
+
+            const {
+                error
+            } =
+                await client
+                    .from("reels")
+                    .update(
+                        updateData
+                    )
+                    .eq(
+                        "id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            /* ---------------------------------------------
+               حذف الملفات القديمة بعد نجاح DB update
+            --------------------------------------------- */
+
+            if (
+                newVideo &&
+                reel.video_url
+            ) {
+
+                const oldVideoPath =
+                    extractStoragePath(
+                        reel.video_url
+                    );
+
+
+                if (oldVideoPath) {
+
+                    await deleteOldObject(
+                        oldVideoPath
+                    );
+                }
+            }
+
+
+            if (
+                newCover &&
+                reel.thumbnail_url
+            ) {
+
+                const oldCoverPath =
+                    extractStoragePath(
+                        reel.thumbnail_url
+                    );
+
+
+                if (oldCoverPath) {
+
+                    await deleteOldObject(
+                        oldCoverPath
+                    );
+                }
+            }
+
+
+            /* ---------------------------------------------
+               تحديث الفيديو في الشاشة
+            --------------------------------------------- */
+
+            const reelElement =
+                document.querySelector(
+                    `.student-reel[data-id="${CSS.escape(
+                        String(reelId)
+                    )}"]`
+                );
+
+
+            if (reelElement) {
+
+                const captionElement =
+                    reelElement.querySelector(
+                        ".student-reel-caption"
+                    );
+
+
+                if (captionElement) {
+
+                    captionElement.textContent =
+                        caption.trim();
+                }
+
+
+                if (newVideo) {
+
+                    const video =
+                        reelElement.querySelector(
+                            "video"
                         );
 
-                    } catch (error) {
 
-                        console.error(
-                            "Advanced edit error:",
-                            error
-                        );
+                    if (video) {
 
-                        toast(
-                            error?.message ||
-                            "تعذر حفظ التعديل."
-                        );
+                        video.pause();
 
-                    } finally {
+                        video.src =
+                            newVideo.url;
 
-                        button.disabled =
-                            false;
+                        video.load();
 
-                        button.textContent =
-                            "حفظ";
                     }
                 }
+
+
+                if (newCover) {
+
+                    const video =
+                        reelElement.querySelector(
+                            "video"
+                        );
+
+
+                    if (video) {
+
+                        video.poster =
+                            newCover.url;
+                    }
+                }
+            }
+
+
+            closeDialog();
+
+
+            toast(
+                "تم حفظ تعديلات الـReel بنجاح."
             );
 
-        if (!confirmation) {
-            return;
+
+        } catch (error) {
+
+            console.error(
+                "Advanced save error:",
+                error
+            );
+
+
+            /*
+               إذا رفعنا ملفًا جديدًا لكن
+               فشل تحديث قاعدة البيانات،
+               نحاول حذف الملف الجديد حتى
+               لا يبقى ملفًا غير مستخدم.
+            */
+
+            if (newVideo?.path) {
+
+                await deleteOldObject(
+                    newVideo.path
+                );
+            }
+
+
+            if (newCover?.path) {
+
+                await deleteOldObject(
+                    newCover.path
+                );
+            }
+
+
+            toast(
+                error?.message ||
+                "تعذر حفظ التعديلات."
+            );
+
+
+        } finally {
+
+            button.disabled =
+                false;
+
+            button.textContent =
+                "حفظ التغييرات";
         }
     }
 
 
     /* =====================================================
-       Confirmation dialog
-    ===================================================== */
-
-    function createConfirmation(
-        title,
-        message,
-        actionText,
-        onConfirm
-    ) {
-
-        const existing =
-            document.getElementById(
-                "student-advanced-confirm"
-            );
-
-        if (existing) {
-            existing.remove();
-        }
-
-
-        const dialog =
-            document.createElement(
-                "div"
-            );
-
-
-        dialog.id =
-            "student-advanced-confirm";
-
-
-        dialog.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:100001800;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.55);
-            direction:rtl;
-        `;
-
-
-        dialog.innerHTML = `
-
-            <div style="
-                width:100%;
-                max-width:390px;
-                background:#fff;
-                border-radius:22px;
-                padding:20px;
-                box-sizing:border-box;
-                box-shadow:0 20px 70px rgba(0,0,0,.3);
-            ">
-
-                <div style="
-                    font-size:19px;
-                    font-weight:800;
-                    color:#111;
-                    margin-bottom:12px;
-                ">
-                    ${escapeHTML(title)}
-                </div>
-
-                <div style="
-                    color:#666;
-                    line-height:1.8;
-                    font-size:14px;
-                ">
-                    ${escapeHTML(message)}
-                </div>
-
-                <div style="
-                    display:flex;
-                    gap:10px;
-                    margin-top:18px;
-                ">
-
-                    <button
-                        type="button"
-                        id="advanced-confirm-cancel"
-                        style="
-                            flex:1;
-                            border:0;
-                            padding:13px;
-                            border-radius:13px;
-                            background:#f1f3f5;
-                            cursor:pointer;
-                            font-weight:700;
-                        "
-                    >
-                        إلغاء
-                    </button>
-
-                    <button
-                        type="button"
-                        id="advanced-confirm-action"
-                        style="
-                            flex:1;
-                            border:0;
-                            padding:13px;
-                            border-radius:13px;
-                            background:#0095f6;
-                            color:#fff;
-                            cursor:pointer;
-                            font-weight:700;
-                        "
-                    >
-                        ${escapeHTML(actionText)}
-                    </button>
-
-                </div>
-            </div>
-        `;
-
-
-        document.body.appendChild(
-            dialog
-        );
-
-
-        dialog
-            .querySelector(
-                "#advanced-confirm-cancel"
-            )
-            ?.addEventListener(
-                "click",
-                function () {
-
-                    dialog.remove();
-
-                }
-            );
-
-
-        dialog
-            .querySelector(
-                "#advanced-confirm-action"
-            )
-            ?.addEventListener(
-                "click",
-                async function () {
-
-                    dialog.remove();
-
-                    await onConfirm();
-
-                }
-            );
-
-
-        return true;
-    }
-
-
-    /* =====================================================
-       حالة التثبيت
+       Pin State
     ===================================================== */
 
     async function getPinnedState(
@@ -951,11 +1580,9 @@
                     )
                     .maybeSingle();
 
-
             if (error) {
                 throw error;
             }
-
 
             return !!data?.pinned_at;
 
@@ -972,7 +1599,7 @@
 
 
     /* =====================================================
-       تثبيت / إلغاء تثبيت
+       Pin / Unpin
     ===================================================== */
 
     async function pinReel(
@@ -982,10 +1609,8 @@
 
         await loadCurrentUser();
 
-
         const client =
             getSupabase();
-
 
         if (
             !client ||
@@ -1000,24 +1625,20 @@
         }
 
 
-        const title =
+        confirmAction(
             shouldUnpin
                 ? "إلغاء تثبيت Reel"
-                : "تثبيت Reel";
+                : "تثبيت Reel",
 
-
-        const message =
             shouldUnpin
                 ? "هل تريد إلغاء تثبيت هذا الـReel؟"
-                : "هل تريد تثبيت هذا الـReel؟";
+                : "هل تريد تثبيت هذا الـReel؟",
 
-
-        createConfirmation(
-            title,
-            message,
             shouldUnpin
                 ? "نعم، إلغاء التثبيت"
                 : "نعم، تثبيت",
+
+            "#0095f6",
 
             async function () {
 
@@ -1124,7 +1745,7 @@
 
 
     /* =====================================================
-       إضافة أزرار متقدمة
+       Add Advanced Buttons
     ===================================================== */
 
     async function addAdvancedButtons() {
@@ -1180,18 +1801,14 @@
                                 "button"
                             );
 
-
                         button.type =
                             "button";
-
 
                         button.dataset.advancedEdit =
                             "true";
 
-
                         button.textContent =
                             "🛠️ تحرير متقدم";
-
 
                         button.style.cssText = `
                             width:100%;
@@ -1203,7 +1820,6 @@
                             font-size:14px;
                             border-bottom:1px solid #eee;
                         `;
-
 
                         menu.appendChild(
                             button
@@ -1224,14 +1840,11 @@
                                 "button"
                             );
 
-
                         pinButton.type =
                             "button";
 
-
                         pinButton.dataset.pin =
                             "true";
-
 
                         pinButton.style.cssText = `
                             width:100%;
@@ -1243,7 +1856,6 @@
                             font-size:14px;
                             border-bottom:1px solid #eee;
                         `;
-
 
                         menu.appendChild(
                             pinButton
@@ -1267,7 +1879,7 @@
                     } catch (error) {
 
                         console.warn(
-                            "Pin button state skipped:",
+                            "Pin state skipped:",
                             error
                         );
                     }
@@ -1278,7 +1890,7 @@
 
 
     /* =====================================================
-       Bind buttons
+       Bind Buttons
     ===================================================== */
 
     function bindAdvancedButtons() {
