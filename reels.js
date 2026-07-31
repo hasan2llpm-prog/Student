@@ -4521,3 +4521,82 @@
     }
 
 })();
+(function () {
+
+    "use strict";
+
+    function loadAdvancedModule() {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-advanced="true"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+            "reels-advanced.js";
+
+        script.async =
+            true;
+
+        script.dataset.studentReelsAdvanced =
+            "true";
+
+        script.onload =
+            function () {
+
+                console.log(
+                    "Student Reels Advanced loaded."
+                );
+
+            };
+
+        script.onerror =
+            function () {
+
+                console.warn(
+                    "reels-advanced.js failed to load."
+                );
+
+            };
+
+        document.body.appendChild(
+            script
+        );
+    }
+
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+
+                setTimeout(
+                    loadAdvancedModule,
+                    1200
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+    } else {
+
+        setTimeout(
+            loadAdvancedModule,
+            1200
+        );
+    }
+
+})();
