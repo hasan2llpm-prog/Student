@@ -1,3 +1,7 @@
+/* =========================================================
+   Student - Main App
+========================================================= */
+
 let supabaseClient = null;
 
 const CONFIG_URL =
@@ -11,20 +15,29 @@ let currentProfile = null;
    الرسائل
 ========================================================= */
 
-function showMessage(elementId, message, type = "") {
+function showMessage(
+    elementId,
+    message,
+    type = ""
+) {
 
     const element =
-        document.getElementById(elementId);
+        document.getElementById(
+            elementId
+        );
 
     if (!element) return;
 
-    element.textContent = message;
+    element.textContent =
+        message;
 
     element.className =
         "auth-message";
 
     if (type) {
-        element.classList.add(type);
+        element.classList.add(
+            type
+        );
     }
 }
 
@@ -197,7 +210,7 @@ function showAuthScreen() {
 
 
 /* =========================================================
-   تحميل الملف الشخصي
+   الملف الشخصي
 ========================================================= */
 
 async function loadProfile(
@@ -254,7 +267,6 @@ async function loadProfile(
             );
 
         if (!welcomeUser) {
-
             return data;
         }
 
@@ -290,7 +302,7 @@ async function loadProfile(
 
 
 /* =========================================================
-   إحصائيات الملف الشخصي
+   إحصائيات
 ========================================================= */
 
 async function getProfileStats(
@@ -391,9 +403,11 @@ async function handleSession(
 
     } else {
 
-        currentUser = null;
+        currentUser =
+            null;
 
-        currentProfile = null;
+        currentProfile =
+            null;
 
         showAuthScreen();
     }
@@ -532,7 +546,7 @@ async function loginUser(
 
 
 /* =========================================================
-   إنشاء الحساب
+   التسجيل
 ========================================================= */
 
 async function registerUser(
@@ -769,7 +783,6 @@ async function logoutUser() {
 
         closeFloatingPanel();
 
-
         showAuthScreen();
 
 
@@ -798,7 +811,7 @@ async function logoutUser() {
 
 
 /* =========================================================
-   ترجمة أخطاء Supabase
+   أخطاء المصادقة
 ========================================================= */
 
 function translateAuthError(
@@ -923,7 +936,7 @@ function showFloatingPanel(
         "999999";
 
     panel.style.background =
-        "rgba(0,0,0,0.35)";
+        "rgba(0,0,0,.35)";
 
     panel.style.display =
         "flex";
@@ -957,7 +970,7 @@ function showFloatingPanel(
             box-sizing:border-box;
             box-shadow:
                 0 15px 50px
-                rgba(0,0,0,0.22);
+                rgba(0,0,0,.22);
         ">
 
             <div style="
@@ -1006,30 +1019,23 @@ function showFloatingPanel(
     );
 
 
-    const closeButton =
-        document.getElementById(
+    document
+        .getElementById(
             "floating-close"
-        );
-
-
-    if (closeButton) {
-
-        closeButton.addEventListener(
+        )
+        ?.addEventListener(
             "click",
             closeFloatingPanel
         );
-    }
 
 
     panel.addEventListener(
         "click",
-        function (event) {
+        function(event) {
 
             if (
-                event.target ===
-                panel
+                event.target === panel
             ) {
-
                 closeFloatingPanel();
             }
         }
@@ -1046,9 +1052,6 @@ async function showProfilePanel() {
     if (!currentUser) {
         return;
     }
-
-
-    closeFloatingPanel();
 
 
     const profile =
@@ -1068,27 +1071,22 @@ async function showProfilePanel() {
         profile?.full_name ||
         "بدون اسم";
 
-
     const username =
         profile?.username ||
         "username";
-
 
     const email =
         profile?.email ||
         currentUser.email ||
         "";
 
-
     const bio =
         profile?.bio ||
         "لا توجد نبذة بعد.";
 
-
     const status =
         profile?.account_status ||
         "public";
-
 
     const avatar =
         profile?.avatar_url;
@@ -1098,17 +1096,18 @@ async function showProfilePanel() {
         avatar
             ? `
                 <img
-                    src="${avatar}"
+                    src="${escapeAttribute(
+                        avatar
+                    )}"
                     alt=""
                     style="
                         width:96px;
                         height:96px;
                         border-radius:50%;
                         object-fit:cover;
-                        display:block;
                     "
                 >
-              `
+            `
             : `
                 <div style="
                     width:96px;
@@ -1121,52 +1120,49 @@ async function showProfilePanel() {
                     font-size:42px;
                     color:#0095f6;
                 ">
-                    <i class="fa-solid fa-user"></i>
+                    <i class="
+                        fa-solid
+                        fa-user
+                    "></i>
                 </div>
-              `;
+            `;
 
 
     showFloatingPanel(
         "الملف الشخصي",
         `
-        <div>
+        <div style="
+            text-align:center;
+        ">
 
             <div style="
-                text-align:center;
-                margin-bottom:20px;
+                width:96px;
+                height:96px;
+                margin:0 auto 12px;
             ">
-
-                <div style="
-                    width:96px;
-                    height:96px;
-                    margin:
-                        0 auto 12px;
-                ">
-                    ${avatarHTML}
-                </div>
+                ${avatarHTML}
+            </div>
 
 
-                <div style="
-                    font-size:20px;
-                    font-weight:700;
-                    color:#222;
-                ">
-                    ${escapeHTML(
-                        fullName
-                    )}
-                </div>
+            <div style="
+                font-size:20px;
+                font-weight:700;
+                color:#222;
+            ">
+                ${escapeHTML(
+                    fullName
+                )}
+            </div>
 
 
-                <div style="
-                    color:#777;
-                    margin-top:4px;
-                    font-size:14px;
-                ">
-                    @${escapeHTML(
-                        username
-                    )}
-                </div>
-
+            <div style="
+                color:#777;
+                margin-top:4px;
+                font-size:14px;
+            ">
+                @${escapeHTML(
+                    username
+                )}
             </div>
 
 
@@ -1177,19 +1173,17 @@ async function showProfilePanel() {
                 border-top:1px solid #eee;
                 border-bottom:1px solid #eee;
                 padding:15px 5px;
-                margin-bottom:18px;
+                margin:18px 0;
             ">
 
                 <div>
 
-                    <strong style="
-                        display:block;
-                        font-size:19px;
-                    ">
+                    <strong>
                         0
                     </strong>
 
                     <span style="
+                        display:block;
                         color:#777;
                         font-size:13px;
                     ">
@@ -1201,14 +1195,12 @@ async function showProfilePanel() {
 
                 <div>
 
-                    <strong style="
-                        display:block;
-                        font-size:19px;
-                    ">
+                    <strong>
                         ${stats.followers}
                     </strong>
 
                     <span style="
+                        display:block;
                         color:#777;
                         font-size:13px;
                     ">
@@ -1220,14 +1212,12 @@ async function showProfilePanel() {
 
                 <div>
 
-                    <strong style="
-                        display:block;
-                        font-size:19px;
-                    ">
+                    <strong>
                         ${stats.following}
                     </strong>
 
                     <span style="
+                        display:block;
                         color:#777;
                         font-size:13px;
                     ">
@@ -1244,17 +1234,16 @@ async function showProfilePanel() {
                 border-radius:14px;
                 padding:14px;
                 margin-bottom:12px;
+                text-align:right;
             ">
 
-                <div style="
-                    font-weight:700;
-                    margin-bottom:6px;
-                ">
+                <strong>
                     نبذة
-                </div>
+                </strong>
 
                 <div style="
                     color:#666;
+                    margin-top:6px;
                     line-height:1.7;
                 ">
                     ${escapeHTML(
@@ -1270,19 +1259,17 @@ async function showProfilePanel() {
                 border-radius:14px;
                 padding:14px;
                 margin-bottom:12px;
+                text-align:right;
             ">
 
-                <div style="
-                    font-weight:700;
-                    margin-bottom:6px;
-                ">
+                <strong>
                     البريد الإلكتروني
-                </div>
+                </strong>
 
                 <div style="
                     color:#666;
                     direction:ltr;
-                    text-align:right;
+                    margin-top:6px;
                 ">
                     ${escapeHTML(
                         email
@@ -1300,15 +1287,14 @@ async function showProfilePanel() {
                 border-radius:14px;
                 padding:14px;
                 margin-bottom:15px;
+                text-align:right;
             ">
 
                 <div>
 
-                    <div style="
-                        font-weight:700;
-                    ">
+                    <strong>
                         خصوصية الحساب
-                    </div>
+                    </strong>
 
                     <div style="
                         color:#777;
@@ -1316,8 +1302,7 @@ async function showProfilePanel() {
                         margin-top:4px;
                     ">
                         ${
-                            status ===
-                            "private"
+                            status === "private"
                                 ? "حساب خاص"
                                 : "حساب عام"
                         }
@@ -1339,8 +1324,7 @@ async function showProfilePanel() {
                     "
                 >
                     ${
-                        status ===
-                        "private"
+                        status === "private"
                             ? "جعله عامًا"
                             : "جعله خاصًا"
                     }
@@ -1351,8 +1335,7 @@ async function showProfilePanel() {
 
             <div style="
                 display:grid;
-                grid-template-columns:
-                    1fr 1fr;
+                grid-template-columns:1fr 1fr;
                 gap:10px;
             ">
 
@@ -1365,14 +1348,9 @@ async function showProfilePanel() {
                         color:#fff;
                         padding:13px;
                         border-radius:12px;
-                        font-size:15px;
                         cursor:pointer;
                     "
                 >
-                    <i class="
-                        fa-solid
-                        fa-pen
-                    "></i>
                     تعديل الملف
                 </button>
 
@@ -1386,7 +1364,6 @@ async function showProfilePanel() {
                         color:#d93025;
                         padding:13px;
                         border-radius:12px;
-                        font-size:15px;
                         cursor:pointer;
                     "
                 >
@@ -1406,12 +1383,10 @@ async function showProfilePanel() {
         )
         ?.addEventListener(
             "click",
-            function () {
-
+            function() {
                 showEditProfilePanel(
                     profile
                 );
-
             }
         );
 
@@ -1438,29 +1413,12 @@ async function showProfilePanel() {
 
 
 /* =========================================================
-   تعديل الملف الشخصي
+   تعديل الملف
 ========================================================= */
 
 function showEditProfilePanel(
     profile
 ) {
-
-    const fullName =
-        profile?.full_name ||
-        "";
-
-    const username =
-        profile?.username ||
-        "";
-
-    const bio =
-        profile?.bio ||
-        "";
-
-    const avatarURL =
-        profile?.avatar_url ||
-        "";
-
 
     showFloatingPanel(
         "تعديل الملف الشخصي",
@@ -1478,12 +1436,11 @@ function showEditProfilePanel(
                 الاسم
             </label>
 
-
             <input
                 id="edit-full-name"
                 type="text"
                 value="${escapeAttribute(
-                    fullName
+                    profile?.full_name || ""
                 )}"
                 required
                 style="
@@ -1491,19 +1448,18 @@ function showEditProfilePanel(
                     border:1px solid #ddd;
                     border-radius:10px;
                 "
-            />
+            >
 
 
             <label>
                 اسم المستخدم
             </label>
 
-
             <input
                 id="edit-username"
                 type="text"
                 value="${escapeAttribute(
-                    username
+                    profile?.username || ""
                 )}"
                 minlength="3"
                 required
@@ -1513,13 +1469,12 @@ function showEditProfilePanel(
                     border-radius:10px;
                     direction:ltr;
                 "
-            />
+            >
 
 
             <label>
                 النبذة
             </label>
-
 
             <textarea
                 id="edit-bio"
@@ -1532,7 +1487,7 @@ function showEditProfilePanel(
                     border-radius:10px;
                 "
             >${escapeHTML(
-                bio
+                profile?.bio || ""
             )}</textarea>
 
 
@@ -1540,12 +1495,11 @@ function showEditProfilePanel(
                 رابط الصورة الشخصية
             </label>
 
-
             <input
                 id="edit-avatar-url"
                 type="url"
                 value="${escapeAttribute(
-                    avatarURL
+                    profile?.avatar_url || ""
                 )}"
                 style="
                     padding:13px;
@@ -1553,7 +1507,7 @@ function showEditProfilePanel(
                     border-radius:10px;
                     direction:ltr;
                 "
-            />
+            >
 
 
             <button
@@ -1596,10 +1550,6 @@ function showEditProfilePanel(
 }
 
 
-/* =========================================================
-   حفظ الملف الشخصي
-========================================================= */
-
 async function saveProfileChanges(
     event
 ) {
@@ -1610,33 +1560,25 @@ async function saveProfileChanges(
     const fullName =
         document.getElementById(
             "edit-full-name"
-        )
-        ?.value
-        .trim();
+        )?.value.trim();
 
 
     const username =
         document.getElementById(
             "edit-username"
-        )
-        ?.value
-        .trim();
+        )?.value.trim();
 
 
     const bio =
         document.getElementById(
             "edit-bio"
-        )
-        ?.value
-        .trim();
+        )?.value.trim();
 
 
     const avatarURL =
         document.getElementById(
             "edit-avatar-url"
-        )
-        ?.value
-        .trim();
+        )?.value.trim();
 
 
     const message =
@@ -1669,14 +1611,11 @@ async function saveProfileChanges(
         );
 
 
-    if (button) {
+    button.disabled =
+        true;
 
-        button.disabled =
-            true;
-
-        button.textContent =
-            "جارٍ الحفظ...";
-    }
+    button.textContent =
+        "جارٍ الحفظ...";
 
 
     try {
@@ -1709,8 +1648,7 @@ async function saveProfileChanges(
 
 
         if (
-            data !==
-            "updated"
+            data !== "updated"
         ) {
 
             if (
@@ -1746,22 +1684,15 @@ async function saveProfileChanges(
         );
 
 
-        if (message) {
+        message.style.color =
+            "#16803c";
 
-            message.style.color =
-                "#16803c";
-
-            message.textContent =
-                "تم حفظ التغييرات بنجاح.";
-        }
+        message.textContent =
+            "تم حفظ التغييرات بنجاح.";
 
 
         setTimeout(
-            function () {
-
-                showProfilePanel();
-
-            },
+            showProfilePanel,
             700
         );
 
@@ -1769,32 +1700,26 @@ async function saveProfileChanges(
     } catch (error) {
 
         console.error(
-            "Update profile error:",
+            "Profile update error:",
             error
         );
 
 
-        if (message) {
+        message.style.color =
+            "#d93025";
 
-            message.style.color =
-                "#d93025";
-
-            message.textContent =
-                error?.message ||
-                "تعذر حفظ التغييرات.";
-        }
+        message.textContent =
+            error?.message ||
+            "تعذر حفظ التغييرات.";
 
 
     } finally {
 
-        if (button) {
+        button.disabled =
+            false;
 
-            button.disabled =
-                false;
-
-            button.textContent =
-                "حفظ التغييرات";
-        }
+        button.textContent =
+            "حفظ التغييرات";
     }
 }
 
@@ -1837,19 +1762,6 @@ async function toggleAccountStatus() {
         }
 
 
-        if (
-            data !==
-            "public" &&
-            data !==
-            "private"
-        ) {
-
-            throw new Error(
-                "تعذر تغيير خصوصية الحساب."
-            );
-        }
-
-
         await loadProfile(
             currentUser.id
         );
@@ -1871,15 +1783,97 @@ async function toggleAccountStatus() {
             `
             <div style="
                 text-align:center;
-                padding:25px 10px;
+                padding:25px;
                 color:#d93025;
             ">
-                تعذر تغيير خصوصية الحساب حالياً.
+                تعذر تغيير خصوصية الحساب حاليًا.
             </div>
             `
         );
     }
 }
+
+
+/* =========================================================
+   المراحل الحالية
+========================================================= */
+
+function openStage(
+    stageName
+) {
+
+    const stages = {
+
+        primary: {
+            title:
+                "المرحلة الابتدائية",
+            icon:
+                "🎓"
+        },
+
+        middle: {
+            title:
+                "المرحلة الإعدادية",
+            icon:
+                "🏫"
+        },
+
+        secondary: {
+            title:
+                "المرحلة الثانوية",
+            icon:
+                "📚"
+        },
+
+        university: {
+            title:
+                "المرحلة الجامعية",
+            icon:
+                "🎓"
+        }
+
+    };
+
+
+    const stage =
+        stages[stageName];
+
+
+    if (!stage) {
+        return;
+    }
+
+
+    showFloatingPanel(
+        stage.title,
+        `
+        <div style="
+            text-align:center;
+            padding:20px;
+        ">
+
+            <div style="
+                font-size:50px;
+            ">
+                ${stage.icon}
+            </div>
+
+            <p style="
+                color:#666;
+                line-height:1.8;
+            ">
+                سيتم بناء محتوى هذه المرحلة
+                ضمن نظام المراحل والمواد.
+            </p>
+
+        </div>
+        `
+    );
+}
+
+
+window.openStage =
+    openStage;
 
 
 /* =========================================================
@@ -1893,22 +1887,27 @@ function escapeHTML(
     return String(
         value || ""
     )
+
         .replace(
             /&/g,
             "&amp;"
         )
+
         .replace(
             /</g,
             "&lt;"
         )
+
         .replace(
             />/g,
             "&gt;"
         )
+
         .replace(
             /"/g,
             "&quot;"
         )
+
         .replace(
             /'/g,
             "&#039;"
@@ -1927,202 +1926,6 @@ function escapeAttribute(
 
 
 /* =========================================================
-   المراحل الدراسية الحالية
-========================================================= */
-
-function openStage(
-    stageName
-) {
-
-    const stages = {
-
-        primary: {
-
-            title:
-                "المرحلة الابتدائية",
-
-            icon:
-                "🎓",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        middle: {
-
-            title:
-                "المرحلة الإعدادية",
-
-            icon:
-                "🏫",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        secondary: {
-
-            title:
-                "المرحلة الثانوية",
-
-            icon:
-                "📚",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        university: {
-
-            title:
-                "المرحلة الجامعية",
-
-            icon:
-                "🎓",
-
-            text:
-                "اختر الكلية أو القسم."
-        }
-
-    };
-
-
-    const stage =
-        stages[
-            stageName
-        ];
-
-
-    if (!stage) {
-        return;
-    }
-
-
-    showFloatingPanel(
-        stage.title,
-        `
-        <div style="
-            text-align:center;
-            padding:10px 0 5px;
-        ">
-
-            <div style="
-                font-size:52px;
-                margin-bottom:12px;
-            ">
-                ${stage.icon}
-            </div>
-
-
-            <p style="
-                color:#666;
-                line-height:1.8;
-                margin:0 0 20px;
-            ">
-                ${stage.text}
-            </p>
-
-
-            <button
-                id="stage-enter-btn"
-                type="button"
-                style="
-                    border:none;
-                    background:#0095f6;
-                    color:#fff;
-                    padding:13px 28px;
-                    border-radius:12px;
-                    cursor:pointer;
-                "
-            >
-                الدخول
-            </button>
-
-        </div>
-        `
-    );
-
-
-    document
-        .getElementById(
-            "stage-enter-btn"
-        )
-        ?.addEventListener(
-            "click",
-            function () {
-
-                showFloatingPanel(
-                    stage.title,
-                    `
-                    <div style="
-                        text-align:center;
-                        padding:25px 10px;
-                    ">
-
-                        <div style="
-                            font-size:50px;
-                        ">
-                            📚
-                        </div>
-
-                        <p style="
-                            color:#666;
-                            line-height:1.8;
-                        ">
-                            سيتم إضافة محتوى
-                            هذه المرحلة هنا.
-                        </p>
-
-                    </div>
-                    `
-                );
-            }
-        );
-}
-
-
-window.openStage =
-    openStage;
-
-
-/* =========================================================
-   الإعدادات الاحتياطية
-========================================================= */
-
-function showSettingsPanel() {
-
-    showFloatingPanel(
-        "الإعدادات",
-        `
-        <div style="
-            text-align:center;
-            padding:25px;
-        ">
-
-            <div style="
-                font-size:45px;
-                margin-bottom:12px;
-            ">
-                ⚙️
-            </div>
-
-            <p style="
-                color:#666;
-                line-height:1.8;
-            ">
-                جاري تحميل الإعدادات...
-            </p>
-
-        </div>
-        `
-    );
-}
-
-
-/* =========================================================
    الإشعارات الحالية
 ========================================================= */
 
@@ -2133,19 +1936,17 @@ function openNotifications() {
         `
         <div style="
             text-align:center;
-            padding:30px 10px;
+            padding:30px;
         ">
 
             <div style="
                 font-size:50px;
-                margin-bottom:15px;
             ">
                 🔔
             </div>
 
             <p style="
                 color:#666;
-                margin:0;
             ">
                 لا توجد إشعارات جديدة.
             </p>
@@ -2154,6 +1955,10 @@ function openNotifications() {
         `
     );
 }
+
+
+window.openNotifications =
+    openNotifications;
 
 
 /* =========================================================
@@ -2179,19 +1984,26 @@ function openStory(
             display:flex;
             align-items:center;
             justify-content:center;
-            color:white;
+            color:#fff;
             font-size:23px;
             font-weight:bold;
         ">
             ${escapeHTML(
-                name ||
-                "Story"
+                name || "Story"
             )}
         </div>
         `
     );
 }
 
+
+window.openStory =
+    openStory;
+
+
+/* =========================================================
+   إضافة ستوري الحالية
+========================================================= */
 
 function addStory() {
 
@@ -2200,7 +2012,7 @@ function addStory() {
         `
         <div style="
             text-align:center;
-            padding:25px 10px;
+            padding:25px;
         ">
 
             <div style="
@@ -2212,7 +2024,6 @@ function addStory() {
 
                 <div style="
                     font-size:45px;
-                    margin-bottom:10px;
                 ">
                     📷
                 </div>
@@ -2228,8 +2039,12 @@ function addStory() {
 }
 
 
+window.addStory =
+    addStory;
+
+
 /* =========================================================
-   الشريط السفلي الحالي
+   الشريط السفلي الاحتياطي
 ========================================================= */
 
 function openBottomSection(
@@ -2237,8 +2052,7 @@ function openBottomSection(
 ) {
 
     if (
-        section ===
-        "profile"
+        section === "profile"
     ) {
 
         showProfilePanel();
@@ -2247,71 +2061,42 @@ function openBottomSection(
     }
 
 
-    const sections = {
+    const map = {
 
-        home: {
+        home: [
+            "الرئيسية",
+            "🏠",
+            "أنت الآن في الصفحة الرئيسية."
+        ],
 
-            title:
-                "الرئيسية",
+        search: [
+            "البحث",
+            "🔎",
+            "سيتم تشغيل البحث من search.js."
+        ],
 
-            icon:
-                "🏠",
+        add: [
+            "إضافة",
+            "➕",
+            "سيتم تشغيل النشر من posts.js."
+        ],
 
-            text:
-                "أنت الآن في الصفحة الرئيسية."
-        },
-
-
-        search: {
-
-            title:
-                "البحث",
-
-            icon:
-                "🔎",
-
-            text:
-                "سيتم إضافة البحث هنا."
-        },
-
-
-        add: {
-
-            title:
-                "إضافة",
-
-            icon:
-                "➕",
-
-            text:
-                "سيتم إضافة النشر هنا."
-        },
-
-
-        messages: {
-
-            title:
-                "الرسائل",
-
-            icon:
-                "💬",
-
-            text:
-                "ستظهر المحادثات هنا."
-        }
+        messages: [
+            "الرسائل",
+            "💬",
+            "سيتم بناء نظام الرسائل لاحقًا."
+        ]
 
     };
 
 
     const item =
-        sections[
-            section
-        ] ||
-        sections.home;
+        map[section] ||
+        map.home;
 
 
     showFloatingPanel(
-        item.title,
+        item[0],
         `
         <div style="
             text-align:center;
@@ -2320,16 +2105,15 @@ function openBottomSection(
 
             <div style="
                 font-size:50px;
-                margin-bottom:15px;
             ">
-                ${item.icon}
+                ${item[1]}
             </div>
 
             <p style="
                 color:#666;
                 line-height:1.8;
             ">
-                ${item.text}
+                ${item[2]}
             </p>
 
         </div>
@@ -2339,7 +2123,7 @@ function openBottomSection(
 
 
 /* =========================================================
-   ربط الواجهة
+   ربط الواجهة الأساسية
 ========================================================= */
 
 function bindInterfaceButtons() {
@@ -2355,15 +2139,13 @@ function bindInterfaceButtons() {
         bell.style.cursor =
             "pointer";
 
-
         bell.addEventListener(
             "click",
-            function (event) {
+            function(event) {
 
                 event.preventDefault();
 
                 openNotifications();
-
             }
         );
     }
@@ -2380,15 +2162,13 @@ function bindInterfaceButtons() {
         addStoryElement.style.cursor =
             "pointer";
 
-
         addStoryElement.addEventListener(
             "click",
-            function (event) {
+            function(event) {
 
                 event.preventDefault();
 
                 addStory();
-
             }
         );
     }
@@ -2401,7 +2181,7 @@ function bindInterfaceButtons() {
 
 
     stories.forEach(
-        function (story) {
+        function(story) {
 
             story.style.cursor =
                 "pointer";
@@ -2409,7 +2189,7 @@ function bindInterfaceButtons() {
 
             story.addEventListener(
                 "click",
-                function (event) {
+                function(event) {
 
                     event.preventDefault();
 
@@ -2430,68 +2210,205 @@ function bindInterfaceButtons() {
                     openStory(
                         name
                     );
-
                 }
             );
         }
     );
 
 
-    const navLinks =
-        document.querySelectorAll(
-            "nav a"
+    const loginForm =
+        document.getElementById(
+            "login-form"
         );
 
 
-    const sections = [
+    if (loginForm) {
 
-        "home",
-        "search",
-        "add",
-        "messages",
-        "profile"
-
-    ];
+        loginForm.addEventListener(
+            "submit",
+            loginUser
+        );
+    }
 
 
-    navLinks.forEach(
-        function (
-            link,
-            index
-        ) {
-
-            link.addEventListener(
-                "click",
-                function (event) {
-
-                    event.preventDefault();
+    const registerForm =
+        document.getElementById(
+            "register-form"
+        );
 
 
-                    navLinks.forEach(
-                        function (
-                            item
-                        ) {
+    if (registerForm) {
 
-                            item.classList.remove(
-                                "active"
-                            );
-                        }
-                    );
+        registerForm.addEventListener(
+            "submit",
+            registerUser
+        );
+    }
 
 
-                    link.classList.add(
-                        "active"
-                    );
+    const registerButton =
+        document.getElementById(
+            "show-register"
+        );
 
 
-                    openBottomSection(
-                        sections[index] ||
-                        "home"
-                    );
+    if (registerButton) {
 
-                }
+        registerButton.addEventListener(
+            "click",
+            function(event) {
+
+                event.preventDefault();
+
+                showRegister();
+            }
+        );
+    }
+
+
+    const loginButton =
+        document.getElementById(
+            "show-login"
+        );
+
+
+    if (loginButton) {
+
+        loginButton.addEventListener(
+            "click",
+            function(event) {
+
+                event.preventDefault();
+
+                showLogin();
+            }
+        );
+    }
+}
+
+
+/* =========================================================
+   تحميل نظام خارجي
+========================================================= */
+
+function loadExternalScript(
+    src,
+    dataAttribute,
+    label
+) {
+
+    if (
+        document.querySelector(
+            `script[data-${dataAttribute}="true"]`
+        )
+    ) {
+        return;
+    }
+
+
+    const script =
+        document.createElement(
+            "script"
+        );
+
+
+    script.src =
+        src;
+
+    script.async =
+        true;
+
+
+    script.setAttribute(
+        `data-${dataAttribute}`,
+        "true"
+    );
+
+
+    script.onload =
+        function() {
+
+            console.log(
+                `${label} loaded.`
             );
-        }
+        };
+
+
+    script.onerror =
+        function() {
+
+            console.error(
+                `تعذر تحميل ${src}`
+            );
+        };
+
+
+    document.body.appendChild(
+        script
+    );
+}
+
+
+/* =========================================================
+   تحميل الأنظمة
+========================================================= */
+
+function loadAdminSystem() {
+
+    loadExternalScript(
+        "admin.js",
+        "student-admin",
+        "Student Admin"
+    );
+}
+
+
+function loadMenuSystem() {
+
+    loadExternalScript(
+        "menu.js",
+        "student-menu",
+        "Student Menu"
+    );
+}
+
+
+function loadSettingsSystem() {
+
+    loadExternalScript(
+        "settings.js",
+        "student-settings",
+        "Student Settings"
+    );
+}
+
+
+function loadPostsSystem() {
+
+    loadExternalScript(
+        "posts.js",
+        "student-posts",
+        "Student Posts"
+    );
+}
+
+
+function loadSearchSystem() {
+
+    loadExternalScript(
+        "search.js",
+        "student-search",
+        "Student Search"
+    );
+}
+
+
+function loadFeedSystem() {
+
+    loadExternalScript(
+        "feed.js",
+        "student-feed",
+        "Student Feed"
     );
 }
 
@@ -2575,7 +2492,7 @@ async function initSupabase() {
 
         supabaseClient.auth
             .onAuthStateChange(
-                async function (
+                async function(
                     event,
                     session
                 ) {
@@ -2587,19 +2504,14 @@ async function initSupabase() {
 
 
                     if (
-
                         event ===
                             "SIGNED_IN" ||
-
                         event ===
                             "SIGNED_OUT" ||
-
                         event ===
                             "INITIAL_SESSION" ||
-
                         event ===
                             "TOKEN_REFRESHED"
-
                     ) {
 
                         await handleSession(
@@ -2621,326 +2533,14 @@ async function initSupabase() {
 
 
 /* =========================================================
-   تهيئة الواجهة
-========================================================= */
-
-function initInterface() {
-
-    const loginForm =
-        document.getElementById(
-            "login-form"
-        );
-
-
-    if (loginForm) {
-
-        loginForm.addEventListener(
-            "submit",
-            loginUser
-        );
-    }
-
-
-    const registerForm =
-        document.getElementById(
-            "register-form"
-        );
-
-
-    if (registerForm) {
-
-        registerForm.addEventListener(
-            "submit",
-            registerUser
-        );
-    }
-
-
-    const showRegisterButton =
-        document.getElementById(
-            "show-register"
-        );
-
-
-    if (
-        showRegisterButton
-    ) {
-
-        showRegisterButton
-            .addEventListener(
-                "click",
-                function (event) {
-
-                    event.preventDefault();
-
-                    showRegister();
-                }
-            );
-    }
-
-
-    const showLoginButton =
-        document.getElementById(
-            "show-login"
-        );
-
-
-    if (showLoginButton) {
-
-        showLoginButton
-            .addEventListener(
-                "click",
-                function (event) {
-
-                    event.preventDefault();
-
-                    showLogin();
-                }
-            );
-    }
-
-
-    bindInterfaceButtons();
-}
-
-
-/* =========================================================
-   تحميل لوحة المشرف
-========================================================= */
-
-function loadAdminSystem() {
-
-    if (
-        document.querySelector(
-            'script[data-student-admin="true"]'
-        )
-    ) {
-        return;
-    }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        "admin.js";
-
-
-    script.dataset.studentAdmin =
-        "true";
-
-
-    script.async =
-        true;
-
-
-    script.onload =
-        function () {
-
-            console.log(
-                "Student Admin loaded."
-            );
-        };
-
-
-    script.onerror =
-        function () {
-
-            console.error(
-                "تعذر تحميل admin.js"
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-}
-
-
-/* =========================================================
-   تحميل نظام القائمة
-========================================================= */
-
-function loadMenuSystem() {
-
-    if (
-        document.querySelector(
-            'script[data-student-menu="true"]'
-        )
-    ) {
-        return;
-    }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        "menu.js";
-
-
-    script.dataset.studentMenu =
-        "true";
-
-
-    script.async =
-        true;
-
-
-    script.onload =
-        function () {
-
-            console.log(
-                "Student Menu loaded."
-            );
-        };
-
-
-    script.onerror =
-        function () {
-
-            console.error(
-                "تعذر تحميل menu.js"
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-}
-
-
-/* =========================================================
-   تحميل نظام الإعدادات
-========================================================= */
-
-function loadSettingsSystem() {
-
-    if (
-        document.querySelector(
-            'script[data-student-settings="true"]'
-        )
-    ) {
-        return;
-    }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        "settings.js";
-
-
-    script.dataset.studentSettings =
-        "true";
-
-
-    script.async =
-        true;
-
-
-    script.onload =
-        function () {
-
-            console.log(
-                "Student Settings loaded."
-            );
-        };
-
-
-    script.onerror =
-        function () {
-
-            console.error(
-                "تعذر تحميل settings.js"
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-}
-
-
-/* =========================================================
-   تحميل نظام المنشورات
-========================================================= */
-
-function loadPostsSystem() {
-
-    if (
-        document.querySelector(
-            'script[data-student-posts="true"]'
-        )
-    ) {
-        return;
-    }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        "posts.js";
-
-
-    script.dataset.studentPosts =
-        "true";
-
-
-    script.async =
-        true;
-
-
-    script.onload =
-        function () {
-
-            console.log(
-                "Student Posts loaded."
-            );
-        };
-
-
-    script.onerror =
-        function () {
-
-            console.error(
-                "تعذر تحميل posts.js"
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-}
-
-
-/* =========================================================
-   تشغيل التطبيق
+   التشغيل
 ========================================================= */
 
 document.addEventListener(
     "DOMContentLoaded",
-    function () {
+    function() {
 
-        initInterface();
+        bindInterfaceButtons();
 
         initSupabase();
 
@@ -2951,6 +2551,10 @@ document.addEventListener(
         loadSettingsSystem();
 
         loadPostsSystem();
+
+        loadSearchSystem();
+
+        loadFeedSystem();
 
     }
 );
