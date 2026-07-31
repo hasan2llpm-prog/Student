@@ -5,6 +5,7 @@
    🔔 إشعارات المتابعة
    📤 إرسال Reel داخل Student
    👤 معلومات صاحب الـReel
+   ↗️ مشاركة داخلية / خارجية
 ========================================================= */
 
 (function () {
@@ -76,7 +77,7 @@
 
 
     /* =====================================================
-       حماية
+       حماية HTML
     ===================================================== */
 
     function escapeHTML(value) {
@@ -143,7 +144,7 @@
 
 
     /* =====================================================
-       Reel helpers
+       Reel Helpers
     ===================================================== */
 
     function getReelFromButton(button) {
@@ -160,39 +161,6 @@
     }
 
 
-    function getReelOwnerId(reel) {
-
-        /*
-           reels.js لا يضع user_id على العنصر،
-           لذلك نقرأه من cache إذا كان متاحًا.
-        */
-
-        const reelId =
-            getReelId(reel);
-
-        if (
-            reelId &&
-            usersCache[reelId]
-        ) {
-
-            return (
-                usersCache[reelId].user_id ||
-                null
-            );
-        }
-
-        /*
-           نحاول قراءة البيانات من العنصر
-           إن أضيفت لاحقًا.
-        */
-
-        return (
-            reel?.dataset?.userId ||
-            null
-        );
-    }
-
-
     /* =====================================================
        جلب Reel
     ===================================================== */
@@ -204,10 +172,20 @@
         const client =
             getSupabase();
 
-        if (!client || !reelId) {
+        if (
+            !client ||
+            !reelId
+        ) {
             return null;
         }
 
+        if (
+            usersCache[String(reelId)]
+        ) {
+            return usersCache[
+                String(reelId)
+            ];
+        }
 
         try {
 
@@ -231,25 +209,23 @@
                     )
                     .maybeSingle();
 
-
             if (error) {
                 throw error;
             }
 
-
             if (data) {
+
                 usersCache[
                     String(data.id)
                 ] = data;
             }
-
 
             return data || null;
 
         } catch (error) {
 
             console.error(
-                "Get Reel users error:",
+                "Get Reel error:",
                 error
             );
 
@@ -269,17 +245,18 @@
         const client =
             getSupabase();
 
-        if (!client || !userId) {
-            return null;
+        if (
+            !client ||
+            !userId
+        ) {
+            return {};
         }
-
 
         if (
             profileCache[userId]
         ) {
             return profileCache[userId];
         }
-
 
         try {
 
@@ -301,15 +278,12 @@
                     )
                     .maybeSingle();
 
-
             if (error) {
                 throw error;
             }
 
-
             profileCache[userId] =
                 data || {};
-
 
             return data || {};
 
@@ -326,7 +300,7 @@
 
 
     /* =====================================================
-       Follow state
+       Follow State
     ===================================================== */
 
     async function isFollowing(
@@ -343,7 +317,6 @@
         ) {
             return false;
         }
-
 
         try {
 
@@ -367,11 +340,9 @@
                     )
                     .maybeSingle();
 
-
             if (error) {
                 throw error;
             }
-
 
             return !!data;
 
@@ -399,16 +370,13 @@
         const client =
             getSupabase();
 
-
         if (!client) {
             return;
         }
 
-
         if (!currentUserId) {
             await loadCurrentUser();
         }
-
 
         if (!currentUserId) {
 
@@ -419,23 +387,14 @@
             return;
         }
 
-
         if (
-            String(
-                currentUserId
-            ) ===
-            String(
-                targetUserId
-            )
+            String(currentUserId) ===
+            String(targetUserId)
         ) {
-
             return;
         }
 
-
-        button.disabled =
-            true;
-
+        button.disabled = true;
 
         try {
 
@@ -443,7 +402,6 @@
                 await isFollowing(
                     targetUserId
                 );
-
 
             if (following) {
 
@@ -462,28 +420,22 @@
                             targetUserId
                         );
 
-
                 if (error) {
                     throw error;
                 }
 
-
                 button.textContent =
                     "متابعة";
-
 
                 button.style.background =
                     "#0095f6";
 
-
                 button.style.color =
                     "#fff";
-
 
                 toast(
                     "تم إلغاء المتابعة."
                 );
-
 
             } else {
 
@@ -501,59 +453,49 @@
                                 targetUserId
                         });
 
-
                 if (error) {
                     throw error;
                 }
 
-
                 button.textContent =
                     "متابَع";
-
 
                 button.style.background =
                     "#f1f3f5";
 
-
                 button.style.color =
                     "#222";
-
 
                 await createFollowNotification(
                     targetUserId
                 );
-
 
                 toast(
                     "تمت المتابعة."
                 );
             }
 
-
         } catch (error) {
 
             console.error(
-                "Toggle follow error:",
+                "Follow error:",
                 error
             );
-
 
             toast(
                 error?.message ||
                 "تعذر تحديث المتابعة."
             );
 
-
         } finally {
 
-            button.disabled =
-                false;
+            button.disabled = false;
         }
     }
 
 
     /* =====================================================
-       Notification
+       Follow Notification
     ===================================================== */
 
     async function createFollowNotification(
@@ -569,7 +511,6 @@
         ) {
             return;
         }
-
 
         try {
 
@@ -613,7 +554,7 @@
 
 
     /* =====================================================
-       Send Reel Dialog
+       نافذة الإرسال الداخلي
     ===================================================== */
 
     function closeSendDialog() {
@@ -635,16 +576,13 @@
 
         closeSendDialog();
 
-
         const dialog =
             document.createElement(
                 "div"
             );
 
-
         dialog.id =
             "student-reel-send-dialog";
-
 
         dialog.style.cssText = `
             position:fixed;
@@ -657,7 +595,6 @@
             background:rgba(0,0,0,.55);
             direction:rtl;
         `;
-
 
         dialog.innerHTML = `
 
@@ -705,7 +642,6 @@
 
                 </div>
 
-
                 <div style="
                     padding:14px;
                     border-bottom:1px solid #eee;
@@ -727,7 +663,6 @@
                     >
 
                 </div>
-
 
                 <div
                     id="student-send-list"
@@ -751,21 +686,18 @@
             </div>
         `;
 
-
         document.body.appendChild(
             dialog
         );
 
-
-        document
-            .getElementById(
-                "student-send-close"
+        dialog
+            .querySelector(
+                "#student-send-close"
             )
             ?.addEventListener(
                 "click",
                 closeSendDialog
             );
-
 
         dialog.addEventListener(
             "click",
@@ -781,10 +713,9 @@
             }
         );
 
-
-        document
-            .getElementById(
-                "student-send-search"
+        dialog
+            .querySelector(
+                "#student-send-search"
             )
             ?.addEventListener(
                 "input",
@@ -798,7 +729,6 @@
                 }
             );
 
-
         loadSendUsers(
             reelId,
             ""
@@ -807,7 +737,7 @@
 
 
     /* =====================================================
-       Search Users
+       Users Search
     ===================================================== */
 
     async function loadSendUsers(
@@ -823,14 +753,12 @@
                 "student-send-list"
             );
 
-
         if (
             !client ||
             !list
         ) {
             return;
         }
-
 
         list.innerHTML = `
             <div style="
@@ -841,7 +769,6 @@
                 جاري التحميل...
             </div>
         `;
-
 
         try {
 
@@ -860,7 +787,6 @@
                     )
                     .limit(30);
 
-
             const clean =
                 String(
                     searchTerm || ""
@@ -871,7 +797,6 @@
                         ""
                     );
 
-
             if (clean) {
 
                 query =
@@ -880,22 +805,18 @@
                     );
             }
 
-
             const {
                 data,
                 error
             } =
                 await query;
 
-
             if (error) {
                 throw error;
             }
 
-
             const users =
                 data || [];
-
 
             if (!users.length) {
 
@@ -911,7 +832,6 @@
 
                 return;
             }
-
 
             list.innerHTML =
                 users
@@ -1005,7 +925,6 @@
 
                                     </div>
 
-
                                     <span style="
                                         width:36px;
                                         height:36px;
@@ -1027,7 +946,6 @@
                         }
                     )
                     .join("");
-
 
             list
                 .querySelectorAll(
@@ -1051,14 +969,12 @@
                     }
                 );
 
-
         } catch (error) {
 
             console.error(
                 "Send users error:",
                 error
             );
-
 
             list.innerHTML = `
                 <div style="
@@ -1074,7 +990,7 @@
 
 
     /* =====================================================
-       إرسال Reel داخل الرسائل
+       إرسال Reel داخل Student
     ===================================================== */
 
     async function sendReelToUser(
@@ -1084,7 +1000,6 @@
 
         const client =
             getSupabase();
-
 
         if (
             !client ||
@@ -1098,7 +1013,6 @@
             return;
         }
 
-
         try {
 
             const reel =
@@ -1106,13 +1020,12 @@
                     reelId
                 );
 
-
             if (!reel) {
+
                 throw new Error(
                     "تعذر العثور على الـReel."
                 );
             }
-
 
             const {
                 error
@@ -1131,15 +1044,9 @@
                             `🎬 Reel من Student\n#reel=${reelId}\n${reel.caption || ""}`
                     });
 
-
             if (error) {
                 throw error;
             }
-
-
-            /*
-               إشعار للمستلم
-            */
 
             try {
 
@@ -1172,9 +1079,7 @@
                             false
                     });
 
-            } catch (
-                notificationError
-            ) {
+            } catch (notificationError) {
 
                 console.warn(
                     "Share notification skipped:",
@@ -1182,14 +1087,11 @@
                 );
             }
 
-
             closeSendDialog();
-
 
             toast(
                 "تم إرسال الـReel بنجاح."
             );
-
 
         } catch (error) {
 
@@ -1198,12 +1100,256 @@
                 error
             );
 
-
             toast(
                 error?.message ||
                 "تعذر إرسال الـReel."
             );
         }
+    }
+
+
+    /* =====================================================
+       نافذة المشاركة
+    ===================================================== */
+
+    function closeShareMenu() {
+
+        const dialog =
+            document.getElementById(
+                "student-reel-share-menu"
+            );
+
+        if (dialog) {
+            dialog.remove();
+        }
+    }
+
+
+    async function openShareMenu(
+        reelId
+    ) {
+
+        closeShareMenu();
+
+        const dialog =
+            document.createElement(
+                "div"
+            );
+
+        dialog.id =
+            "student-reel-share-menu";
+
+        dialog.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100001250;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:20px;
+            background:rgba(0,0,0,.55);
+            direction:rtl;
+        `;
+
+        dialog.innerHTML = `
+
+            <div style="
+                width:100%;
+                max-width:390px;
+                background:#fff;
+                border-radius:24px;
+                padding:20px;
+                box-sizing:border-box;
+                box-shadow:0 20px 70px rgba(0,0,0,.3);
+            ">
+
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    margin-bottom:16px;
+                ">
+
+                    <strong style="
+                        flex:1;
+                        font-size:19px;
+                    ">
+                        مشاركة Reel
+                    </strong>
+
+                    <button
+                        id="student-share-menu-close"
+                        type="button"
+                        style="
+                            width:40px;
+                            height:40px;
+                            border:0;
+                            border-radius:50%;
+                            background:#f1f3f5;
+                            font-size:20px;
+                            cursor:pointer;
+                        "
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <button
+                    id="student-share-internal"
+                    type="button"
+                    style="
+                        width:100%;
+                        border:0;
+                        background:#f7f8fa;
+                        padding:16px;
+                        border-radius:15px;
+                        text-align:right;
+                        cursor:pointer;
+                        margin-bottom:10px;
+                        font-size:14px;
+                        font-weight:700;
+                    "
+                >
+                    📤 إرسال إلى مستخدم داخل Student
+                </button>
+
+
+                <button
+                    id="student-share-external"
+                    type="button"
+                    style="
+                        width:100%;
+                        border:0;
+                        background:#f7f8fa;
+                        padding:16px;
+                        border-radius:15px;
+                        text-align:right;
+                        cursor:pointer;
+                        font-size:14px;
+                        font-weight:700;
+                    "
+                >
+                    🔗 مشاركة خارجية / نسخ الرابط
+                </button>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            dialog
+        );
+
+
+        dialog
+            .querySelector(
+                "#student-share-menu-close"
+            )
+            ?.addEventListener(
+                "click",
+                closeShareMenu
+            );
+
+
+        dialog.addEventListener(
+            "click",
+            function(event) {
+
+                if (
+                    event.target ===
+                    dialog
+                ) {
+                    closeShareMenu();
+                }
+
+            }
+        );
+
+
+        dialog
+            .querySelector(
+                "#student-share-internal"
+            )
+            ?.addEventListener(
+                "click",
+                function() {
+
+                    closeShareMenu();
+
+                    openSendDialog(
+                        reelId
+                    );
+
+                }
+            );
+
+
+        dialog
+            .querySelector(
+                "#student-share-external"
+            )
+            ?.addEventListener(
+                "click",
+                async function() {
+
+                    closeShareMenu();
+
+                    const url =
+                        `${location.origin}${location.pathname}#reel=${reelId}`;
+
+                    try {
+
+                        if (
+                            navigator.share
+                        ) {
+
+                            await navigator.share({
+
+                                title:
+                                    "Student Reel",
+
+                                text:
+                                    "شاهد هذا الـReel",
+
+                                url:
+                                    url
+                            });
+
+                        } else {
+
+                            await navigator.clipboard.writeText(
+                                url
+                            );
+
+                            toast(
+                                "تم نسخ رابط الـReel."
+                            );
+                        }
+
+                    } catch (error) {
+
+                        try {
+
+                            await navigator.clipboard.writeText(
+                                url
+                            );
+
+                            toast(
+                                "تم نسخ الرابط."
+                            );
+
+                        } catch (
+                            copyError
+                        ) {
+
+                            toast(
+                                "تعذر مشاركة الرابط."
+                            );
+                        }
+                    }
+
+                }
+            );
     }
 
 
@@ -1220,7 +1366,6 @@
                 reelId
             );
 
-
         if (!reel) {
 
             toast(
@@ -1230,14 +1375,12 @@
             return;
         }
 
-
         const profile =
             await getProfile(
                 reel.user_id
             );
 
-
-        showUserDialog(
+        await showUserDialog(
             reel.user_id,
             profile
         );
@@ -1264,16 +1407,13 @@
 
         closeUserDialog();
 
-
         const dialog =
             document.createElement(
                 "div"
             );
 
-
         dialog.id =
             "student-reel-user-dialog";
-
 
         dialog.style.cssText = `
             position:fixed;
@@ -1286,7 +1426,6 @@
             background:rgba(0,0,0,.52);
             direction:rtl;
         `;
-
 
         dialog.innerHTML = `
 
@@ -1304,19 +1443,19 @@
                     id="student-user-dialog-close"
                     type="button"
                     style="
-                        position:absolute;
-                        margin-right:150px;
+                        display:block;
+                        margin-right:auto;
                         width:40px;
                         height:40px;
                         border:0;
                         border-radius:50%;
                         background:#f1f3f5;
                         cursor:pointer;
+                        font-size:20px;
                     "
                 >
                     ×
                 </button>
-
 
                 ${
                     profile.avatar_url
@@ -1356,7 +1495,6 @@
                           `
                 }
 
-
                 <div style="
                     font-size:19px;
                     font-weight:800;
@@ -1367,7 +1505,6 @@
                         "مستخدم"
                     )}
                 </div>
-
 
                 <div style="
                     margin-top:5px;
@@ -1380,7 +1517,6 @@
                     )}
                 </div>
 
-
                 <div
                     id="student-user-follow-area"
                     style="
@@ -1391,21 +1527,18 @@
             </div>
         `;
 
-
         document.body.appendChild(
             dialog
         );
 
-
-        document
-            .getElementById(
-                "student-user-dialog-close"
+        dialog
+            .querySelector(
+                "#student-user-dialog-close"
             )
             ?.addEventListener(
                 "click",
                 closeUserDialog
             );
-
 
         dialog.addEventListener(
             "click",
@@ -1423,8 +1556,8 @@
 
 
         const area =
-            document.getElementById(
-                "student-user-follow-area"
+            dialog.querySelector(
+                "#student-user-follow-area"
             );
 
 
@@ -1512,13 +1645,12 @@
 
 
     /* =====================================================
-       إضافة أزرار للـReels
+       تحسين الـReels
     ===================================================== */
 
     async function enhanceReels() {
 
         await loadCurrentUser();
-
 
         const reels =
             document.querySelectorAll(
@@ -1552,10 +1684,24 @@
             }
 
 
-            const profile =
+            usersCache[
+                String(reelId)
+            ] = data;
+
+
+            profileCache[
+                String(data.user_id)
+            ] =
+                profileCache[
+                    String(data.user_id)
+                ] ||
                 await getProfile(
                     data.user_id
                 );
+
+
+            reel.dataset.userId =
+                data.user_id;
 
 
             const owner =
@@ -1567,22 +1713,9 @@
                 );
 
 
-            /*
-               تخزين المالك للوظائف الأخرى
-            */
-
-            usersCache[
-                String(reelId)
-            ] = data;
-
-
-            reel.dataset.userId =
-                data.user_id;
-
-
-            /*
-               إضافة اسم المستخدم قابل للنقر
-            */
+            /* =============================================
+               اسم المستخدم
+            ============================================= */
 
             const name =
                 reel.querySelector(
@@ -1619,10 +1752,9 @@
             }
 
 
-            /*
-               زر متابعة
-               لغير المالك
-            */
+            /* =============================================
+               زر المتابعة
+            ============================================= */
 
             if (!owner) {
 
@@ -1711,58 +1843,32 @@
             }
 
 
-            /*
-               إضافة إرسال Reel
-               للـReels كلها
-            */
+            /* =============================================
+               تحويل زر المشاركة الأصلي
+            ============================================= */
 
-            const actions =
+            const shareButton =
                 reel.querySelector(
-                    ".student-reel-actions"
+                    "[data-share]"
                 );
 
 
             if (
-                actions &&
-                !actions.querySelector(
-                    "[data-send-reel]"
-                )
+                shareButton &&
+                !shareButton.dataset.studentShareConverted
             ) {
 
-                const wrap =
-                    document.createElement(
-                        "div"
-                    );
-
-
-                wrap.className =
-                    "student-reel-action-wrap";
-
-
-                wrap.innerHTML = `
-                    <button
-                        type="button"
-                        class="student-reel-action"
-                        data-send-reel
-                    >
-                        <i class="
-                            fa-solid
-                            fa-share-nodes
-                        "></i>
-                    </button>
-
-                    <span
-                        class="student-reel-label"
-                    >
-                        إرسال
-                    </span>
-                `;
-
-
-                actions.insertBefore(
-                    wrap,
-                    actions.firstChild
+                shareButton.removeAttribute(
+                    "data-share"
                 );
+
+
+                shareButton.dataset.studentShare =
+                    "true";
+
+
+                shareButton.dataset.studentShareConverted =
+                    "true";
             }
 
         }
@@ -1770,22 +1876,74 @@
 
 
     /* =====================================================
-       اعتراض زر إرسال
+       أزرار المستخدمين والمشاركة
     ===================================================== */
 
-    function bindSendButtons() {
+    function bindUserButtons() {
+
+        /* ---------------------------------------------
+           زر المشاركة
+        --------------------------------------------- */
 
         document.addEventListener(
             "click",
             function(event) {
 
-                const button =
+                const shareButton =
                     event.target.closest(
-                        ".student-reel [data-send-reel]"
+                        ".student-reel [data-student-share]"
                     );
 
 
-                if (!button) {
+                if (shareButton) {
+
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+
+
+                    const reel =
+                        getReelFromButton(
+                            shareButton
+                        );
+
+
+                    const reelId =
+                        getReelId(
+                            reel
+                        );
+
+
+                    if (reelId) {
+
+                        openShareMenu(
+                            reelId
+                        );
+                    }
+
+
+                    return;
+                }
+
+            },
+            true
+        );
+
+
+        /* ---------------------------------------------
+           متابعة
+        --------------------------------------------- */
+
+        document.addEventListener(
+            "click",
+            function(event) {
+
+                const follow =
+                    event.target.closest(
+                        ".student-reel [data-user-follow]"
+                    );
+
+
+                if (!follow) {
                     return;
                 }
 
@@ -1793,28 +1951,8 @@
                 event.preventDefault();
                 event.stopImmediatePropagation();
 
-
-                const reel =
-                    getReelFromButton(
-                        button
-                    );
-
-
-                const reelId =
-                    getReelId(
-                        reel
-                    );
-
-
-                if (reelId) {
-
-                    openSendDialog(
-                        reelId
-                    );
-                }
-
             },
-            true
+            false
         );
     }
 
@@ -1846,6 +1984,27 @@
 
 
     /* =====================================================
+       API
+    ===================================================== */
+
+    window.StudentReelsUsers =
+        window.StudentReelsUsers ||
+        {};
+
+
+    window.StudentReelsUsers.openSend =
+        openSendDialog;
+
+
+    window.StudentReelsUsers.openShare =
+        openShareMenu;
+
+
+    window.StudentReelsUsers.toggleFollow =
+        toggleFollow;
+
+
+    /* =====================================================
        Start
     ===================================================== */
 
@@ -1853,7 +2012,7 @@
 
         await loadCurrentUser();
 
-        bindSendButtons();
+        bindUserButtons();
 
         await enhanceReels();
 
