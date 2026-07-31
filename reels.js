@@ -20,6 +20,7 @@
     let currentUserId = null;
     let loading = false;
     let observerStarted = false;
+    let scrollTimer = null;
 
 
     /* =====================================================
@@ -47,7 +48,7 @@
                 return getSupabase();
             }
 
-            await new Promise(function (resolve) {
+            await new Promise(function(resolve) {
                 setTimeout(resolve, 200);
             });
         }
@@ -207,6 +208,7 @@
             object-fit:cover;
             display:block;
             background:#000;
+            cursor:pointer;
         }
 
         .student-reel-top {
@@ -418,13 +420,15 @@
 
 
     /* =====================================================
-       مكان Reels بجانب Stories
+       Stories Container
     ===================================================== */
 
     function findStoriesContainer() {
 
         const story =
-            document.querySelector(".story");
+            document.querySelector(
+                ".story"
+            );
 
         if (!story) {
             return null;
@@ -433,6 +437,10 @@
         return story.parentElement || null;
     }
 
+
+    /* =====================================================
+       Reels Icon
+    ===================================================== */
 
     function createReelsEntry() {
 
@@ -444,21 +452,26 @@
         }
 
         const story =
-            container.querySelector(".story");
+            container.querySelector(
+                ".story"
+            );
 
         if (!story) {
             return false;
         }
 
         let entry =
-            document.getElementById(
-                "student-reels-entry"
+            container.querySelector(
+                "#student-reels-entry"
             );
+
 
         if (!entry) {
 
             entry =
-                document.createElement("button");
+                document.createElement(
+                    "button"
+                );
 
             entry.id =
                 "student-reels-entry";
@@ -468,28 +481,21 @@
 
             entry.innerHTML = `
 
-                <span id="
-                    student-reels-entry-inner
-                ">
+                <span id="student-reels-entry-inner">
 
-                    <span id="
-                        student-reels-entry-circle
-                    ">
+                    <span id="student-reels-entry-circle">
 
-                        <span id="
-                            student-reels-entry-icon
-                        "></span>
+                        <span id="student-reels-entry-icon"></span>
 
                     </span>
 
-                    <span id="
-                        student-reels-entry-name
-                    ">
+                    <span id="student-reels-entry-name">
                         Reels
                     </span>
 
                 </span>
             `;
+
 
             entry.addEventListener(
                 "click",
@@ -501,16 +507,14 @@
                     openReels(0);
                 }
             );
+
+
+            container.insertBefore(
+                entry,
+                container.firstChild
+            );
         }
 
-        /*
-           الجهة اليمنى في RTL
-        */
-
-        container.insertBefore(
-            entry,
-            container.firstChild
-        );
 
         resizeEntry();
 
@@ -521,7 +525,9 @@
     function resizeEntry() {
 
         const story =
-            document.querySelector(".story");
+            document.querySelector(
+                ".story"
+            );
 
         const circle =
             document.getElementById(
@@ -539,7 +545,9 @@
             story.getBoundingClientRect();
 
         const size =
-            Math.round(rect.width);
+            Math.round(
+                rect.width
+            );
 
         circle.style.width =
             `${size}px`;
@@ -549,6 +557,10 @@
     }
 
 
+    /* =====================================================
+       مراقبة
+    ===================================================== */
+
     function protectEntry() {
 
         if (observerStarted) {
@@ -557,21 +569,28 @@
 
         observerStarted = true;
 
+
         const observer =
             new MutationObserver(
                 function() {
 
-                    setTimeout(
-                        function() {
+                    if (
+                        !document.getElementById(
+                            "student-reels-entry"
+                        )
+                    ) {
 
-                            createReelsEntry();
-                            resizeEntry();
+                        setTimeout(
+                            createReelsEntry,
+                            100
+                        );
+                    }
 
-                        },
-                        100
-                    );
+                    resizeEntry();
+
                 }
             );
+
 
         observer.observe(
             document.body,
@@ -581,6 +600,7 @@
             }
         );
 
+
         window.addEventListener(
             "resize",
             resizeEntry
@@ -589,7 +609,7 @@
 
 
     /* =====================================================
-       النافذة
+       Overlay
     ===================================================== */
 
     function createOverlay() {
@@ -598,11 +618,16 @@
             return;
         }
 
+
         overlay =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
+
 
         overlay.id =
             "student-reels-overlay";
+
 
         overlay.innerHTML = `
 
@@ -612,6 +637,7 @@
 
         `;
 
+
         document.body.appendChild(
             overlay
         );
@@ -619,7 +645,7 @@
 
 
     /* =====================================================
-       فتح
+       فتح Reels
     ===================================================== */
 
     async function openReels(
@@ -630,14 +656,18 @@
             return;
         }
 
+
         injectStyles();
         createOverlay();
+
 
         overlay.classList.add(
             "show"
         );
 
+
         await loadReels();
+
 
         if (!reels.length) {
 
@@ -645,6 +675,7 @@
 
             return;
         }
+
 
         currentIndex =
             Math.max(
@@ -655,7 +686,9 @@
                 )
             );
 
+
         renderReels();
+
 
         setTimeout(
             function() {
@@ -666,10 +699,14 @@
                 );
 
             },
-            80
+            100
         );
     }
 
+
+    /* =====================================================
+       إغلاق
+    ===================================================== */
 
     function closeReels() {
 
@@ -677,8 +714,11 @@
             return;
         }
 
+
         overlay
-            .querySelectorAll("video")
+            .querySelectorAll(
+                "video"
+            )
             .forEach(
                 function(video) {
 
@@ -686,6 +726,7 @@
 
                 }
             );
+
 
         overlay.classList.remove(
             "show"
@@ -695,30 +736,27 @@
 
     /* =====================================================
        تحميل Reels
-       الأعمدة الموجودة فعلًا:
-       id
-       user_id
-       video_url
-       caption
-       thumbnail_url
-       created_at
-       updated_at
+       يستخدم أعمدة جدول reels الحقيقي
     ===================================================== */
 
     async function loadReels() {
 
         loading = true;
 
+
         const client =
             await waitForSupabase();
+
 
         if (!client) {
 
             reels = [];
+
             loading = false;
 
             return;
         }
+
 
         try {
 
@@ -727,10 +765,13 @@
                     user
                 }
             } =
-                await client.auth.getUser();
+                await client.auth
+                    .getUser();
+
 
             currentUserId =
                 user?.id || null;
+
 
             const {
                 data,
@@ -753,18 +794,24 @@
                             ascending:false
                         }
                     )
-                    .limit(100);
+                    .limit(
+                        100
+                    );
+
 
             if (error) {
                 throw error;
             }
 
+
             reels =
                 data || [];
+
 
             await loadProfiles(
                 client
             );
+
 
         } catch (error) {
 
@@ -773,11 +820,14 @@
                 error
             );
 
+
             reels = [];
+
 
             toast(
                 "تعذر تحميل الـReels."
             );
+
 
         } finally {
 
@@ -796,20 +846,24 @@
 
         profiles = {};
 
+
         const ids =
             Array.from(
                 new Set(
                     reels.map(
                         function(item) {
+
                             return item.user_id;
                         }
                     )
                 )
             );
 
+
         if (!ids.length) {
             return;
         }
+
 
         const {
             data,
@@ -828,28 +882,32 @@
                     ids
                 );
 
+
         if (error) {
             return;
         }
+
 
         (data || []).forEach(
             function(profile) {
 
                 profiles[
                     profile.id
-                ] = profile;
+                ] =
+                    profile;
             }
         );
     }
 
 
     /* =====================================================
-       نشر Reel مباشرة
+       فتح نشر Reel
     ===================================================== */
 
     function openPublishReel() {
 
         closeReels();
+
 
         if (
             typeof window.openStudentReelCreator ===
@@ -858,12 +916,12 @@
 
             window.openStudentReelCreator();
 
-            return;
-        }
+        } else {
 
-        toast(
-            "تعذر فتح نشر الـReel."
-        );
+            toast(
+                "نظام نشر الـReel غير جاهز."
+            );
+        }
     }
 
 
@@ -878,53 +936,46 @@
                 "student-reels-scroll"
             );
 
+
         if (!container) {
             return;
         }
 
+
         container.innerHTML = `
 
             <div
-                class="
-                    student-reels-empty
-                "
+                class="student-reels-empty"
             >
 
                 <div
-                    class="
-                        student-reels-empty-icon
-                    "
+                    class="student-reels-empty-icon"
                 >
 
                     <span
-                        class="
-                            student-reels-empty-reels-icon
-                        "
+                        class="student-reels-empty-reels-icon"
                     ></span>
 
                 </div>
 
+
                 <div
-                    class="
-                        student-reels-empty-title
-                    "
+                    class="student-reels-empty-title"
                 >
                     لا توجد Reels بعد
                 </div>
 
+
                 <div
-                    class="
-                        student-reels-empty-text
-                    "
+                    class="student-reels-empty-text"
                 >
                     كن أول من ينشر Reel في Student
                 </div>
 
+
                 <button
                     type="button"
-                    class="
-                        student-reels-empty-publish
-                    "
+                    class="student-reels-empty-publish"
                     data-empty-publish
                 >
                     🎬 نشر أول Reel
@@ -932,6 +983,7 @@
 
             </div>
         `;
+
 
         container
             .querySelector(
@@ -955,23 +1007,30 @@
                 "student-reels-scroll"
             );
 
+
         if (!container) {
             return;
         }
 
+
         container.innerHTML =
             reels.map(
-                function(reel,index) {
+                function(
+                    reel,
+                    index
+                ) {
 
                     const profile =
                         profiles[
                             reel.user_id
                         ] || {};
 
+
                     const username =
                         profile.username ||
                         profile.full_name ||
                         "مستخدم";
+
 
                     const owner =
                         String(
@@ -981,12 +1040,11 @@
                             currentUserId
                         );
 
+
                     return `
 
                     <section
-                        class="
-                            student-reel
-                        "
+                        class="student-reel"
                         data-index="${index}"
                         data-id="${escapeHTML(
                             reel.id
@@ -1011,15 +1069,11 @@
 
 
                         <div
-                            class="
-                                student-reel-top
-                            "
+                            class="student-reel-top"
                         >
 
                             <div
-                                class="
-                                    student-reel-title
-                                "
+                                class="student-reel-title"
                             >
                                 Reels
                             </div>
@@ -1027,9 +1081,7 @@
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-publish
-                                "
+                                class="student-reel-publish"
                                 data-reel-publish
                             >
                                 🎬 نشر Reel
@@ -1038,9 +1090,7 @@
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-close
-                                "
+                                class="student-reel-close"
                                 data-close
                             >
                                 ×
@@ -1050,15 +1100,11 @@
 
 
                         <div
-                            class="
-                                student-reel-user
-                            "
+                            class="student-reel-user"
                         >
 
                             <div
-                                class="
-                                    student-reel-name
-                                "
+                                class="student-reel-name"
                             >
                                 @${escapeHTML(
                                     username
@@ -1070,9 +1116,7 @@
                                 reel.caption
                                     ? `
                                         <div
-                                            class="
-                                                student-reel-caption
-                                            "
+                                            class="student-reel-caption"
                                         >
                                             ${escapeHTML(
                                                 reel.caption
@@ -1086,16 +1130,12 @@
 
 
                         <div
-                            class="
-                                student-reel-actions
-                            "
+                            class="student-reel-actions"
                         >
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-action
-                                "
+                                class="student-reel-action"
                                 data-like
                             >
                                 ❤️
@@ -1104,9 +1144,7 @@
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-action
-                                "
+                                class="student-reel-action"
                                 data-comment
                             >
                                 💬
@@ -1115,9 +1153,7 @@
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-action
-                                "
+                                class="student-reel-action"
                                 data-save
                             >
                                 🔖
@@ -1126,9 +1162,7 @@
 
                             <button
                                 type="button"
-                                class="
-                                    student-reel-action
-                                "
+                                class="student-reel-action"
                                 data-share
                             >
                                 ↗️
@@ -1140,9 +1174,7 @@
                                     ? `
                                         <button
                                             type="button"
-                                            class="
-                                                student-reel-action
-                                            "
+                                            class="student-reel-action"
                                             data-more
                                         >
                                             ⋯
@@ -1158,22 +1190,12 @@
                             owner
                                 ? `
                                     <div
-                                        class="
-                                            student-reel-menu
-                                        "
+                                        class="student-reel-menu"
                                         data-menu
                                     >
 
                                         <button
                                             type="button"
-                                            data-edit
-                                        >
-                                            ✏️ تعديل
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="danger"
                                             data-delete
                                         >
                                             🗑️ حذف
@@ -1185,22 +1207,20 @@
                         }
 
                     </section>
-
                     `;
                 }
             )
             .join("");
 
+
         bindButtons();
+        bindScroll();
     }
 
 
     /* =====================================================
-       التمرير
+       Scroll
     ===================================================== */
-
-    let scrollTimer = null;
-
 
     function bindScroll() {
 
@@ -1209,9 +1229,11 @@
                 "student-reels-scroll"
             );
 
+
         if (!container) {
             return;
         }
+
 
         container.addEventListener(
             "scroll",
@@ -1220,6 +1242,7 @@
                 clearTimeout(
                     scrollTimer
                 );
+
 
                 scrollTimer =
                     setTimeout(
@@ -1231,6 +1254,7 @@
                                     window.innerHeight
                                 );
 
+
                             if (
                                 index !==
                                 currentIndex
@@ -1240,7 +1264,6 @@
                                     index;
 
                                 playCurrent();
-
                             }
 
                         },
@@ -1265,22 +1288,28 @@
                 "student-reels-scroll"
             );
 
+
         if (!container) {
             return;
         }
 
+
         container.scrollTo({
+
             top:
                 index *
                 window.innerHeight,
+
             behavior:
                 smooth
                     ? "smooth"
                     : "auto"
         });
 
+
         currentIndex =
             index;
+
 
         setTimeout(
             playCurrent,
@@ -1295,22 +1324,45 @@
             return;
         }
 
+
         overlay
-            .querySelectorAll("video")
+            .querySelectorAll(
+                "video"
+            )
             .forEach(
-                function(video,index) {
+                function(
+                    video,
+                    index
+                ) {
 
                     if (
                         index ===
                         currentIndex
                     ) {
 
+                        /*
+                           نحاول تشغيل الصوت.
+                           بعض المتصفحات تمنع autoplay
+                           بالصوت، وعندها يبدأ الفيديو
+                           ويمكن للمستخدم الضغط عليه.
+                        */
+
                         video.muted =
-                            true;
+                            false;
+
 
                         video.play()
                             .catch(
-                                function(){}
+                                function() {
+
+                                    video.muted =
+                                        true;
+
+                                    video.play()
+                                        .catch(
+                                            function(){}
+                                        );
+                                }
                             );
 
                     } else {
@@ -1336,10 +1388,13 @@
                 "student-reels-scroll"
             );
 
+
         if (!container) {
             return;
         }
 
+
+        /* نشر Reel */
 
         container
             .querySelectorAll(
@@ -1360,6 +1415,8 @@
             );
 
 
+        /* إغلاق */
+
         container
             .querySelectorAll(
                 "[data-close]"
@@ -1372,6 +1429,39 @@
                 }
             );
 
+
+        /* الفيديو */
+
+        container
+            .querySelectorAll(
+                "video"
+            )
+            .forEach(
+                function(video) {
+
+                    video.addEventListener(
+                        "click",
+                        function() {
+
+                            video.muted =
+                                !video.muted;
+
+                            if (
+                                video.paused
+                            ) {
+
+                                video.play()
+                                    .catch(
+                                        function(){}
+                                    );
+                            }
+                        }
+                    );
+                }
+            );
+
+
+        /* إعجاب */
 
         container
             .querySelectorAll(
@@ -1391,6 +1481,8 @@
             );
 
 
+        /* تعليق */
+
         container
             .querySelectorAll(
                 "[data-comment]"
@@ -1408,6 +1500,8 @@
                 }
             );
 
+
+        /* حفظ */
 
         container
             .querySelectorAll(
@@ -1431,19 +1525,23 @@
                                 return;
                             }
 
+
                             const slide =
                                 button.closest(
                                     ".student-reel"
                                 );
 
+
                             const id =
                                 slide?.dataset.id;
+
 
                             const result =
                                 await window.saveStudentItem(
                                     "reel",
                                     id
                                 );
+
 
                             if (
                                 result?.success
@@ -1468,6 +1566,8 @@
                 }
             );
 
+
+        /* مشاركة */
 
         container
             .querySelectorAll(
@@ -1510,6 +1610,8 @@
             );
 
 
+        /* قائمة المالك */
+
         container
             .querySelectorAll(
                 "[data-more]"
@@ -1525,18 +1627,25 @@
                                     ".student-reel"
                                 );
 
+
                             const menu =
                                 slide?.querySelector(
                                     "[data-menu]"
                                 );
 
-                            menu?.classList.toggle(
-                                "show"
-                            );
+
+                            if (menu) {
+
+                                menu.classList.toggle(
+                                    "show"
+                                );
+                            }
                         };
                 }
             );
 
+
+        /* حذف */
 
         container
             .querySelectorAll(
@@ -1553,15 +1662,13 @@
                                     ".student-reel"
                                 );
 
+
                             await deleteReel(
                                 slide?.dataset.id
                             );
                         };
                 }
             );
-
-
-        bindScroll();
     }
 
 
@@ -1577,6 +1684,7 @@
             return;
         }
 
+
         if (
             !confirm(
                 "هل تريد حذف هذا الـReel؟"
@@ -1585,12 +1693,15 @@
             return;
         }
 
+
         const client =
             getSupabase();
+
 
         if (!client) {
             return;
         }
+
 
         const {
             error
@@ -1607,6 +1718,7 @@
                     currentUserId
                 );
 
+
         if (error) {
 
             toast(
@@ -1617,9 +1729,11 @@
             return;
         }
 
+
         toast(
             "تم حذف الـReel."
         );
+
 
         await openReels(
             Math.max(
@@ -1631,18 +1745,22 @@
 
 
     /* =====================================================
-       رسالة
+       Toast
     ===================================================== */
 
-    function toast(message) {
+    function toast(
+        message
+    ) {
 
         const element =
             document.createElement(
                 "div"
             );
 
+
         element.textContent =
             message;
+
 
         element.style.position =
             "fixed";
@@ -1677,13 +1795,20 @@
         element.style.direction =
             "rtl";
 
+        element.style.boxShadow =
+            "0 8px 30px rgba(0,0,0,.25)";
+
+
         document.body.appendChild(
             element
         );
 
+
         setTimeout(
             function() {
+
                 element.remove();
+
             },
             2200
         );
@@ -1702,7 +1827,7 @@
 
 
     /* =====================================================
-       التشغيل
+       تشغيل
     ===================================================== */
 
     function start() {
@@ -1712,7 +1837,6 @@
         createReelsEntry();
 
         protectEntry();
-
     }
 
 
