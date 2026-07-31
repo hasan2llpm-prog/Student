@@ -876,12 +876,6 @@
         );
 
 
-        /*
-           إغلاق الخلفية:
-           نغلق القائمة بالكامل،
-           لا ننتقل إلى الرئيسية.
-        */
-
         menuElement
             .querySelector(
                 "#student-main-menu-backdrop"
@@ -896,11 +890,6 @@
             );
 
 
-        /*
-           × موجود فقط لإغلاق القائمة بالكامل.
-           التنقل الداخلي يتم بزر الهاتف.
-        */
-
         menuElement
             .querySelector(
                 "#student-menu-close"
@@ -914,12 +903,6 @@
                 }
             );
 
-
-        /*
-           زر الرجوع داخل القائمة:
-           نستخدمه كبديل احتياطي،
-           لكن زر الهاتف هو الأساسي.
-        */
 
         menuElement
             .querySelector(
@@ -940,7 +923,7 @@
 
 
     /* =====================================================
-       تنشيط اعتراض showFloatingPanel
+       اعتراض showFloatingPanel
     ===================================================== */
 
     function activateFloatingPanelInterceptor() {
@@ -1043,7 +1026,7 @@
 
 
     /* =====================================================
-       تنسيق محتوى داخلي
+       تنسيق المحتوى الداخلي
     ===================================================== */
 
     function normalizeInnerContent(
@@ -1099,10 +1082,6 @@
         }
 
 
-        /*
-           حفظ الصفحة السابقة
-        */
-
         viewStack.push({
 
             title:
@@ -1149,12 +1128,6 @@
         );
 
 
-        /*
-           أضف اعتراضًا عامًا لأزرار إغلاق
-           النوافذ الداخلية حتى تعود للقائمة
-           بدل مغادرة الصفحة.
-        */
-
         bindInnerCloseButtons(
             contentBox
         );
@@ -1162,6 +1135,50 @@
 
         pushMenuHistoryState();
     }
+
+
+    /* =====================================================
+       الجسر فقط
+       تمت إضافته لـ settings.js
+       ولا يغير أي وظيفة أخرى
+    ===================================================== */
+
+    window.StudentMenuOpenView =
+        function (
+            title,
+            content,
+            readyCallback
+        ) {
+
+            openInnerView(
+                title,
+                content
+            );
+
+
+            if (
+                typeof readyCallback ===
+                "function"
+            ) {
+
+                const contentBox =
+                    menuElement?.querySelector(
+                        "#student-menu-content"
+                    );
+
+
+                setTimeout(
+                    function () {
+
+                        readyCallback(
+                            contentBox
+                        );
+
+                    },
+                    0
+                );
+            }
+        };
 
 
     /* =====================================================
@@ -1281,11 +1298,6 @@
         `;
 
 
-        /*
-           القائمة تظهر قبل انتهاء الاستعلام.
-           هذا يحل مشكلة البطء.
-        */
-
         menu.classList.add(
             "is-open"
         );
@@ -1388,13 +1400,6 @@
                         event.preventDefault();
 
 
-                        /*
-                           نترك القائمة نفسها مفتوحة.
-                           إذا استدعى العنصر
-                           showFloatingPanel سيتم اعتراضه
-                           وعرضه داخل القائمة.
-                        */
-
                         await item.action();
 
                     }
@@ -1474,11 +1479,6 @@
                 contentBox
             );
 
-
-            /*
-               إزالة حالة history الحالية
-               بدون مغادرة التطبيق.
-            */
 
             if (
                 historyDepth > 0
@@ -1680,12 +1680,6 @@
 
         deactivateFloatingPanelInterceptor();
 
-
-        /*
-           إذا كانت القائمة مفتوحة بحالة
-           history مستقلة، نرجع عنها فقط.
-           لا نرسل المستخدم إلى الصفحة الرئيسية.
-        */
 
         if (
             changeHistory &&
@@ -1911,11 +1905,6 @@
             "https://wa.me/message/TSDV5JBPE2KSP1";
 
 
-        /*
-           نستخدم showFloatingPanel:
-           سيتم اعتراضه وإظهاره داخل القائمة.
-        */
-
         if (
             typeof window.showFloatingPanel !==
             "function"
@@ -1989,11 +1978,6 @@
             `
         );
 
-
-        /*
-           لأن المحتوى أصبح داخل القائمة،
-           نبحث عن الزر داخله بعد الإنشاء.
-        */
 
         setTimeout(
             function () {
@@ -2267,12 +2251,6 @@
                         }
 
 
-                        /*
-                           إذا كان saved.js يستخدم
-                           showFloatingPanel فسيتم اعتراضه
-                           تلقائيًا وعرضه داخل القائمة.
-                        */
-
                         window.openStudentSaved();
 
                     }
@@ -2366,11 +2344,6 @@
             ensureMenuElement();
 
 
-        /*
-           إعادة ضبط البداية فقط إذا
-           لم تكن القائمة مفتوحة.
-        */
-
         if (
             !menu.classList.contains(
                 "is-open"
@@ -2392,10 +2365,6 @@
             return;
         }
 
-
-        /*
-           إذا كانت مفتوحة، لا نعيد البناء.
-        */
 
         menu.classList.add(
             "is-open"
@@ -2473,7 +2442,7 @@
 
 
     /* =====================================================
-       بدء
+       تشغيل
     ===================================================== */
 
     function startMenu() {
