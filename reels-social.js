@@ -1,24 +1,22 @@
 /* =========================================================
    Student - Reels Social
-   ❤️ إعجاب الـReel
-   💬 التعليقات
-   ❤️ إعجاب التعليق
-   ✏️ تعديل التعليق
-   🗑️ حذف التعليق
-   ↗️ مشاركة الـReel
+   ❤️ Reel Likes
+   💬 Comments
+   ❤️ Comment Likes
+   ✏️ Edit Comment
+   🗑️ Delete Comment
+   ↗️ Share
 ========================================================= */
 
 (function () {
 
     "use strict";
 
-
     if (window.__studentReelsSocialLoaded) {
         return;
     }
 
     window.__studentReelsSocialLoaded = true;
-
 
     let socialUserId = null;
 
@@ -59,10 +57,8 @@
             } =
                 await client.auth.getUser();
 
-
             socialUserId =
                 user?.id || null;
-
 
             return user || null;
 
@@ -73,10 +69,7 @@
                 error
             );
 
-
-            socialUserId =
-                null;
-
+            socialUserId = null;
 
             return null;
         }
@@ -84,13 +77,12 @@
 
 
     function getUserId() {
-
         return socialUserId;
     }
 
 
     /* =====================================================
-       HTML Protection
+       حماية HTML
     ===================================================== */
 
     function escapeHTML(value) {
@@ -123,26 +115,34 @@
        Toast
     ===================================================== */
 
-    function toast(
-        message
-    ) {
+    function toast(message) {
+
+        const old =
+            document.getElementById(
+                "student-social-toast"
+            );
+
+        if (old) {
+            old.remove();
+        }
 
         const element =
             document.createElement(
                 "div"
             );
 
+        element.id =
+            "student-social-toast";
 
         element.textContent =
             message;
-
 
         element.style.cssText = `
             position:fixed;
             left:50%;
             bottom:30px;
             transform:translateX(-50%);
-            z-index:100000200;
+            z-index:100000300;
             background:#222;
             color:#fff;
             padding:11px 16px;
@@ -154,11 +154,9 @@
                 rgba(0,0,0,.3);
         `;
 
-
         document.body.appendChild(
             element
         );
-
 
         setTimeout(
             function () {
@@ -172,7 +170,7 @@
 
 
     /* =====================================================
-       Comments Box
+       نافذة التعليقات
     ===================================================== */
 
     function createCommentsBox() {
@@ -182,21 +180,17 @@
                 "student-social-comments"
             );
 
-
         if (box) {
             return box;
         }
-
 
         box =
             document.createElement(
                 "div"
             );
 
-
         box.id =
             "student-social-comments";
-
 
         box.style.cssText = `
             position:fixed;
@@ -209,7 +203,6 @@
             direction:rtl;
         `;
 
-
         box.innerHTML = `
 
             <div style="
@@ -217,8 +210,7 @@
                 max-width:620px;
                 height:min(80vh,680px);
                 background:#fff;
-                border-radius:
-                    24px 24px 0 0;
+                border-radius:24px 24px 0 0;
                 display:flex;
                 flex-direction:column;
                 overflow:hidden;
@@ -229,9 +221,7 @@
                     align-items:center;
                     gap:10px;
                     padding:15px;
-                    border-bottom:
-                        1px solid #eee;
-                    flex-shrink:0;
+                    border-bottom:1px solid #eee;
                 ">
 
                     <strong style="
@@ -240,7 +230,6 @@
                     ">
                         التعليقات
                     </strong>
-
 
                     <button
                         id="student-social-comments-close"
@@ -260,7 +249,6 @@
 
                 </div>
 
-
                 <div
                     id="student-social-comments-list"
                     style="
@@ -270,16 +258,13 @@
                     "
                 ></div>
 
-
                 <form
                     id="student-social-comments-form"
                     style="
                         display:flex;
                         gap:8px;
                         padding:10px;
-                        border-top:
-                            1px solid #eee;
-                        flex-shrink:0;
+                        border-top:1px solid #eee;
                     "
                 >
 
@@ -299,7 +284,6 @@
                             outline:none;
                         "
                     ></textarea>
-
 
                     <button
                         type="submit"
@@ -324,7 +308,6 @@
             </div>
         `;
 
-
         document.body.appendChild(
             box
         );
@@ -345,8 +328,7 @@
             function (event) {
 
                 if (
-                    event.target ===
-                    box
+                    event.target === box
                 ) {
                     closeComments();
                 }
@@ -376,9 +358,7 @@
                 "student-social-comments"
             );
 
-
         if (box) {
-
             box.style.display =
                 "none";
         }
@@ -386,29 +366,14 @@
 
 
     /* =====================================================
-       Open Comments
+       فتح التعليقات
     ===================================================== */
 
     async function openComments(
         reelId
     ) {
 
-        const client =
-            getSupabase();
-
-
-        if (!client) {
-
-            toast(
-                "الخدمة غير متاحة."
-            );
-
-            return;
-        }
-
-
         await loadCurrentUser();
-
 
         if (!getUserId()) {
 
@@ -423,10 +388,8 @@
         const box =
             createCommentsBox();
 
-
         box.dataset.reelId =
             String(reelId);
-
 
         box.style.display =
             "flex";
@@ -439,7 +402,7 @@
 
 
     /* =====================================================
-       Load Comments
+       تحميل التعليقات
     ===================================================== */
 
     async function loadComments(
@@ -448,7 +411,6 @@
 
         const client =
             getSupabase();
-
 
         const list =
             document.getElementById(
@@ -477,9 +439,13 @@
 
         try {
 
+            /* ---------------------------------------------
+               التعليقات فقط
+            --------------------------------------------- */
+
             const {
-                data,
-                error
+                data: comments,
+                error: commentsError
             } =
                 await client
                     .from(
@@ -490,8 +456,7 @@
                         reel_id,
                         user_id,
                         content,
-                        created_at,
-                        updated_at
+                        created_at
                     `)
                     .eq(
                         "reel_id",
@@ -505,16 +470,16 @@
                     );
 
 
-            if (error) {
-                throw error;
+            if (commentsError) {
+                throw commentsError;
             }
 
 
-            const comments =
-                data || [];
+            const rows =
+                comments || [];
 
 
-            if (!comments.length) {
+            if (!rows.length) {
 
                 list.innerHTML = `
                     <div style="
@@ -530,14 +495,14 @@
             }
 
 
-            /* ============================================
-               Profiles
-            ============================================ */
+            /* ---------------------------------------------
+               تحميل ملفات المستخدمين بشكل اختياري
+            --------------------------------------------- */
 
             const userIds =
                 Array.from(
                     new Set(
-                        comments.map(
+                        rows.map(
                             item =>
                                 item.user_id
                         )
@@ -553,8 +518,7 @@
                 try {
 
                     const {
-                        data:
-                            profileData
+                        data: profileRows
                     } =
                         await client
                             .from(
@@ -572,7 +536,7 @@
                             );
 
 
-                    (profileData || [])
+                    (profileRows || [])
                         .forEach(
                             function(profile) {
 
@@ -584,22 +548,22 @@
                             }
                         );
 
-                } catch (profileError) {
+                } catch (error) {
 
                     console.warn(
-                        "Profiles unavailable:",
-                        profileError
+                        "Profiles skipped:",
+                        error
                     );
                 }
             }
 
 
-            /* ============================================
-               Comment Likes
-            ============================================ */
+            /* ---------------------------------------------
+               إعجابات التعليقات بشكل اختياري
+            --------------------------------------------- */
 
             const commentIds =
-                comments.map(
+                rows.map(
                     item =>
                         item.id
                 );
@@ -614,8 +578,7 @@
                 try {
 
                     const {
-                        data:
-                            likes
+                        data: likeRows
                     } =
                         await client
                             .from(
@@ -631,7 +594,7 @@
                             );
 
 
-                    (likes || [])
+                    (likeRows || [])
                         .forEach(
                             function(like) {
 
@@ -639,16 +602,11 @@
                                     like.comment_id;
 
 
-                                if (
-                                    !likesMap[id]
-                                ) {
-
-                                    likesMap[id] =
-                                        0;
-                                }
-
-
-                                likesMap[id]++;
+                                likesMap[id] =
+                                    (
+                                        likesMap[id] ||
+                                        0
+                                    ) + 1;
 
 
                                 if (
@@ -667,243 +625,239 @@
                             }
                         );
 
-                } catch (likeError) {
+                } catch (error) {
 
                     console.warn(
-                        "Comment likes unavailable:",
-                        likeError
+                        "Comment likes skipped:",
+                        error
                     );
                 }
             }
 
 
-            /* ============================================
-               Render
-            ============================================ */
+            /* ---------------------------------------------
+               رسم التعليقات
+            --------------------------------------------- */
 
             list.innerHTML =
-                comments
-                    .map(
-                        function(comment) {
+                rows.map(
+                    function(comment) {
 
-                            const profile =
-                                profiles[
-                                    comment.user_id
-                                ] || {};
-
-
-                            const name =
-                                profile.username ||
-                                profile.full_name ||
-                                "مستخدم";
+                        const profile =
+                            profiles[
+                                comment.user_id
+                            ] || {};
 
 
-                            const mine =
-                                String(
-                                    comment.user_id
-                                ) ===
-                                String(
-                                    getUserId()
-                                );
+                        const name =
+                            profile.username ||
+                            profile.full_name ||
+                            "مستخدم";
 
 
-                            const liked =
-                                !!myLikes[
-                                    comment.id
-                                ];
+                        const mine =
+                            String(
+                                comment.user_id
+                            ) ===
+                            String(
+                                getUserId()
+                            );
 
 
-                            const likeCount =
-                                likesMap[
-                                    comment.id
-                                ] || 0;
+                        const liked =
+                            !!myLikes[
+                                comment.id
+                            ];
 
 
-                            const avatar =
-                                profile.avatar_url
-                                    ? `
-                                        <img
-                                            src="${escapeHTML(
-                                                profile.avatar_url
-                                            )}"
-                                            alt=""
-                                            style="
-                                                width:40px;
-                                                height:40px;
-                                                border-radius:50%;
-                                                object-fit:cover;
-                                                flex-shrink:0;
-                                            "
-                                        >
-                                      `
-                                    : `
-                                        <div style="
+                        const likeCount =
+                            likesMap[
+                                comment.id
+                            ] || 0;
+
+
+                        const avatarHTML =
+                            profile.avatar_url
+                                ? `
+                                    <img
+                                        src="${escapeHTML(
+                                            profile.avatar_url
+                                        )}"
+                                        alt=""
+                                        style="
                                             width:40px;
                                             height:40px;
                                             border-radius:50%;
-                                            background:#eaf5ff;
-                                            color:#0095f6;
-                                            display:flex;
-                                            align-items:center;
-                                            justify-content:center;
+                                            object-fit:cover;
                                             flex-shrink:0;
-                                        ">
-                                            <i class="
-                                                fa-solid
-                                                fa-user
-                                            "></i>
-                                        </div>
-                                      `;
-
-
-                            return `
-
-                                <div
-                                    data-social-comment
-                                    data-comment-id="${escapeHTML(
-                                        comment.id
-                                    )}"
-                                    style="
+                                        "
+                                    >
+                                  `
+                                : `
+                                    <div style="
+                                        width:40px;
+                                        height:40px;
+                                        border-radius:50%;
+                                        background:#eaf5ff;
+                                        color:#0095f6;
                                         display:flex;
-                                        gap:10px;
-                                        padding:12px 3px;
-                                    "
-                                >
+                                        align-items:center;
+                                        justify-content:center;
+                                        flex-shrink:0;
+                                    ">
+                                        <i class="
+                                            fa-solid
+                                            fa-user
+                                        "></i>
+                                    </div>
+                                  `;
 
-                                    ${avatar}
+
+                        return `
+
+                            <div
+                                data-social-comment
+                                data-comment-id="${escapeHTML(
+                                    comment.id
+                                )}"
+                                style="
+                                    display:flex;
+                                    gap:10px;
+                                    padding:12px 3px;
+                                "
+                            >
+
+                                ${avatarHTML}
+
+
+                                <div style="
+                                    flex:1;
+                                    min-width:0;
+                                ">
+
+                                    <div style="
+                                        font-size:13px;
+                                        font-weight:800;
+                                        color:#222;
+                                    ">
+                                        @${escapeHTML(
+                                            name
+                                        )}
+                                    </div>
+
+
+                                    <div
+                                        data-comment-text
+                                        style="
+                                            margin-top:4px;
+                                            color:#444;
+                                            font-size:13px;
+                                            line-height:1.7;
+                                            white-space:pre-wrap;
+                                            word-break:break-word;
+                                        "
+                                    >
+                                        ${escapeHTML(
+                                            comment.content
+                                        )}
+                                    </div>
 
 
                                     <div style="
-                                        flex:1;
-                                        min-width:0;
+                                        display:flex;
+                                        align-items:center;
+                                        gap:14px;
+                                        margin-top:7px;
                                     ">
 
-                                        <div style="
-                                            font-size:13px;
-                                            font-weight:800;
-                                            color:#222;
-                                        ">
-                                            @${escapeHTML(
-                                                name
-                                            )}
-                                        </div>
-
-
-                                        <div
-                                            data-comment-text
+                                        <button
+                                            type="button"
+                                            data-comment-like
                                             style="
-                                                margin-top:4px;
-                                                color:#444;
-                                                font-size:13px;
-                                                line-height:1.7;
-                                                white-space:pre-wrap;
-                                                word-break:break-word;
+                                                border:0;
+                                                background:transparent;
+                                                padding:0;
+                                                cursor:pointer;
+                                                color:${
+                                                    liked
+                                                        ? "#ff3040"
+                                                        : "#777"
+                                                };
                                             "
                                         >
-                                            ${escapeHTML(
-                                                comment.content
-                                            )}
-                                        </div>
 
+                                            <i class="
+                                                ${
+                                                    liked
+                                                        ? "fa-solid"
+                                                        : "fa-regular"
+                                                }
+                                                fa-heart
+                                            "></i>
 
-                                        <div style="
-                                            display:flex;
-                                            align-items:center;
-                                            gap:14px;
-                                            margin-top:7px;
-                                        ">
-
-                                            <button
-                                                type="button"
-                                                data-comment-like
-                                                style="
-                                                    border:0;
-                                                    background:transparent;
-                                                    padding:0;
-                                                    cursor:pointer;
-                                                    color:${
-                                                        liked
-                                                            ? "#ff3040"
-                                                            : "#777"
-                                                    };
-                                                "
+                                            <span
+                                                data-comment-like-count
                                             >
+                                                ${likeCount}
+                                            </span>
 
-                                                <i class="
-                                                    ${
-                                                        liked
-                                                            ? "fa-solid"
-                                                            : "fa-regular"
-                                                    }
-                                                    fa-heart
-                                                "></i>
-
-                                                <span
-                                                    data-comment-like-count
-                                                >
-                                                    ${likeCount}
-                                                </span>
-
-                                            </button>
+                                        </button>
 
 
-                                            ${
-                                                mine
-                                                    ? `
-                                                        <button
-                                                            type="button"
-                                                            data-comment-edit
-                                                            style="
-                                                                border:0;
-                                                                background:transparent;
-                                                                color:#777;
-                                                                cursor:pointer;
-                                                                padding:0;
-                                                            "
-                                                        >
-                                                            ✏️ تعديل
-                                                        </button>
+                                        ${
+                                            mine
+                                                ? `
+                                                    <button
+                                                        type="button"
+                                                        data-comment-edit
+                                                        style="
+                                                            border:0;
+                                                            background:transparent;
+                                                            color:#777;
+                                                            cursor:pointer;
+                                                            padding:0;
+                                                        "
+                                                    >
+                                                        ✏️ تعديل
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        data-comment-delete
+                                                        style="
+                                                            border:0;
+                                                            background:transparent;
+                                                            color:#d93025;
+                                                            cursor:pointer;
+                                                            padding:0;
+                                                        "
+                                                    >
+                                                        🗑️ حذف
+                                                    </button>
+                                                  `
+                                                : ""
+                                        }
+
+                                    </div>
 
 
-                                                        <button
-                                                            type="button"
-                                                            data-comment-delete
-                                                            style="
-                                                                border:0;
-                                                                background:transparent;
-                                                                color:#d93025;
-                                                                cursor:pointer;
-                                                                padding:0;
-                                                            "
-                                                        >
-                                                            🗑️ حذف
-                                                        </button>
-                                                      `
-                                                    : ""
-                                            }
-
-                                        </div>
-
-
-                                        <div style="
-                                            margin-top:5px;
-                                            color:#999;
-                                            font-size:10px;
-                                        ">
-                                            ${formatDate(
-                                                comment.created_at
-                                            )}
-                                        </div>
-
+                                    <div style="
+                                        margin-top:5px;
+                                        color:#999;
+                                        font-size:10px;
+                                    ">
+                                        ${formatDate(
+                                            comment.created_at
+                                        )}
                                     </div>
 
                                 </div>
 
-                            `;
-
-                        }
-                    )
-                    .join("");
+                            </div>
+                        `;
+                    }
+                )
+                .join("");
 
 
             bindCommentActions(
@@ -914,7 +868,7 @@
         } catch (error) {
 
             console.error(
-                "Comments load error:",
+                "FINAL COMMENTS ERROR:",
                 error
             );
 
@@ -924,6 +878,7 @@
                     padding:40px 15px;
                     text-align:center;
                     color:#d93025;
+                    line-height:1.8;
                 ">
                     تعذر تحميل التعليقات.
                     <br>
@@ -939,7 +894,7 @@
 
 
     /* =====================================================
-       Bind comment actions
+       أزرار التعليقات
     ===================================================== */
 
     function bindCommentActions(
@@ -966,14 +921,14 @@
                         "click",
                         function() {
 
-                            const comment =
+                            const item =
                                 button.closest(
                                     "[data-social-comment]"
                                 );
 
 
                             toggleCommentLike(
-                                comment?.dataset.commentId,
+                                item?.dataset.commentId,
                                 button
                             );
 
@@ -994,14 +949,14 @@
                         "click",
                         function() {
 
-                            const comment =
+                            const item =
                                 button.closest(
                                     "[data-social-comment]"
                                 );
 
 
                             openEditComment(
-                                comment
+                                item
                             );
 
                         }
@@ -1021,14 +976,14 @@
                         "click",
                         function() {
 
-                            const comment =
+                            const item =
                                 button.closest(
                                     "[data-social-comment]"
                                 );
 
 
                             deleteComment(
-                                comment?.dataset.commentId,
+                                item?.dataset.commentId,
                                 reelId
                             );
 
@@ -1040,7 +995,7 @@
 
 
     /* =====================================================
-       Comment Like
+       إعجاب التعليق
     ===================================================== */
 
     async function toggleCommentLike(
@@ -1050,7 +1005,6 @@
 
         const client =
             getSupabase();
-
 
         const userId =
             getUserId();
@@ -1077,7 +1031,7 @@
         try {
 
             const {
-                data:existing
+                data: existing
             } =
                 await client
                     .from(
@@ -1137,7 +1091,6 @@
 
                             user_id:
                                 userId
-
                         });
 
 
@@ -1148,7 +1101,7 @@
 
 
             const {
-                count
+                count: totalLikes
             } =
                 await client
                     .from(
@@ -1170,7 +1123,7 @@
 
 
             const {
-                data:nowLiked
+                data: currentLike
             } =
                 await client
                     .from(
@@ -1191,7 +1144,7 @@
 
 
             const liked =
-                !!nowLiked;
+                !!currentLike;
 
 
             const icon =
@@ -1200,7 +1153,7 @@
                 );
 
 
-            const count =
+            const counter =
                 button.querySelector(
                     "[data-comment-like-count]"
                 );
@@ -1226,27 +1179,11 @@
             }
 
 
-            if (count) {
+            if (counter) {
 
-                count.textContent =
-                    count === null
-                        ? 0
-                        : count;
-
-            }
-
-
-            const countElement =
-                button.querySelector(
-                    "[data-comment-like-count]"
-                );
-
-
-            if (countElement) {
-
-                countElement.textContent =
+                counter.textContent =
                     String(
-                        count || 0
+                        totalLikes || 0
                     );
             }
 
@@ -1260,6 +1197,7 @@
 
 
             toast(
+                error?.message ||
                 "تعذر تحديث إعجاب التعليق."
             );
 
@@ -1273,26 +1211,24 @@
 
 
     /* =====================================================
-       Edit Comment
+       تعديل التعليق
     ===================================================== */
 
     function openEditComment(
-        commentElement
+        element
     ) {
 
-        if (!commentElement) {
-            return;
-        }
+        if (!element) return;
 
 
-        const textElement =
-            commentElement.querySelector(
+        const text =
+            element.querySelector(
                 "[data-comment-text]"
             );
 
 
         const oldText =
-            textElement?.textContent.trim() ||
+            text?.textContent.trim() ||
             "";
 
 
@@ -1326,7 +1262,7 @@
 
 
         updateComment(
-            commentElement.dataset.commentId,
+            element.dataset.commentId,
             content
         );
     }
@@ -1339,7 +1275,6 @@
 
         const client =
             getSupabase();
-
 
         const userId =
             getUserId();
@@ -1369,7 +1304,6 @@
 
                         updated_at:
                             new Date().toISOString()
-
                     })
                     .eq(
                         "id",
@@ -1415,6 +1349,7 @@
 
 
             toast(
+                error?.message ||
                 "تعذر تعديل التعليق."
             );
         }
@@ -1422,7 +1357,7 @@
 
 
     /* =====================================================
-       Delete Comment
+       حذف التعليق
     ===================================================== */
 
     async function deleteComment(
@@ -1432,7 +1367,6 @@
 
         const client =
             getSupabase();
-
 
         const userId =
             getUserId();
@@ -1485,7 +1419,7 @@
             );
 
 
-            updateReelCommentCount(
+            await updateReelCommentCount(
                 reelId
             );
 
@@ -1504,6 +1438,7 @@
 
 
             toast(
+                error?.message ||
                 "تعذر حذف التعليق."
             );
         }
@@ -1511,7 +1446,7 @@
 
 
     /* =====================================================
-       Add Comment
+       إضافة تعليق
     ===================================================== */
 
     async function submitComment(
@@ -1523,7 +1458,6 @@
 
         const client =
             getSupabase();
-
 
         const userId =
             getUserId();
@@ -1589,7 +1523,6 @@
 
                         content:
                             content
-
                     });
 
 
@@ -1607,7 +1540,7 @@
             );
 
 
-            updateReelCommentCount(
+            await updateReelCommentCount(
                 reelId
             );
 
@@ -1621,6 +1554,7 @@
 
 
             toast(
+                error?.message ||
                 "تعذر نشر التعليق."
             );
         }
@@ -1628,7 +1562,7 @@
 
 
     /* =====================================================
-       Reel Comment Count
+       عداد تعليقات الـReel
     ===================================================== */
 
     async function updateReelCommentCount(
@@ -1639,9 +1573,7 @@
             getSupabase();
 
 
-        if (!client) {
-            return;
-        }
+        if (!client) return;
 
 
         const {
@@ -1691,7 +1623,7 @@
 
 
     /* =====================================================
-       Reel Like
+       إعجاب الـReel
     ===================================================== */
 
     async function toggleReelLike(
@@ -1701,7 +1633,6 @@
 
         const client =
             getSupabase();
-
 
         const userId =
             getUserId();
@@ -1727,7 +1658,7 @@
         try {
 
             const {
-                data:existing
+                data: existing
             } =
                 await client
                     .from(
@@ -1787,7 +1718,6 @@
 
                             user_id:
                                 userId
-
                         });
 
 
@@ -1798,7 +1728,7 @@
 
 
             const {
-                count:likeCount
+                count: totalLikes
             } =
                 await client
                     .from(
@@ -1820,7 +1750,7 @@
 
 
             const {
-                data:likedRow
+                data: likedRow
             } =
                 await client
                     .from(
@@ -1886,7 +1816,7 @@
 
                 counter.textContent =
                     String(
-                        likeCount || 0
+                        totalLikes || 0
                     );
             }
 
@@ -1900,6 +1830,7 @@
 
 
             toast(
+                error?.message ||
                 "تعذر تحديث الإعجاب."
             );
 
@@ -1913,7 +1844,7 @@
 
 
     /* =====================================================
-       Share
+       مشاركة
     ===================================================== */
 
     async function shareReel(
@@ -1940,7 +1871,6 @@
 
                     url:
                         url
-
                 });
 
                 return;
@@ -1996,21 +1926,23 @@
 
 
     /* =====================================================
-       Initialize
+       تشغيل
     ===================================================== */
 
     loadCurrentUser();
 
 
     /* =====================================================
-       Capture Reels buttons
+       اعتراض أزرار Reels
     ===================================================== */
 
     document.addEventListener(
         "click",
         function (event) {
 
-            /* Comments */
+            /* ------------------------------
+               Comments
+            ------------------------------ */
 
             const commentButton =
                 event.target.closest(
@@ -2045,7 +1977,9 @@
             }
 
 
-            /* Like */
+            /* ------------------------------
+               Like
+            ------------------------------ */
 
             const likeButton =
                 event.target.closest(
@@ -2081,7 +2015,9 @@
             }
 
 
-            /* Share */
+            /* ------------------------------
+               Share
+            ------------------------------ */
 
             const shareButton =
                 event.target.closest(
@@ -2118,5 +2054,6 @@
         },
         true
     );
+
 
 })();
