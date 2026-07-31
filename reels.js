@@ -4442,3 +4442,82 @@
     }
 
 })();
+(function () {
+
+    "use strict";
+
+    function loadUsersModule() {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-users="true"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+            "reels-users.js";
+
+        script.async =
+            true;
+
+        script.dataset.studentReelsUsers =
+            "true";
+
+        script.onload =
+            function () {
+
+                console.log(
+                    "Student Reels Users loaded."
+                );
+
+            };
+
+        script.onerror =
+            function () {
+
+                console.warn(
+                    "reels-users.js failed to load. Reels Core remains active."
+                );
+
+            };
+
+        document.body.appendChild(
+            script
+        );
+    }
+
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+
+                setTimeout(
+                    loadUsersModule,
+                    1000
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+    } else {
+
+        setTimeout(
+            loadUsersModule,
+            1000
+        );
+    }
+
+})();
