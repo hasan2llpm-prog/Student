@@ -4340,8 +4340,7 @@
         "reels-media.js",
         "reels-manage.js",
         "reels-safety.js"
-       "reels-stats.js"
-    ];
+ ];
 
     files.forEach(function (src) {
 
