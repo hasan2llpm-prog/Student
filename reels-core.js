@@ -11,17 +11,62 @@
 
     let observer = null;
     let observedContainer = null;
+    let playRequest = 0;
+
+    function waitUntilPlayable(video) {
+        if (!video) return Promise.resolve(false);
+
+        if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+            return Promise.resolve(true);
+        }
+
+        return new Promise(function (resolve) {
+            let finished = false;
+
+            function finish(result) {
+                if (finished) return;
+                finished = true;
+                video.removeEventListener("canplay", onReady);
+                video.removeEventListener("loadeddata", onReady);
+                video.removeEventListener("error", onError);
+                clearTimeout(timer);
+                resolve(result);
+            }
+
+            function onReady() {
+                finish(true);
+            }
+
+            function onError() {
+                finish(false);
+            }
+
+            video.addEventListener("canplay", onReady, { once: true });
+            video.addEventListener("loadeddata", onReady, { once: true });
+            video.addEventListener("error", onError, { once: true });
+
+            const timer = setTimeout(function () {
+                finish(video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA);
+            }, 4000);
+        });
+    }
 
     function loadVideo(video) {
-        if (!video || video.dataset.loaded === "true") return;
+        if (!video) return Promise.resolve(false);
 
-        const source = video.dataset.src;
+        video.preload = "auto";
 
-        if (!source) return;
+        if (video.dataset.loaded !== "true") {
+            const source = video.dataset.src;
 
-        video.src = source;
-        video.dataset.loaded = "true";
-        video.load();
+            if (!source) return Promise.resolve(false);
+
+            video.src = source;
+            video.dataset.loaded = "true";
+            video.load();
+        }
+
+        return waitUntilPlayable(video);
     }
 
     function unloadFarVideo(video) {
@@ -45,6 +90,7 @@
 
             if (distance <= 1) {
                 video.dataset.keepLoaded = "true";
+                video.preload = "auto";
                 loadVideo(video);
             } else {
                 video.dataset.keepLoaded = "false";
@@ -56,9 +102,10 @@
         });
     }
 
-    function setActive(container, activeIndex) {
+    async function setActive(container, activeIndex) {
         if (!container) return;
 
+        const requestId = ++playRequest;
         prepareAround(container, activeIndex);
 
         const videos = Array.from(
@@ -66,18 +113,21 @@
         );
 
         videos.forEach(function (video, index) {
-            if (index === activeIndex) {
-                loadVideo(video);
-
-                const playPromise = video.play();
-
-                if (playPromise?.catch) {
-                    playPromise.catch(function () {});
-                }
-            } else {
-                video.pause();
-            }
+            if (index !== activeIndex) video.pause();
         });
+
+        const activeVideo = videos[activeIndex];
+        if (!activeVideo) return;
+
+        const ready = await loadVideo(activeVideo);
+
+        if (!ready || requestId !== playRequest) return;
+
+        try {
+            await activeVideo.play();
+        } catch (_) {
+            /* سيعمل بالنقر إذا منع المتصفح التشغيل التلقائي */
+        }
     }
 
     function observe(container) {
@@ -101,7 +151,7 @@
             },
             {
                 root: container,
-                rootMargin: "100% 0px",
+                rootMargin: "150% 0px",
                 threshold: 0.01
             }
         );
@@ -114,6 +164,7 @@
     }
 
     function destroy() {
+        playRequest += 1;
         observer?.disconnect();
         observer = null;
         observedContainer = null;
@@ -129,7 +180,7 @@
     }
 
     window.StudentReelsCore = {
-        version: "1.0.0",
+        version: "1.1.0",
         loadVideo,
         prepareAround,
         setActive,
