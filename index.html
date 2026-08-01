@@ -11,8 +11,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0095f6">
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
         /* =========================
            شاشة المصادقة
@@ -507,7 +505,10 @@
          JavaScript
     ========================================== -->
 
-    <!-- الملف الحالي الأساسي: لا نعدله -->
+    <!-- مكتبة Supabase الرسمية أولاً لضمان توفرها -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- ملف التطبيق الأساسي -->
     <script src="app.js"></script>
 
     <!-- نظام الملف الشخصي المستقل -->
