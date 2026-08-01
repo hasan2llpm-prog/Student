@@ -2985,35 +2985,3 @@ document.addEventListener(
 
     }
 );
-// ==========================================
-// نظام التنقل السفلي والتبديل بين الأقسام
-// ==========================================
-document.addEventListener("DOMContentLoaded", function () {
-    const navItems = document.querySelectorAll('.app-bottom-nav .nav-item');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', function () {
-            // 1. إزالة التنشيط من جميع الأزرار
-            navItems.forEach(nav => nav.classList.remove('active'));
-            
-            // 2. تنشيط الزر الحالي
-            this.classList.add('active');
-
-            // 3. الحصول على معرف القسم المستهدف
-            const targetName = this.getAttribute('data-target');
-            console.log("تم النقر على الانتقال إلى: " + targetName);
-
-            // يمكنك هنا استدعاء الدوال الخاصة بعرض الشاشة المطلوبة بناءً على targetName
-        });
-    });
-});
-function switchTab(tabName) {
-    // إزالة التنشيط عن كل الأزرار
-    const buttons = document.querySelectorAll('.app-bottom-nav .nav-item');
-    buttons.forEach(btn => btn.classList.remove('active'));
-    
-    // تنشيط الزر الحالي الذي تم ضغطه
-    event.currentTarget.classList.add('active');
-    
-    console.log("تم الانتقال إلى تبويب: " + tabName);
-}
