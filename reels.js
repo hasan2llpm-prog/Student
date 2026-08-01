@@ -89,22 +89,38 @@
 
         style.textContent = `
 
+        #student-reels-launcher-row {
+            display:flex;
+            align-items:center;
+            padding:10px 16px;
+            min-height:76px;
+            background:#fff;
+            border-bottom:1px solid #efefef;
+            box-sizing:border-box;
+            contain:layout paint;
+        }
+
         #student-reels-entry {
-            flex:0 0 auto !important;
-            width:auto !important;
-            height:auto !important;
+            display:flex !important;
+            align-items:center !important;
+            gap:12px !important;
+            width:100% !important;
+            min-height:56px !important;
             margin:0 !important;
-            padding:0 !important;
+            padding:8px 10px !important;
             border:0 !important;
-            background:transparent !important;
+            border-radius:16px !important;
+            background:#fff5f5 !important;
             cursor:pointer !important;
-            text-align:center !important;
+            text-align:right !important;
         }
 
         #student-reels-entry-inner {
             display:flex;
-            flex-direction:column;
+            flex-direction:row;
             align-items:center;
+            gap:12px;
+            width:100%;
         }
 
         #student-reels-entry-circle {
@@ -112,7 +128,7 @@
             height:58px;
             border-radius:50%;
             background:#fff;
-            border:3px solid #111;
+            border:3px solid #ed1c24;
             display:flex;
             align-items:center;
             justify-content:center;
@@ -123,7 +139,7 @@
         #student-reels-entry-icon {
             width:30px;
             height:24px;
-            border:3px solid #111;
+            border:3px solid #ed1c24;
             border-radius:7px;
             position:relative;
             box-sizing:border-box;
@@ -136,8 +152,8 @@
             top:-7px;
             width:18px;
             height:5px;
-            border-top:3px solid #111;
-            border-bottom:3px solid #111;
+            border-top:3px solid #ed1c24;
+            border-bottom:3px solid #ed1c24;
         }
 
         #student-reels-entry-icon::after {
@@ -149,13 +165,14 @@
             height:0;
             border-top:5px solid transparent;
             border-bottom:5px solid transparent;
-            border-left:8px solid #111;
+            border-left:8px solid #ed1c24;
         }
 
         #student-reels-entry-name {
-            margin-top:5px;
-            font-size:11px;
-            color:#333;
+            margin:0;
+            font-size:14px;
+            font-weight:700;
+            color:#ed1c24;
             white-space:nowrap;
         }
 
@@ -628,17 +645,26 @@
     ===================================================== */
 
     function findStoriesContainer() {
-        const story = document.querySelector(".story");
-        return story ? story.parentElement : null;
+        return document.querySelector(".stories-container");
+    }
+
+    function ensureReelsLauncherRow() {
+        const storiesContainer = findStoriesContainer();
+        if (!storiesContainer) return null;
+
+        let row = document.getElementById("student-reels-launcher-row");
+        if (!row) {
+            row = document.createElement("div");
+            row.id = "student-reels-launcher-row";
+            storiesContainer.insertAdjacentElement("afterend", row);
+        }
+        return row;
     }
 
     function createReelsEntry() {
 
-        const container = findStoriesContainer();
+        const container = ensureReelsLauncherRow();
         if (!container) return false;
-
-        const story = container.querySelector(".story");
-        if (!story) return false;
 
         let entry =
             document.getElementById(
@@ -679,10 +705,9 @@
             );
         }
 
-        container.insertBefore(
-            entry,
-            container.firstChild
-        );
+        if (entry.parentElement !== container) {
+            container.replaceChildren(entry);
+        }
 
         resizeEntry();
 
@@ -690,27 +715,10 @@
     }
 
     function resizeEntry() {
-
-        const story =
-            document.querySelector(".story");
-
-        const circle =
-            document.getElementById(
-                "student-reels-entry-circle"
-            );
-
-        if (!story || !circle) return;
-
-        const size =
-            Math.round(
-                story.getBoundingClientRect().width
-            );
-
-        circle.style.width =
-            `${size}px`;
-
-        circle.style.height =
-            `${size}px`;
+        const circle = document.getElementById("student-reels-entry-circle");
+        if (!circle) return;
+        circle.style.width = "52px";
+        circle.style.height = "52px";
     }
 
     function protectEntry() {
