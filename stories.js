@@ -343,12 +343,7 @@
             height:68px!important;
             padding:3px!important;
             border-radius:50%!important;
-            background:linear-gradient(
-                135deg,
-                #0095f6,
-                #d62976,
-                #feda75
-            )!important;
+            background:#ed1c24!important;
         }
 
         .stories-container .story-ring.seen{
@@ -388,13 +383,13 @@
         }
 
         .stories-add-new .story-ring{
-            border:2px dashed #0095f6!important;
+            border:2px dashed #ed1c24!important;
             background:#fff!important;
             padding:0!important;
         }
 
         .stories-add-new i{
-            color:#0095f6!important;
+            color:#ed1c24!important;
             font-size:25px!important;
         }
 
