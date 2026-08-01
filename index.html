@@ -278,25 +278,23 @@
 
         <!-- الهيدر -->
         <header>
+    <!-- زر الإضافة (+) في اليمين -->
+    <div class="header-icons">
+        <button id="header-add-btn" class="header-icon-btn" style="background:none; border:none; cursor:pointer; font-size:18px;"><i class="fa-solid fa-plus"></i></button>
+    </div>
 
-            <div class="header-icons">
-                <i class="fa-regular fa-bell"></i>
-                <span class="badge">0</span>
-            </div>
+    <!-- اسم التطبيق في الوسط -->
+    <div>
+        <div class="logo">Student</div>
+        <div id="welcome-user"></div>
+    </div>
 
-            <div>
-                <div class="logo">Student</div>
-                <div id="welcome-user" class="welcome-user"></div>
-            </div>
+    <!-- زر القائمة في اليسار -->
+    <div class="header-icons">
+        <i id="menu-icon" class="fa-solid fa-bars" style="cursor:pointer; font-size:18px;"></i>
+    </div>
+</header>
 
-            <div class="header-icons">
-                <i
-                    id="menu-icon"
-                    class="fa-solid fa-bars"
-                ></i>
-            </div>
-
-        </header>
 
 
         <!-- الستوريات -->
@@ -460,48 +458,28 @@
 
 
         <!-- التنقل السفلي -->
-        <nav>
-
-            <a
-                href="#"
-                class="active"
-                onclick="return false;"
-            >
-                <i class="fa-solid fa-house"></i>
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                <i class="fa-regular fa-square-plus"></i>
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                <i class="fa-regular fa-paper-plane"></i>
-            </a>
-
-            <a
-                href="#"
-                onclick="return false;"
-            >
-                <i class="fa-regular fa-user"></i>
-            </a>
-
-        </nav>
-
-    </section>
-
+        <nav class="app-bottom-nav">
+    <button class="nav-item active" data-target="home">
+        <i class="fa-solid fa-house"></i>
+        <span>رئيسية</span>
+    </button>
+    <button class="nav-item" data-target="reels">
+        <i class="fa-solid fa-clapperboard"></i>
+        <span>ريلز</span>
+    </button>
+    <button class="nav-item" data-target="messages">
+        <i class="fa-solid fa-paper-plane"></i>
+        <span>مراسلة</span>
+    </button>
+    <button class="nav-item" data-target="search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>بحث</span>
+    </button>
+    <button class="nav-item" data-target="notifications">
+        <i class="fa-solid fa-bell"></i>
+        <span>إشعارات</span>
+    </button>
+</nav>
 
     <!-- =========================================
          JavaScript
