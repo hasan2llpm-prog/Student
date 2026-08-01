@@ -1,87 +1,64 @@
 /* =========================================================
-   Student - Reels Users
-
-   👤 متابعة / إلغاء متابعة
-   🔔 إشعارات المتابعة
-   📤 إرسال Reel داخل Student
-   👤 معلومات صاحب الـReel
-   ↗️ مشاركة داخلية / خارجية
+   Student - Reels Core
+   Likes + Comments + Share + Save + Views
+   Sound + Edit + Privacy + Report + Delete
 ========================================================= */
 
 (function () {
 
     "use strict";
 
-    if (window.__studentReelsUsersLoaded) {
-        return;
-    }
+    if (window.__studentReelsLoaded) return;
 
-    window.__studentReelsUsersLoaded = true;
+    window.__studentReelsLoaded = true;
 
+    let overlay = null;
+    let reels = [];
+    let profiles = {};
     let currentUserId = null;
-    let usersCache = {};
-    let profileCache = {};
+    let currentIndex = 0;
+    let loading = false;
+    let observerStarted = false;
+    let scrollTimer = null;
+    let reelsHistoryActive = false;
+    let closingFromHistory = false;
 
+    /* كاش قصير يمنع إعادة تحميل الريلز عند الفتح المتكرر */
+    let reelsCacheAt = 0;
+    const REELS_CACHE_TTL = 45000;
 
     /* =====================================================
        Supabase
     ===================================================== */
 
     function getSupabase() {
-
-        if (
+        return (
             typeof supabaseClient !== "undefined" &&
             supabaseClient
-        ) {
-            return supabaseClient;
+        ) ? supabaseClient : null;
+    }
+
+    async function waitForSupabase() {
+        for (let i = 0; i < 50; i++) {
+            const client = getSupabase();
+
+            if (client) {
+                return client;
+            }
+
+            await new Promise(resolve =>
+                setTimeout(resolve, 200)
+            );
         }
 
         return null;
     }
 
-
-    async function loadCurrentUser() {
-
-        const client = getSupabase();
-
-        if (!client) {
-            currentUserId = null;
-            return null;
-        }
-
-        try {
-
-            const {
-                data: {
-                    user
-                }
-            } = await client.auth.getUser();
-
-            currentUserId =
-                user?.id || null;
-
-            return user || null;
-
-        } catch (error) {
-
-            console.error(
-                "Users auth error:",
-                error
-            );
-
-            currentUserId = null;
-
-            return null;
-        }
-    }
-
-
     /* =====================================================
-       حماية HTML
+       حماية
     ===================================================== */
 
     function escapeHTML(value) {
-
         return String(value || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -90,491 +67,898 @@
             .replace(/'/g, "&#039;");
     }
 
-
     /* =====================================================
-       Toast
+       CSS
     ===================================================== */
 
-    function toast(message) {
+    function injectStyles() {
 
-        const old =
+        if (
             document.getElementById(
-                "student-users-toast"
-            );
-
-        if (old) {
-            old.remove();
+                "student-reels-style"
+            )
+        ) {
+            return;
         }
 
-        const element =
+        const style =
+            document.createElement("style");
+
+        style.id =
+            "student-reels-style";
+
+        style.textContent = `
+
+        #student-reels-entry {
+            flex:0 0 auto !important;
+            width:auto !important;
+            height:auto !important;
+            margin:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            background:transparent !important;
+            cursor:pointer !important;
+            text-align:center !important;
+        }
+
+        #student-reels-entry-inner {
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+        }
+
+        #student-reels-entry-circle {
+            width:58px;
+            height:58px;
+            border-radius:50%;
+            background:#fff;
+            border:3px solid #111;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            box-sizing:border-box;
+            box-shadow:0 2px 8px rgba(0,0,0,.12);
+        }
+
+        #student-reels-entry-icon {
+            width:30px;
+            height:24px;
+            border:3px solid #111;
+            border-radius:7px;
+            position:relative;
+            box-sizing:border-box;
+        }
+
+        #student-reels-entry-icon::before {
+            content:"";
+            position:absolute;
+            left:3px;
+            top:-7px;
+            width:18px;
+            height:5px;
+            border-top:3px solid #111;
+            border-bottom:3px solid #111;
+        }
+
+        #student-reels-entry-icon::after {
+            content:"";
+            position:absolute;
+            left:9px;
+            top:5px;
+            width:0;
+            height:0;
+            border-top:5px solid transparent;
+            border-bottom:5px solid transparent;
+            border-left:8px solid #111;
+        }
+
+        #student-reels-entry-name {
+            margin-top:5px;
+            font-size:11px;
+            color:#333;
+            white-space:nowrap;
+        }
+
+        #student-reels-overlay {
+            position:fixed;
+            inset:0;
+            z-index:99999999;
+            background:#000;
+            display:none;
+            direction:rtl;
+        }
+
+        #student-reels-overlay.show {
+            display:block;
+        }
+
+        #student-reels-scroll {
+            width:100%;
+            height:100%;
+            overflow-y:auto;
+            scroll-snap-type:y mandatory;
+            scrollbar-width:none;
+        }
+
+        #student-reels-scroll::-webkit-scrollbar {
+            display:none;
+        }
+
+        .student-reel {
+            position:relative;
+            width:100%;
+            height:100dvh;
+            min-height:100vh;
+            background:#000;
+            overflow:hidden;
+            scroll-snap-align:start;
+            scroll-snap-stop:always;
+        }
+
+        .student-reel video {
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:block;
+            background:#000;
+            cursor:pointer;
+        }
+
+        .student-reel-top {
+            position:absolute;
+            top:0;
+            right:0;
+            left:0;
+            z-index:10;
+            padding:15px;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            background:linear-gradient(
+                to bottom,
+                rgba(0,0,0,.7),
+                transparent
+            );
+        }
+
+        .student-reel-title {
+            color:#fff;
+            font-size:18px;
+            font-weight:800;
+        }
+
+        .student-reel-publish {
+            margin-right:auto;
+            border:0;
+            background:#0095f6;
+            color:#fff;
+            padding:9px 14px;
+            border-radius:12px;
+            font-size:13px;
+            font-weight:700;
+            cursor:pointer;
+        }
+
+        .student-reel-close {
+            width:42px;
+            height:42px;
+            border:0;
+            border-radius:50%;
+            background:rgba(0,0,0,.5);
+            color:#fff;
+            font-size:22px;
+            cursor:pointer;
+        }
+
+        .student-reel-user {
+            position:absolute;
+            left:18px;
+            right:92px;
+            bottom:24px;
+            z-index:18;
+            color:#fff;
+            direction:ltr;
+            text-align:left;
+            text-shadow:0 1px 7px rgba(0,0,0,.9);
+        }
+
+        .student-reel-name {
+            max-width:42vw;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+            font-size:16px;
+            font-weight:900;
+            cursor:pointer;
+        }
+
+        .student-reel-user-row {
+            display:flex;
+            align-items:center;
+            justify-content:flex-start;
+            gap:9px;
+            margin-bottom:8px;
+            min-width:0;
+        }
+
+        .student-reel-avatar,
+        .student-reel-avatar-placeholder {
+            width:46px;
+            height:46px;
+            border-radius:50%;
+            flex:0 0 46px;
+            cursor:pointer;
+            box-sizing:border-box;
+            box-shadow:0 0 0 2px rgba(255,255,255,.95),
+                       0 0 0 4px #ff1744;
+        }
+
+        .student-reel-avatar {
+            object-fit:cover;
+            border:2px solid #111;
+            background:#111;
+        }
+
+        .student-reel-avatar-placeholder {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#222;
+            border:2px solid #111;
+            color:#fff;
+        }
+
+        .student-reel-follow-slot {
+            display:flex;
+            align-items:center;
+            min-height:36px;
+            margin-inline-start:2px;
+        }
+
+        .student-reel-caption {
+            max-width:100%;
+            margin-top:5px;
+            padding-left:55px;
+            font-size:14px;
+            font-weight:500;
+            line-height:1.65;
+            white-space:pre-wrap;
+            overflow-wrap:anywhere;
+        }
+
+        @media (max-width:420px) {
+            .student-reel-user {
+                left:13px;
+                right:82px;
+                bottom:20px;
+            }
+
+            .student-reel-name {
+                max-width:36vw;
+                font-size:15px;
+            }
+
+            .student-reel-avatar,
+            .student-reel-avatar-placeholder {
+                width:42px;
+                height:42px;
+                flex-basis:42px;
+            }
+
+            .student-reel-caption {
+                padding-right:51px;
+                font-size:13px;
+            }
+        }
+
+        .student-reel-actions {
+            position:absolute;
+            right:12px;
+            bottom:105px;
+            z-index:20;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:15px;
+        }
+
+        .student-reel-action-wrap {
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            gap:3px;
+        }
+
+        .student-reel-action {
+            width:48px;
+            height:48px;
+            padding:0;
+            border:0;
+            border-radius:50%;
+            background:rgba(0,0,0,.38);
+            color:#fff;
+            font-size:21px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            backdrop-filter:blur(6px);
+        }
+
+        .student-reel-action.active {
+            color:#ff3040;
+        }
+
+        .student-reel-action.saved {
+            color:#ffd400;
+        }
+
+        .student-reel-count,
+        .student-reel-label {
+            color:#fff;
+            font-size:10px;
+            text-shadow:0 1px 5px #000;
+        }
+
+        .student-reel-menu {
+            position:absolute;
+            right:74px;
+            bottom:95px;
+            width:220px;
+            background:#fff;
+            border-radius:16px;
+            overflow:hidden;
+            display:none;
+            z-index:50;
+            box-shadow:0 15px 40px rgba(0,0,0,.35);
+        }
+
+        .student-reel-menu.show {
+            display:block;
+        }
+
+        .student-reel-menu button {
+            width:100%;
+            border:0;
+            background:#fff;
+            padding:15px;
+            text-align:right;
+            cursor:pointer;
+            font-size:14px;
+            border-bottom:1px solid #eee;
+        }
+
+        .student-reel-menu button:last-child {
+            border-bottom:0;
+        }
+
+        .student-reel-menu .danger {
+            color:#d93025;
+        }
+
+        #student-reel-comments {
+            position:fixed;
+            inset:0;
+            z-index:100000001;
+            display:none;
+            align-items:flex-end;
+            justify-content:center;
+            background:rgba(0,0,0,.45);
+            direction:rtl;
+        }
+
+        #student-reel-comments.show {
+            display:flex;
+        }
+
+        .student-reel-comments-box {
+            width:100%;
+            max-width:620px;
+            height:min(78vh,650px);
+            background:#fff;
+            border-radius:24px 24px 0 0;
+            display:flex;
+            flex-direction:column;
+            overflow:hidden;
+        }
+
+        .student-reel-comments-header {
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:15px;
+            border-bottom:1px solid #eee;
+        }
+
+        .student-reel-comments-title {
+            flex:1;
+            font-size:17px;
+            font-weight:800;
+        }
+
+        .student-reel-comments-close {
+            width:40px;
+            height:40px;
+            border:0;
+            border-radius:50%;
+            background:#f1f3f5;
+            cursor:pointer;
+        }
+
+        .student-reel-comments-list {
+            flex:1;
+            overflow-y:auto;
+            padding:12px;
+        }
+
+        .student-reel-comment {
+            display:flex;
+            gap:9px;
+            padding:10px 3px;
+        }
+
+        .student-reel-comment-avatar,
+        .student-reel-comment-avatar-placeholder {
+            width:38px;
+            height:38px;
+            border-radius:50%;
+            flex-shrink:0;
+        }
+
+        .student-reel-comment-avatar {
+            object-fit:cover;
+            background:#eee;
+        }
+
+        .student-reel-comment-avatar-placeholder {
+            background:#eaf5ff;
+            color:#0095f6;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+
+        .student-reel-comment-body {
+            flex:1;
+        }
+
+        .student-reel-comment-name {
+            font-size:13px;
+            font-weight:800;
+        }
+
+        .student-reel-comment-text {
+            margin-top:4px;
+            font-size:13px;
+            line-height:1.7;
+            white-space:pre-wrap;
+        }
+
+        .student-reel-comment-time {
+            margin-top:4px;
+            color:#999;
+            font-size:10px;
+        }
+
+        .student-reel-comment-delete {
+            border:0;
+            background:transparent;
+            color:#d93025;
+            cursor:pointer;
+        }
+
+        .student-reel-comments-form {
+            display:flex;
+            gap:8px;
+            padding:10px;
+            border-top:1px solid #eee;
+        }
+
+        .student-reel-comments-input {
+            flex:1;
+            height:44px;
+            resize:none;
+            border:1px solid #ddd;
+            border-radius:13px;
+            padding:11px;
+            outline:none;
+        }
+
+        .student-reel-comments-send {
+            width:48px;
+            height:44px;
+            border:0;
+            border-radius:13px;
+            background:#0095f6;
+            color:#fff;
+            cursor:pointer;
+        }
+
+        #student-reels-dialog {
+            position:fixed;
+            inset:0;
+            z-index:100000010;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,.5);
+            padding:20px;
+        }
+
+        #student-reels-dialog.show {
+            display:flex;
+        }
+
+        .student-reels-dialog-box {
+            width:100%;
+            max-width:430px;
+            background:#fff;
+            border-radius:22px;
+            padding:20px;
+            direction:rtl;
+        }
+
+        .student-reels-dialog-title {
+            font-size:20px;
+            font-weight:800;
+            margin-bottom:15px;
+        }
+
+        .student-reels-dialog-input {
+            width:100%;
+            min-height:120px;
+            box-sizing:border-box;
+            border:1px solid #ddd;
+            border-radius:14px;
+            padding:13px;
+        }
+
+        .student-reels-dialog-buttons {
+            display:flex;
+            gap:10px;
+            margin-top:15px;
+        }
+
+        .student-reels-dialog-btn {
+            flex:1;
+            border:0;
+            padding:13px;
+            border-radius:12px;
+            cursor:pointer;
+            font-weight:700;
+        }
+
+        .student-reels-dialog-cancel {
+            background:#f1f3f5;
+        }
+
+        .student-reels-dialog-save {
+            background:#0095f6;
+            color:#fff;
+        }
+
+        .student-reels-dialog-delete {
+            background:#d93025;
+            color:#fff;
+        }
+
+        .student-reels-dialog-message {
+            min-height:20px;
+            margin-top:10px;
+            text-align:center;
+            font-size:13px;
+        }
+
+        .student-reels-share-list {
+            max-height:300px;
+            overflow-y:auto;
+            margin-top:12px;
+        }
+
+        .student-reels-user {
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:10px;
+            border-radius:12px;
+            cursor:pointer;
+        }
+
+        .student-reels-user:hover {
+            background:#f5f6f7;
+        }
+
+        .student-reels-user-avatar {
+            width:42px;
+            height:42px;
+            border-radius:50%;
+            object-fit:cover;
+            background:#eaf5ff;
+        }
+
+        .student-reels-empty {
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            flex-direction:column;
+            gap:12px;
+            color:#fff;
+            text-align:center;
+        }
+
+        .student-reels-empty-publish {
+            margin-top:8px;
+            border:0;
+            background:#0095f6;
+            color:#fff;
+            padding:13px 22px;
+            border-radius:13px;
+            cursor:pointer;
+        }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /* =====================================================
+       Reels Entry
+    ===================================================== */
+
+    function findStoriesContainer() {
+        return document.querySelector(".stories-container");
+    }
+
+    function ensureReelsLauncherRow() {
+        const storiesContainer = findStoriesContainer();
+        if (!storiesContainer) return null;
+
+        let row = document.getElementById("student-reels-launcher-row");
+
+        if (!row) {
+            row = document.createElement("div");
+            row.id = "student-reels-launcher-row";
+            storiesContainer.insertAdjacentElement("afterend", row);
+        }
+
+        return row;
+    }
+
+    function createReelsEntry() {
+
+        const container = ensureReelsLauncherRow();
+        if (!container) return false;
+
+        let entry =
+            document.getElementById(
+                "student-reels-entry"
+            );
+
+        if (!entry) {
+
+            entry =
+                document.createElement("button");
+
+            entry.id =
+                "student-reels-entry";
+
+            entry.type =
+                "button";
+
+            entry.innerHTML = `
+                <span id="student-reels-entry-inner">
+                    <span id="student-reels-entry-circle">
+                        <span id="student-reels-entry-icon"></span>
+                    </span>
+                    <span id="student-reels-entry-name">
+                        Reels
+                    </span>
+                </span>
+            `;
+
+            entry.addEventListener(
+                "click",
+                function (event) {
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    openReels(0);
+                }
+            );
+        }
+
+        if (entry.parentElement !== container) {
+            container.replaceChildren(entry);
+        }
+
+        resizeEntry();
+
+        return true;
+    }
+
+    function resizeEntry() {
+        const circle = document.getElementById("student-reels-entry-circle");
+        if (!circle) return;
+
+        circle.style.width = "52px";
+        circle.style.height = "52px";
+    }
+
+    function protectEntry() {
+
+        if (observerStarted) return;
+
+        observerStarted = true;
+
+        const observer =
+            new MutationObserver(
+                function () {
+
+                    if (
+                        !document.getElementById(
+                            "student-reels-entry"
+                        )
+                    ) {
+                        setTimeout(
+                            createReelsEntry,
+                            100
+                        );
+                    }
+
+                    resizeEntry();
+                }
+            );
+
+        observer.observe(
+            document.body,
+            {
+                childList:true,
+                subtree:true
+            }
+        );
+
+        window.addEventListener(
+            "resize",
+            resizeEntry
+        );
+    }
+
+    /* =====================================================
+       Main Overlay
+    ===================================================== */
+
+    function createOverlay() {
+
+        if (overlay) return;
+
+        overlay =
             document.createElement("div");
 
-        element.id =
-            "student-users-toast";
+        overlay.id =
+            "student-reels-overlay";
 
-        element.textContent =
-            message;
-
-        element.style.cssText = `
-            position:fixed;
-            left:50%;
-            bottom:30px;
-            transform:translateX(-50%);
-            z-index:100001100;
-            background:#111;
-            color:#fff;
-            padding:11px 16px;
-            border-radius:13px;
-            font-size:13px;
-            direction:rtl;
-            box-shadow:0 10px 35px rgba(0,0,0,.28);
+        overlay.innerHTML = `
+            <div id="student-reels-scroll"></div>
         `;
 
         document.body.appendChild(
-            element
-        );
-
-        setTimeout(
-            function () {
-                element.remove();
-            },
-            2200
+            overlay
         );
     }
 
-
     /* =====================================================
-       Reel Helpers
+       Edit / Delete Dialog
     ===================================================== */
 
-    function getReelFromButton(button) {
+    function createDialog() {
 
-        return button?.closest(
-            ".student-reel"
+        if (
+            document.getElementById(
+                "student-reels-dialog"
+            )
+        ) return;
+
+        const dialog =
+            document.createElement("div");
+
+        dialog.id =
+            "student-reels-dialog";
+
+        dialog.innerHTML = `
+            <div class="student-reels-dialog-box">
+
+                <div
+                    id="student-reels-dialog-title"
+                    class="student-reels-dialog-title"
+                ></div>
+
+                <textarea
+                    id="student-reels-dialog-input"
+                    class="student-reels-dialog-input"
+                ></textarea>
+
+                <div
+                    id="student-reels-dialog-message"
+                    class="student-reels-dialog-message"
+                ></div>
+
+                <div
+                    class="student-reels-dialog-buttons"
+                >
+
+                    <button
+                        id="student-reels-dialog-cancel"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-cancel
+                        "
+                        type="button"
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        id="student-reels-dialog-action"
+                        class="student-reels-dialog-btn"
+                        type="button"
+                    ></button>
+
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(
+            dialog
         );
-    }
 
+        dialog.addEventListener(
+            "click",
+            function (event) {
 
-    function getReelId(reel) {
-
-        return reel?.dataset?.id || "";
-    }
-
-
-    /* =====================================================
-       جلب Reel
-    ===================================================== */
-
-    async function getReel(
-        reelId
-    ) {
-
-        const client =
-            getSupabase();
-
-        if (
-            !client ||
-            !reelId
-        ) {
-            return null;
-        }
-
-        if (
-            usersCache[String(reelId)]
-        ) {
-            return usersCache[
-                String(reelId)
-            ];
-        }
-
-        try {
-
-            const {
-                data,
-                error
-            } =
-                await client
-                    .from("reels")
-                    .select(`
-                        id,
-                        user_id,
-                        video_url,
-                        caption,
-                        thumbnail_url,
-                        created_at
-                    `)
-                    .eq(
-                        "id",
-                        reelId
-                    )
-                    .maybeSingle();
-
-            if (error) {
-                throw error;
-            }
-
-            if (data) {
-
-                usersCache[
-                    String(data.id)
-                ] = data;
-            }
-
-            return data || null;
-
-        } catch (error) {
-
-            console.error(
-                "Get Reel error:",
-                error
-            );
-
-            return null;
-        }
-    }
-
-
-    /* =====================================================
-       Profile
-    ===================================================== */
-
-    async function getProfile(
-        userId
-    ) {
-
-        const client =
-            getSupabase();
-
-        if (
-            !client ||
-            !userId
-        ) {
-            return {};
-        }
-
-        if (
-            profileCache[userId]
-        ) {
-            return profileCache[userId];
-        }
-
-        try {
-
-            const {
-                data,
-                error
-            } =
-                await client
-                    .from("profiles")
-                    .select(`
-                        id,
-                        full_name,
-                        username,
-                        avatar_url
-                    `)
-                    .eq(
-                        "id",
-                        userId
-                    )
-                    .maybeSingle();
-
-            if (error) {
-                throw error;
-            }
-
-            profileCache[userId] =
-                data || {};
-
-            return data || {};
-
-        } catch (error) {
-
-            console.error(
-                "Profile error:",
-                error
-            );
-
-            return {};
-        }
-    }
-
-
-    /* =====================================================
-       Follow State
-    ===================================================== */
-
-    async function isFollowing(
-        targetUserId
-    ) {
-
-        const client =
-            getSupabase();
-
-        if (
-            !client ||
-            !currentUserId ||
-            !targetUserId
-        ) {
-            return false;
-        }
-
-        try {
-
-            const {
-                data,
-                error
-            } =
-                await client
-                    .from("follows")
-                    .select(`
-                        follower_id,
-                        following_id
-                    `)
-                    .eq(
-                        "follower_id",
-                        currentUserId
-                    )
-                    .eq(
-                        "following_id",
-                        targetUserId
-                    )
-                    .maybeSingle();
-
-            if (error) {
-                throw error;
-            }
-
-            return !!data;
-
-        } catch (error) {
-
-            console.error(
-                "Follow state error:",
-                error
-            );
-
-            return false;
-        }
-    }
-
-
-    /* =====================================================
-       Follow / Unfollow
-    ===================================================== */
-
-    async function toggleFollow(
-        targetUserId,
-        button
-    ) {
-
-        const client =
-            getSupabase();
-
-        if (!client) {
-            return;
-        }
-
-        if (!currentUserId) {
-            await loadCurrentUser();
-        }
-
-        if (!currentUserId) {
-
-            toast(
-                "يجب تسجيل الدخول أولًا."
-            );
-
-            return;
-        }
-
-        if (
-            String(currentUserId) ===
-            String(targetUserId)
-        ) {
-            return;
-        }
-
-        button.disabled = true;
-
-        try {
-
-            const following =
-                await isFollowing(
-                    targetUserId
-                );
-
-            if (following) {
-
-                const {
-                    error
-                } =
-                    await client
-                        .from("follows")
-                        .delete()
-                        .eq(
-                            "follower_id",
-                            currentUserId
-                        )
-                        .eq(
-                            "following_id",
-                            targetUserId
-                        );
-
-                if (error) {
-                    throw error;
+                if (
+                    event.target ===
+                    dialog
+                ) {
+                    closeDialog();
                 }
-
-                button.textContent =
-                    "متابعة";
-
-                button.style.background =
-                    "#0095f6";
-
-                button.style.color =
-                    "#fff";
-
-                toast(
-                    "تم إلغاء المتابعة."
-                );
-
-            } else {
-
-                const {
-                    error
-                } =
-                    await client
-                        .from("follows")
-                        .insert({
-
-                            follower_id:
-                                currentUserId,
-
-                            following_id:
-                                targetUserId
-                        });
-
-                if (error) {
-                    throw error;
-                }
-
-                button.textContent =
-                    "متابَع";
-
-                button.style.background =
-                    "#f1f3f5";
-
-                button.style.color =
-                    "#222";
-
-                await createFollowNotification(
-                    targetUserId
-                );
-
-                toast(
-                    "تمت المتابعة."
-                );
             }
+        );
 
-        } catch (error) {
-
-            console.error(
-                "Follow error:",
-                error
+        document
+            .getElementById(
+                "student-reels-dialog-cancel"
+            )
+            ?.addEventListener(
+                "click",
+                closeDialog
             );
-
-            toast(
-                error?.message ||
-                "تعذر تحديث المتابعة."
-            );
-
-        } finally {
-
-            button.disabled = false;
-        }
     }
 
-
-    /* =====================================================
-       Follow Notification
-    ===================================================== */
-
-    async function createFollowNotification(
-        targetUserId
-    ) {
-
-        const client =
-            getSupabase();
-
-        if (
-            !client ||
-            !currentUserId
-        ) {
-            return;
-        }
-
-        try {
-
-            await client
-                .from("notifications")
-                .insert({
-
-                    user_id:
-                        targetUserId,
-
-                    actor_id:
-                        currentUserId,
-
-                    type:
-                        "follow",
-
-                    title:
-                        "متابعة جديدة",
-
-                    body:
-                        "بدأ شخص ما بمتابعتك.",
-
-                    reference_type:
-                        "user",
-
-                    reference_id:
-                        currentUserId,
-
-                    is_read:
-                        false
-                });
-
-        } catch (error) {
-
-            console.warn(
-                "Follow notification skipped:",
-                error
-            );
-        }
-    }
-
-
-    /* =====================================================
-       نافذة الإرسال الداخلي
-    ===================================================== */
-
-    function closeSendDialog() {
+    function closeDialog() {
 
         const dialog =
             document.getElementById(
-                "student-reel-send-dialog"
+                "student-reels-dialog"
             );
 
-        if (dialog) {
-            dialog.remove();
-        }
+        dialog?.classList.remove(
+            "show"
+        );
     }
 
+    /* =====================================================
+       Comments Dialog
+    ===================================================== */
 
-    function openSendDialog(
-        reelId
-    ) {
+    function createCommentsDialog() {
 
-        closeSendDialog();
+        if (
+            document.getElementById(
+                "student-reel-comments"
+            )
+        ) return;
 
         const dialog =
             document.createElement(
@@ -582,106 +966,54 @@
             );
 
         dialog.id =
-            "student-reel-send-dialog";
-
-        dialog.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:100001200;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.55);
-            direction:rtl;
-        `;
+            "student-reel-comments";
 
         dialog.innerHTML = `
+            <div class="student-reel-comments-box">
 
-            <div style="
-                width:100%;
-                max-width:440px;
-                max-height:88vh;
-                overflow:hidden;
-                background:#fff;
-                border-radius:24px;
-                box-shadow:0 20px 70px rgba(0,0,0,.3);
-                display:flex;
-                flex-direction:column;
-            ">
+                <div class="student-reel-comments-header">
 
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    padding:16px;
-                    border-bottom:1px solid #eee;
-                ">
-
-                    <strong style="
-                        flex:1;
-                        font-size:18px;
-                    ">
-                        إرسال Reel
-                    </strong>
+                    <div
+                        class="student-reel-comments-title"
+                    >
+                        التعليقات
+                    </div>
 
                     <button
-                        id="student-send-close"
+                        id="student-reel-comments-close"
+                        class="student-reel-comments-close"
                         type="button"
-                        style="
-                            width:40px;
-                            height:40px;
-                            border:0;
-                            border-radius:50%;
-                            background:#f1f3f5;
-                            font-size:20px;
-                            cursor:pointer;
-                        "
                     >
                         ×
                     </button>
-
-                </div>
-
-                <div style="
-                    padding:14px;
-                    border-bottom:1px solid #eee;
-                ">
-
-                    <input
-                        id="student-send-search"
-                        type="text"
-                        placeholder="ابحث عن مستخدم..."
-                        style="
-                            width:100%;
-                            box-sizing:border-box;
-                            padding:12px 14px;
-                            border:1px solid #ddd;
-                            border-radius:14px;
-                            outline:none;
-                            font-size:14px;
-                        "
-                    >
-
                 </div>
 
                 <div
-                    id="student-send-list"
-                    style="
-                        flex:1;
-                        overflow-y:auto;
-                        padding:8px;
-                    "
+                    id="student-reel-comments-list"
+                    class="student-reel-comments-list"
+                ></div>
+
+                <form
+                    id="student-reel-comments-form"
+                    class="student-reel-comments-form"
                 >
 
-                    <div style="
-                        text-align:center;
-                        padding:30px;
-                        color:#999;
-                    ">
-                        جاري تحميل المستخدمين...
-                    </div>
+                    <textarea
+                        id="student-reel-comments-input"
+                        class="student-reel-comments-input"
+                        maxlength="1000"
+                        placeholder="اكتب تعليقًا..."
+                        required
+                    ></textarea>
 
-                </div>
+                    <button
+                        type="submit"
+                        class="student-reel-comments-send"
+                    >
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+
+                </form>
 
             </div>
         `;
@@ -690,59 +1022,217 @@
             dialog
         );
 
-        dialog
-            .querySelector(
-                "#student-send-close"
-            )
-            ?.addEventListener(
-                "click",
-                closeSendDialog
-            );
-
         dialog.addEventListener(
             "click",
-            function(event) {
+            function (event) {
 
                 if (
                     event.target ===
                     dialog
                 ) {
-                    closeSendDialog();
+                    closeComments();
                 }
-
             }
         );
 
-        dialog
-            .querySelector(
-                "#student-send-search"
+        document
+            .getElementById(
+                "student-reel-comments-close"
+            )
+            ?.addEventListener(
+                "click",
+                closeComments
+            );
+
+        document
+            .getElementById(
+                "student-reel-comments-form"
+            )
+            ?.addEventListener(
+                "submit",
+                submitComment
+            );
+    }
+
+    function closeComments() {
+
+        document
+            .getElementById(
+                "student-reel-comments"
+            )
+            ?.classList.remove(
+                "show"
+            );
+    }
+
+    /* =====================================================
+       Share Dialog
+    ===================================================== */
+
+    function createShareDialog() {
+
+        if (
+            document.getElementById(
+                "student-reel-share-dialog"
+            )
+        ) return;
+
+        const dialog =
+            document.createElement("div");
+
+        dialog.id =
+            "student-reel-share-dialog";
+
+        dialog.style.cssText = `
+            position:fixed;
+            inset:0;
+            z-index:100000020;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,.5);
+            padding:20px;
+        `;
+
+        dialog.innerHTML = `
+            <div
+                style="
+                    width:100%;
+                    max-width:430px;
+                    background:#fff;
+                    border-radius:22px;
+                    padding:20px;
+                    direction:rtl;
+                "
+            >
+
+                <div
+                    id="student-reel-share-title"
+                    style="
+                        font-size:20px;
+                        font-weight:800;
+                        margin-bottom:12px;
+                    "
+                >
+                    مشاركة Reel
+                </div>
+
+                <input
+                    id="student-reel-share-search"
+                    type="text"
+                    placeholder="ابحث عن مستخدم..."
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        border:1px solid #ddd;
+                        border-radius:12px;
+                        padding:12px;
+                        outline:none;
+                    "
+                >
+
+                <div
+                    id="student-reel-share-list"
+                    class="student-reels-share-list"
+                ></div>
+
+                <button
+                    id="student-reel-share-close"
+                    type="button"
+                    style="
+                        width:100%;
+                        margin-top:10px;
+                        border:0;
+                        border-radius:12px;
+                        padding:12px;
+                        background:#f1f3f5;
+                        cursor:pointer;
+                    "
+                >
+                    إغلاق
+                </button>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            dialog
+        );
+
+        document
+            .getElementById(
+                "student-reel-share-close"
+            )
+            ?.addEventListener(
+                "click",
+                closeShareDialog
+            );
+
+        document
+            .getElementById(
+                "student-reel-share-search"
             )
             ?.addEventListener(
                 "input",
-                function() {
+                function () {
 
-                    loadSendUsers(
-                        reelId,
-                        this.value
+                    const reelId =
+                        dialog.dataset.reelId;
+
+                    searchShareUsers(
+                        this.value,
+                        reelId
                     );
-
                 }
             );
+    }
 
-        loadSendUsers(
-            reelId,
-            ""
+    function openShareDialog(
+        reelId
+    ) {
+
+        createShareDialog();
+
+        const dialog =
+            document.getElementById(
+                "student-reel-share-dialog"
+            );
+
+        dialog.dataset.reelId =
+            String(reelId);
+
+        dialog.style.display =
+            "flex";
+
+        document
+            .getElementById(
+                "student-reel-share-search"
+            )
+            .value =
+            "";
+
+        searchShareUsers(
+            "",
+            reelId
         );
     }
 
+    function closeShareDialog() {
 
-    /* =====================================================
-       Users Search
-    ===================================================== */
+        const dialog =
+            document.getElementById(
+                "student-reel-share-dialog"
+            );
 
-    async function loadSendUsers(
-        reelId,
-        searchTerm
+        if (dialog) {
+            dialog.style.display =
+                "none";
+        }
+    }
+
+    async function searchShareUsers(
+        term,
+        reelId
     ) {
 
         const client =
@@ -750,25 +1240,19 @@
 
         const list =
             document.getElementById(
-                "student-send-list"
+                "student-reel-share-list"
             );
 
-        if (
-            !client ||
-            !list
-        ) {
-            return;
-        }
+        if (!client || !list) return;
 
-        list.innerHTML = `
-            <div style="
+        list.innerHTML =
+            `<div style="
+                padding:20px;
                 text-align:center;
-                padding:30px;
                 color:#999;
             ">
                 جاري التحميل...
-            </div>
-        `;
+            </div>`;
 
         try {
 
@@ -787,21 +1271,19 @@
                     )
                     .limit(30);
 
-            const clean =
-                String(
-                    searchTerm || ""
-                )
-                    .trim()
-                    .replace(
-                        /[%_]/g,
-                        ""
-                    );
+            if (term.trim()) {
 
-            if (clean) {
+                const safe =
+                    term
+                        .trim()
+                        .replace(
+                            /[%_]/g,
+                            ""
+                        );
 
                 query =
                     query.or(
-                        `username.ilike.%${clean}%,full_name.ilike.%${clean}%`
+                        `username.ilike.%${safe}%,full_name.ilike.%${safe}%`
                     );
             }
 
@@ -811,189 +1293,140 @@
             } =
                 await query;
 
-            if (error) {
-                throw error;
-            }
+            if (error) throw error;
 
-            const users =
-                data || [];
+            if (!data?.length) {
 
-            if (!users.length) {
-
-                list.innerHTML = `
-                    <div style="
+                list.innerHTML =
+                    `<div style="
+                        padding:20px;
                         text-align:center;
-                        padding:35px;
                         color:#999;
                     ">
                         لا يوجد مستخدمون.
-                    </div>
-                `;
+                    </div>`;
 
                 return;
             }
 
             list.innerHTML =
-                users
-                    .map(
-                        function(user) {
+                data.map(
+                    user => `
 
-                            return `
+                        <div
+                            class="student-reels-user"
+                            data-share-user="${escapeHTML(
+                                user.id
+                            )}"
+                        >
 
-                                <button
-                                    type="button"
-                                    data-send-user="${escapeHTML(
-                                        user.id
-                                    )}"
+                            ${
+                                user.avatar_url
+                                    ? `
+                                        <img
+                                            class="
+                                                student-reels-user-avatar
+                                            "
+                                            src="${escapeHTML(
+                                                user.avatar_url
+                                            )}"
+                                            alt=""
+                                        >
+                                      `
+                                    : `
+                                        <div
+                                            class="
+                                                student-reels-user-avatar
+                                            "
+                                            style="
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                color:#0095f6;
+                                                background:#eaf5ff;
+                                            "
+                                        >
+                                            <i class="
+                                                fa-solid
+                                                fa-user
+                                            "></i>
+                                        </div>
+                                      `
+                            }
+
+                            <div>
+
+                                <div
                                     style="
-                                        width:100%;
-                                        display:flex;
-                                        align-items:center;
-                                        gap:11px;
-                                        border:0;
-                                        background:#fff;
-                                        padding:10px;
-                                        border-radius:14px;
-                                        cursor:pointer;
-                                        text-align:right;
+                                        font-weight:800;
                                     "
                                 >
+                                    ${escapeHTML(
+                                        user.full_name ||
+                                        user.username ||
+                                        "مستخدم"
+                                    )}
+                                </div>
 
-                                    ${
-                                        user.avatar_url
-                                            ? `
-                                                <img
-                                                    src="${escapeHTML(
-                                                        user.avatar_url
-                                                    )}"
-                                                    alt=""
-                                                    style="
-                                                        width:46px;
-                                                        height:46px;
-                                                        border-radius:50%;
-                                                        object-fit:cover;
-                                                        flex-shrink:0;
-                                                    "
-                                                >
-                                              `
-                                            : `
-                                                <div style="
-                                                    width:46px;
-                                                    height:46px;
-                                                    border-radius:50%;
-                                                    background:#eaf5ff;
-                                                    color:#0095f6;
-                                                    display:flex;
-                                                    align-items:center;
-                                                    justify-content:center;
-                                                    flex-shrink:0;
-                                                ">
-                                                    <i class="
-                                                        fa-solid
-                                                        fa-user
-                                                    "></i>
-                                                </div>
-                                              `
-                                    }
+                                <div
+                                    style="
+                                        color:#888;
+                                        font-size:12px;
+                                        margin-top:3px;
+                                    "
+                                >
+                                    @${escapeHTML(
+                                        user.username ||
+                                        ""
+                                    )}
+                                </div>
 
-                                    <div style="
-                                        flex:1;
-                                        min-width:0;
-                                    ">
+                            </div>
 
-                                        <div style="
-                                            font-weight:800;
-                                            font-size:13px;
-                                        ">
-                                            ${escapeHTML(
-                                                user.full_name ||
-                                                user.username ||
-                                                "مستخدم"
-                                            )}
-                                        </div>
-
-                                        <div style="
-                                            color:#999;
-                                            font-size:11px;
-                                            margin-top:3px;
-                                        ">
-                                            @${escapeHTML(
-                                                user.username ||
-                                                ""
-                                            )}
-                                        </div>
-
-                                    </div>
-
-                                    <span style="
-                                        width:36px;
-                                        height:36px;
-                                        border-radius:50%;
-                                        display:flex;
-                                        align-items:center;
-                                        justify-content:center;
-                                        background:#f1f3f5;
-                                        color:#0095f6;
-                                    ">
-                                        <i class="
-                                            fa-solid
-                                            fa-paper-plane
-                                        "></i>
-                                    </span>
-
-                                </button>
-                            `;
-                        }
-                    )
-                    .join("");
+                        </div>
+                    `
+                ).join("");
 
             list
                 .querySelectorAll(
-                    "[data-send-user]"
+                    "[data-share-user]"
                 )
                 .forEach(
-                    function(button) {
+                    item => {
 
-                        button.addEventListener(
+                        item.addEventListener(
                             "click",
-                            function() {
+                            function () {
 
-                                sendReelToUser(
+                                sendReelMessage(
                                     reelId,
-                                    this.dataset.sendUser
+                                    this.dataset.shareUser
                                 );
 
                             }
                         );
-
                     }
                 );
 
         } catch (error) {
 
             console.error(
-                "Send users error:",
+                "Share users error:",
                 error
             );
 
-            list.innerHTML = `
-                <div style="
+            list.innerHTML =
+                `<div style="
+                    padding:20px;
                     text-align:center;
-                    padding:30px;
                     color:#d93025;
                 ">
                     تعذر تحميل المستخدمين.
-                </div>
-            `;
+                </div>`;
         }
     }
 
-
-    /* =====================================================
-       إرسال Reel داخل Student
-    ===================================================== */
-
-    async function sendReelToUser(
+    async function sendReelMessage(
         reelId,
         recipientId
     ) {
@@ -1001,31 +1434,9 @@
         const client =
             getSupabase();
 
-        if (
-            !client ||
-            !currentUserId
-        ) {
-
-            toast(
-                "يجب تسجيل الدخول أولًا."
-            );
-
-            return;
-        }
+        if (!client) return;
 
         try {
-
-            const reel =
-                await getReel(
-                    reelId
-                );
-
-            if (!reel) {
-
-                throw new Error(
-                    "تعذر العثور على الـReel."
-                );
-            }
 
             const {
                 error
@@ -1041,976 +1452,3085 @@
                             recipientId,
 
                         content:
-                            `🎬 Reel من Student\n#reel=${reelId}\n${reel.caption || ""}`
+                            `🎬 تم إرسال Reel إليك\n#reel=${reelId}`
                     });
 
-            if (error) {
-                throw error;
-            }
+            if (error) throw error;
 
-            try {
-
-                await client
-                    .from("notifications")
-                    .insert({
-
-                        user_id:
-                            recipientId,
-
-                        actor_id:
-                            currentUserId,
-
-                        type:
-                            "reel_share",
-
-                        title:
-                            "تم إرسال Reel إليك",
-
-                        body:
-                            "أرسل لك أحد المستخدمين Reel.",
-
-                        reference_type:
-                            "reel",
-
-                        reference_id:
-                            reelId,
-
-                        is_read:
-                            false
-                    });
-
-            } catch (notificationError) {
-
-                console.warn(
-                    "Share notification skipped:",
-                    notificationError
-                );
-            }
-
-            closeSendDialog();
+            closeShareDialog();
 
             toast(
-                "تم إرسال الـReel بنجاح."
+                "تم إرسال الـReel."
             );
 
         } catch (error) {
 
             console.error(
-                "Send Reel error:",
+                "Send reel error:",
                 error
             );
 
             toast(
-                error?.message ||
                 "تعذر إرسال الـReel."
             );
         }
     }
 
-
     /* =====================================================
-       نافذة المشاركة
+       Open Reels
     ===================================================== */
 
-    function closeShareMenu() {
+    async function openReels(
+        startIndex = 0
+    ) {
 
-        const dialog =
-            document.getElementById(
-                "student-reel-share-menu"
+        if (loading) return;
+
+        injectStyles();
+        createOverlay();
+        createCommentsDialog();
+
+        overlay.classList.add(
+            "show"
+        );
+
+        if (!reelsHistoryActive) {
+            history.pushState(
+                { studentReels: true },
+                "",
+                location.href
+            );
+            reelsHistoryActive = true;
+        }
+
+        await loadReels();
+
+        if (!reels.length) {
+            showEmpty();
+            return;
+        }
+
+        currentIndex =
+            Math.max(
+                0,
+                Math.min(
+                    startIndex,
+                    reels.length - 1
+                )
             );
 
-        if (dialog) {
-            dialog.remove();
+        renderReels();
+
+        setTimeout(
+            function () {
+
+                scrollToReel(
+                    currentIndex,
+                    false
+                );
+
+            },
+            100
+        );
+    }
+
+    function closeReels(fromHistory = false) {
+
+        overlay
+            ?.querySelectorAll("video")
+            .forEach(
+                video => video.pause()
+            );
+
+        overlay?.classList.remove(
+            "show"
+        );
+
+        window.StudentReelsCore?.destroy();
+
+        closeComments();
+        closeShareDialog();
+        closeDialog();
+
+        if (fromHistory) {
+            reelsHistoryActive = false;
+            return;
+        }
+
+        if (reelsHistoryActive && !closingFromHistory) {
+            closingFromHistory = true;
+            reelsHistoryActive = false;
+            history.back();
+            setTimeout(function () {
+                closingFromHistory = false;
+            }, 0);
         }
     }
 
+    window.addEventListener("popstate", function () {
+        if (reelsHistoryActive && overlay?.classList.contains("show")) {
+            closeReels(true);
+        }
+    });
 
-    async function openShareMenu(
+    /* =====================================================
+       Load Reels
+    ===================================================== */
+
+    async function loadReels() {
+
+        if (
+            reels.length &&
+            Date.now() - reelsCacheAt < REELS_CACHE_TTL
+        ) {
+            return;
+        }
+
+        loading = true;
+
+        const client =
+            await waitForSupabase();
+
+        if (!client) {
+
+            reels = [];
+            loading = false;
+            return;
+        }
+
+        try {
+
+            const {
+                data:{
+                    user
+                }
+            } =
+                await client.auth.getUser();
+
+            currentUserId =
+                user?.id || null;
+
+            const {
+                data,
+                error
+            } =
+                await client
+                    .from("reels")
+                    .select(`
+                        id,
+                        user_id,
+                        video_url,
+                        caption,
+                        thumbnail_url,
+                        visibility,
+                        created_at,
+                        updated_at
+                    `)
+                    .order(
+                        "created_at",
+                        {
+                            ascending:false
+                        }
+                    )
+                    .limit(100);
+
+            if (error) throw error;
+
+            reels =
+                data || [];
+
+            await loadProfiles(
+                client
+            );
+
+            await loadStats(
+                client
+            );
+
+            reelsCacheAt = Date.now();
+
+        } catch (error) {
+
+            console.error(
+                "Reels loading error:",
+                error
+            );
+
+            /*
+               حتى لو كانت visibility
+               غير موجودة لأي سبب،
+               نحاول تحميل النسخة القديمة.
+            */
+
+            try {
+
+                const {
+                    data
+                } =
+                    await client
+                        .from("reels")
+                        .select(`
+                            id,
+                            user_id,
+                            video_url,
+                            caption,
+                            thumbnail_url,
+                            created_at,
+                            updated_at
+                        `)
+                        .order(
+                            "created_at",
+                            {
+                                ascending:false
+                            }
+                        )
+                        .limit(100);
+
+                reels =
+                    data || [];
+
+                await loadProfiles(
+                    client
+                );
+
+                await loadStats(
+                    client
+                );
+
+                reelsCacheAt = Date.now();
+
+            } catch (fallbackError) {
+
+                console.error(
+                    fallbackError
+                );
+
+                reels = [];
+
+                toast(
+                    "تعذر تحميل الـReels."
+                );
+            }
+
+        } finally {
+
+            loading = false;
+        }
+    }
+
+    /* =====================================================
+       Profiles
+    ===================================================== */
+
+    async function loadProfiles(
+        client
+    ) {
+
+        profiles = {};
+
+        const ids =
+            Array.from(
+                new Set(
+                    reels.map(
+                        item =>
+                            item.user_id
+                    )
+                )
+            );
+
+        if (!ids.length) return;
+
+        const {
+            data,
+            error
+        } =
+            await client
+                .from("profiles")
+                .select(`
+                    id,
+                    full_name,
+                    username,
+                    avatar_url
+                `)
+                .in(
+                    "id",
+                    ids
+                );
+
+        if (error) return;
+
+        (data || []).forEach(
+            profile => {
+                profiles[
+                    profile.id
+                ] = profile;
+            }
+        );
+    }
+
+    /* =====================================================
+       Stats
+    ===================================================== */
+
+    async function loadStats(
+        client
+    ) {
+
+        const reelIds = reels.map(
+            reel => reel.id
+        );
+
+        reels.forEach(function (reel) {
+            reel.likeCount = 0;
+            reel.commentCount = 0;
+            reel.viewCount = 0;
+            reel.liked = false;
+        });
+
+        if (!reelIds.length) return;
+
+        try {
+
+            const requests = [
+                client
+                    .from("reel_likes")
+                    .select("reel_id")
+                    .in("reel_id", reelIds),
+
+                client
+                    .from("reel_comments")
+                    .select("reel_id")
+                    .in("reel_id", reelIds),
+
+                client
+                    .from("reel_views")
+                    .select("reel_id")
+                    .in("reel_id", reelIds)
+            ];
+
+            if (currentUserId) {
+                requests.push(
+                    client
+                        .from("reel_likes")
+                        .select("reel_id")
+                        .eq("user_id", currentUserId)
+                        .in("reel_id", reelIds)
+                );
+            }
+
+            const results = await Promise.all(requests);
+
+            results.forEach(function (result) {
+                if (result.error) throw result.error;
+            });
+
+            const likeCounts = {};
+            const commentCounts = {};
+            const viewCounts = {};
+            const likedIds = new Set(
+                (results[3]?.data || []).map(
+                    item => String(item.reel_id)
+                )
+            );
+
+            (results[0].data || []).forEach(function (item) {
+                likeCounts[item.reel_id] =
+                    (likeCounts[item.reel_id] || 0) + 1;
+            });
+
+            (results[1].data || []).forEach(function (item) {
+                commentCounts[item.reel_id] =
+                    (commentCounts[item.reel_id] || 0) + 1;
+            });
+
+            (results[2].data || []).forEach(function (item) {
+                viewCounts[item.reel_id] =
+                    (viewCounts[item.reel_id] || 0) + 1;
+            });
+
+            reels.forEach(function (reel) {
+                reel.likeCount = likeCounts[reel.id] || 0;
+                reel.commentCount = commentCounts[reel.id] || 0;
+                reel.viewCount = viewCounts[reel.id] || 0;
+                reel.liked = likedIds.has(String(reel.id));
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Stats loading error:",
+                error
+            );
+        }
+    }
+
+    /* =====================================================
+       Publish
+    ===================================================== */
+
+    function openPublishReel() {
+
+        closeReels();
+
+        if (
+            typeof window.openStudentReelCreator ===
+            "function"
+        ) {
+
+            window.openStudentReelCreator();
+
+        } else {
+
+            toast(
+                "نظام نشر الـReel غير جاهز."
+            );
+        }
+    }
+
+    /* =====================================================
+       Render
+    ===================================================== */
+
+    function renderReels() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (!container) return;
+
+        container.innerHTML =
+            reels.map(
+                function (reel,index) {
+
+                    const profile =
+                        profiles[
+                            reel.user_id
+                        ] || {};
+
+                    const username =
+                        profile.username ||
+                        profile.full_name ||
+                        "مستخدم";
+
+                    const owner =
+                        String(
+                            reel.user_id
+                        ) ===
+                        String(
+                            currentUserId
+                        );
+
+                    return `
+
+                    <section
+                        class="student-reel"
+                        data-id="${escapeHTML(
+                            reel.id
+                        )}"
+                        data-index="${index}"
+                        data-user-id="${escapeHTML(reel.user_id)}"
+                    >
+
+                        <video
+                            ${
+                                Math.abs(index - currentIndex) <= 1
+                                    ? `src="${escapeHTML(reel.video_url)}" data-loaded="true"`
+                                    : `data-loaded="false"`
+                            }
+                            data-src="${escapeHTML(
+                                reel.video_url
+                            )}"
+                            ${
+                                reel.thumbnail_url
+                                    ? `poster="${escapeHTML(
+                                        reel.thumbnail_url
+                                    )}"`
+                                    : ""
+                            }
+                            playsinline
+                            loop
+                            preload="auto"
+                        ></video>
+
+
+                        <div class="student-reel-top">
+
+                            <div class="student-reel-title">
+                                Reels
+                            </div>
+
+
+                            <button
+                                type="button"
+                                class="student-reel-publish"
+                                data-publish
+                            >
+                                🎬 نشر Reel
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="student-reel-close"
+                                data-close
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+
+                        <div class="student-reel-user">
+
+                            <div class="student-reel-user-row">
+                                ${
+                                    profile.avatar_url
+                                        ? `
+                                            <img
+                                                class="student-reel-avatar"
+                                                data-user-profile
+                                                src="${escapeHTML(profile.avatar_url)}"
+                                                alt=""
+                                            >
+                                          `
+                                        : `
+                                            <div
+                                                class="student-reel-avatar-placeholder"
+                                                data-user-profile
+                                            >
+                                                <i class="fa-solid fa-user"></i>
+                                            </div>
+                                          `
+                                }
+
+                                <div
+                                    class="student-reel-name"
+                                    data-user-profile
+                                >
+                                    @${escapeHTML(username)}
+                                </div>
+
+                                ${
+                                    owner
+                                        ? ""
+                                        : `<div class="student-reel-follow-slot" data-follow-slot></div>`
+                                }
+                            </div>
+
+                            ${
+                                reel.caption
+                                    ? `
+                                        <div
+                                            class="student-reel-caption"
+                                        >
+                                            ${escapeHTML(reel.caption)}
+                                        </div>
+                                      `
+                                    : ""
+                            }
+
+                        </div>
+
+
+                        <div class="student-reel-actions">
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="
+                                        student-reel-action
+                                        ${reel.liked ? "active" : ""}
+                                    "
+                                    data-like
+                                >
+                                    <i class="
+                                        ${
+                                            reel.liked
+                                                ? "fa-solid"
+                                                : "fa-regular"
+                                        }
+                                        fa-heart
+                                    "></i>
+                                </button>
+
+                                <span
+                                    class="student-reel-count"
+                                    data-like-count
+                                >
+                                    ${reel.likeCount || 0}
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-comments
+                                >
+                                    <i class="
+                                        fa-regular
+                                        fa-comment
+                                    "></i>
+                                </button>
+
+                                <span
+                                    class="student-reel-count"
+                                    data-comment-count
+                                >
+                                    ${reel.commentCount || 0}
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-share
+                                >
+                                    <i class="
+                                        fa-solid
+                                        fa-paper-plane
+                                    "></i>
+                                </button>
+
+                                <span class="student-reel-label">
+                                    مشاركة
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-save
+                                >
+                                    <i class="
+                                        fa-regular
+                                        fa-bookmark
+                                    "></i>
+                                </button>
+
+                                <span class="student-reel-label">
+                                    حفظ
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-volume
+                                >
+                                    <i class="
+                                        fa-solid
+                                        fa-volume-high
+                                    "></i>
+                                </button>
+
+                                <span class="student-reel-label">
+                                    صوت
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-views
+                                >
+                                    <i class="
+                                        fa-regular
+                                        fa-eye
+                                    "></i>
+                                </button>
+
+                                <span
+                                    class="student-reel-count"
+                                >
+                                    ${reel.viewCount || 0}
+                                </span>
+
+                            </div>
+
+
+                            <div class="student-reel-action-wrap">
+
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-more
+                                >
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
+
+                                <span class="student-reel-label">
+                                    المزيد
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        ${
+                            owner
+                                ? `
+                                    <div
+                                        class="student-reel-menu"
+                                        data-menu
+                                    >
+
+                                        <button
+                                            type="button"
+                                            data-edit
+                                        >
+                                            ✏️ تعديل
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            data-privacy
+                                        >
+                                            🔒 الخصوصية
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            data-delete
+                                            class="danger"
+                                        >
+                                            🗑️ حذف
+                                        </button>
+
+                                    </div>
+                                  `
+                                : `
+                                    <div
+                                        class="student-reel-menu"
+                                        data-menu
+                                    >
+
+                                        <button
+                                            type="button"
+                                            data-report
+                                        >
+                                            🚩 إبلاغ
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            data-hide
+                                        >
+                                            🚫 إخفاء Reel
+                                        </button>
+
+                                    </div>
+                                  `
+                        }
+
+                    </section>
+                    `;
+                }
+            )
+            .join("");
+
+        bindButtons();
+
+        window.StudentReelsCore?.observe(
+            container
+        );
+
+        window.StudentReelsCore?.prepareAround(
+            container,
+            currentIndex
+        );
+
+        bindScroll();
+    }
+
+    /* =====================================================
+       Like
+    ===================================================== */
+
+    async function toggleLike(
+        reelId,
+        button,
+        counter
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client) return;
+
+        if (!currentUserId) {
+            toast(
+                "يجب تسجيل الدخول أولًا."
+            );
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+
+            const {
+                data:existing
+            } =
+                await client
+                    .from("reel_likes")
+                    .select(
+                        "reel_id"
+                    )
+                    .eq(
+                        "reel_id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    )
+                    .maybeSingle();
+
+            let liked = false;
+
+            if (existing) {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from("reel_likes")
+                        .delete()
+                        .eq(
+                            "reel_id",
+                            reelId
+                        )
+                        .eq(
+                            "user_id",
+                            currentUserId
+                        );
+
+                if (error) throw error;
+
+            } else {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from("reel_likes")
+                        .insert({
+                            reel_id:
+                                reelId,
+                            user_id:
+                                currentUserId
+                        });
+
+                if (error) throw error;
+
+                liked = true;
+            }
+
+            const {
+                count
+            } =
+                await client
+                    .from("reel_likes")
+                    .select(
+                        "reel_id",
+                        {
+                            count:"exact",
+                            head:true
+                        }
+                    )
+                    .eq(
+                        "reel_id",
+                        reelId
+                    );
+
+            button.classList.toggle(
+                "active",
+                liked
+            );
+
+            const icon =
+                button.querySelector("i");
+
+            if (icon) {
+
+                icon.classList.toggle(
+                    "fa-solid",
+                    liked
+                );
+
+                icon.classList.toggle(
+                    "fa-regular",
+                    !liked
+                );
+            }
+
+            if (counter) {
+                counter.textContent =
+                    count || 0;
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Like error:",
+                error
+            );
+
+            toast(
+                "تعذر تحديث الإعجاب."
+            );
+
+        } finally {
+
+            button.disabled = false;
+        }
+    }
+
+    /* =====================================================
+       Comments
+    ===================================================== */
+
+    async function openComments(
         reelId
     ) {
 
-        closeShareMenu();
+        createCommentsDialog();
 
         const dialog =
-            document.createElement(
-                "div"
+            document.getElementById(
+                "student-reel-comments"
             );
 
-        dialog.id =
-            "student-reel-share-menu";
+        dialog.dataset.reelId =
+            String(reelId);
 
-        dialog.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:100001250;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.55);
-            direction:rtl;
-        `;
+        dialog.classList.add(
+            "show"
+        );
+
+        await loadComments(
+            reelId
+        );
+    }
+
+    async function loadComments(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        const list =
+            document.getElementById(
+                "student-reel-comments-list"
+            );
+
+        if (!client || !list) return;
+
+        list.innerHTML =
+            `
+            <div style="
+                padding:30px;
+                text-align:center;
+                color:#999;
+            ">
+                جاري التحميل...
+            </div>
+            `;
+
+        try {
+
+            const {
+                data,
+                error
+            } =
+                await client
+                    .from(
+                        "reel_comments"
+                    )
+                    .select(`
+                        id,
+                        reel_id,
+                        user_id,
+                        content,
+                        created_at
+                    `)
+                    .eq(
+                        "reel_id",
+                        reelId
+                    )
+                    .order(
+                        "created_at",
+                        {
+                            ascending:true
+                        }
+                    );
+
+            if (error) throw error;
+
+            const comments =
+                data || [];
+
+            if (!comments.length) {
+
+                list.innerHTML =
+                    `
+                    <div style="
+                        padding:50px 15px;
+                        text-align:center;
+                        color:#999;
+                    ">
+                        لا توجد تعليقات بعد.
+                    </div>
+                    `;
+
+                return;
+            }
+
+            const ids =
+                Array.from(
+                    new Set(
+                        comments.map(
+                            comment =>
+                                comment.user_id
+                        )
+                    )
+                );
+
+            let commentProfiles = {};
+
+            if (ids.length) {
+
+                const {
+                    data:profileData
+                } =
+                    await client
+                        .from("profiles")
+                        .select(`
+                            id,
+                            full_name,
+                            username,
+                            avatar_url
+                        `)
+                        .in(
+                            "id",
+                            ids
+                        );
+
+                (profileData || [])
+                    .forEach(
+                        profile => {
+
+                            commentProfiles[
+                                profile.id
+                            ] =
+                                profile;
+                        }
+                    );
+            }
+
+            list.innerHTML =
+                comments.map(
+                    comment => {
+
+                        const profile =
+                            commentProfiles[
+                                comment.user_id
+                            ] || {};
+
+                        const name =
+                            profile.username ||
+                            profile.full_name ||
+                            "مستخدم";
+
+                        return `
+                            <div
+                                class="student-reel-comment"
+                            >
+
+                                ${
+                                    profile.avatar_url
+                                        ? `
+                                            <img
+                                                class="
+                                                    student-reel-comment-avatar
+                                                "
+                                                src="${escapeHTML(
+                                                    profile.avatar_url
+                                                )}"
+                                                alt=""
+                                            >
+                                          `
+                                        : `
+                                            <div
+                                                class="
+                                                    student-reel-comment-avatar-placeholder
+                                                "
+                                            >
+                                                <i class="
+                                                    fa-solid
+                                                    fa-user
+                                                "></i>
+                                            </div>
+                                          `
+                                }
+
+                                <div
+                                    class="
+                                        student-reel-comment-body
+                                    "
+                                >
+
+                                    <div
+                                        class="
+                                            student-reel-comment-name
+                                        "
+                                    >
+                                        @${escapeHTML(
+                                            name
+                                        )}
+                                    </div>
+
+                                    <div
+                                        class="
+                                            student-reel-comment-text
+                                        "
+                                    >
+                                        ${escapeHTML(
+                                            comment.content
+                                        )}
+                                    </div>
+
+                                    <div
+                                        class="
+                                            student-reel-comment-time
+                                        "
+                                    >
+                                        ${formatDate(
+                                            comment.created_at
+                                        )}
+                                    </div>
+
+                                </div>
+
+                                ${
+                                    String(
+                                        comment.user_id
+                                    ) ===
+                                    String(
+                                        currentUserId
+                                    )
+                                        ? `
+                                            <button
+                                                type="button"
+                                                class="
+                                                    student-reel-comment-delete
+                                                "
+                                                data-comment-delete="${escapeHTML(
+                                                    comment.id
+                                                )}"
+                                            >
+                                                حذف
+                                            </button>
+                                          `
+                                        : ""
+                                }
+
+                            </div>
+                        `;
+                    }
+                )
+                .join("");
+
+            list
+                .querySelectorAll(
+                    "[data-comment-delete]"
+                )
+                .forEach(
+                    button => {
+
+                        button.onclick =
+                            function () {
+
+                                deleteComment(
+                                    this.dataset.commentDelete,
+                                    reelId
+                                );
+
+                            };
+                    }
+                );
+
+        } catch (error) {
+
+            console.error(
+                "Comments error:",
+                error
+            );
+
+            list.innerHTML =
+                `
+                <div style="
+                    padding:30px;
+                    text-align:center;
+                    color:#d93025;
+                ">
+                    تعذر تحميل التعليقات.
+                </div>
+                `;
+        }
+    }
+
+    async function submitComment(
+        event
+    ) {
+
+        event.preventDefault();
+
+        const client =
+            getSupabase();
+
+        if (!client || !currentUserId) {
+            toast(
+                "يجب تسجيل الدخول أولًا."
+            );
+            return;
+        }
+
+        const dialog =
+            document.getElementById(
+                "student-reel-comments"
+            );
+
+        const reelId =
+            dialog?.dataset.reelId;
+
+        const input =
+            document.getElementById(
+                "student-reel-comments-input"
+            );
+
+        const content =
+            input?.value.trim();
+
+        if (!reelId || !content) {
+            return;
+        }
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from(
+                        "reel_comments"
+                    )
+                    .insert({
+                        reel_id:
+                            reelId,
+                        user_id:
+                            currentUserId,
+                        content:
+                            content
+                    });
+
+            if (error) throw error;
+
+            input.value = "";
+
+            await loadComments(
+                reelId
+            );
+
+            await refreshCommentCount(
+                reelId
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Comment error:",
+                error
+            );
+
+            toast(
+                "تعذر نشر التعليق."
+            );
+        }
+    }
+
+    async function deleteComment(
+        commentId,
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client) return;
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from(
+                        "reel_comments"
+                    )
+                    .delete()
+                    .eq(
+                        "id",
+                        commentId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    );
+
+            if (error) throw error;
+
+            await loadComments(
+                reelId
+            );
+
+            await refreshCommentCount(
+                reelId
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Delete comment error:",
+                error
+            );
+
+            toast(
+                "تعذر حذف التعليق."
+            );
+        }
+    }
+
+    async function refreshCommentCount(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client) return;
+
+        const {
+            count
+        } =
+            await client
+                .from(
+                    "reel_comments"
+                )
+                .select(
+                    "id",
+                    {
+                        count:"exact",
+                        head:true
+                    }
+                )
+                .eq(
+                    "reel_id",
+                    reelId
+                );
+
+        const slide =
+            document.querySelector(
+                `.student-reel[data-id="${CSS.escape(
+                    String(reelId)
+                )}"]`
+            );
+
+        slide
+            ?.querySelector(
+                "[data-comment-count]"
+            )
+            ?.replaceChildren(
+                document.createTextNode(
+                    String(count || 0)
+                )
+            );
+    }
+
+    /* =====================================================
+       Share
+    ===================================================== */
+
+    async function shareReel(
+        reelId
+    ) {
+
+        const url =
+            `${location.origin}${location.pathname}#reel=${reelId}`;
+
+        if (
+            navigator.share
+        ) {
+
+            try {
+
+                await navigator.share({
+                    title:
+                        "Student Reel",
+                    text:
+                        "شاهد هذا الـReel",
+                    url:
+                        url
+                });
+
+                return;
+
+            } catch (error) {}
+        }
+
+        try {
+
+            await navigator.clipboard.writeText(
+                url
+            );
+
+            toast(
+                "تم نسخ رابط الـReel."
+            );
+
+        } catch (error) {
+
+            toast(
+                "تعذر نسخ الرابط."
+            );
+        }
+    }
+
+    /* =====================================================
+       Save
+    ===================================================== */
+
+    async function toggleSave(
+        reelId,
+        button
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client || !currentUserId) {
+            toast(
+                "يجب تسجيل الدخول أولًا."
+            );
+            return;
+        }
+
+        try {
+
+            const {
+                data:existing
+            } =
+                await client
+                    .from("saved_items")
+                    .select("id")
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    )
+                    .eq(
+                        "content_type",
+                        "reel"
+                    )
+                    .eq(
+                        "content_id",
+                        String(reelId)
+                    )
+                    .maybeSingle();
+
+            const icon =
+                button.querySelector("i");
+
+            if (existing) {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from("saved_items")
+                        .delete()
+                        .eq(
+                            "id",
+                            existing.id
+                        );
+
+                if (error) throw error;
+
+                button.classList.remove(
+                    "saved"
+                );
+
+                icon?.classList.remove(
+                    "fa-solid"
+                );
+
+                icon?.classList.add(
+                    "fa-regular"
+                );
+
+                toast(
+                    "تم إلغاء الحفظ."
+                );
+
+            } else {
+
+                const {
+                    error
+                } =
+                    await client
+                        .from("saved_items")
+                        .insert({
+
+                            user_id:
+                                currentUserId,
+
+                            content_type:
+                                "reel",
+
+                            content_id:
+                                String(reelId)
+                        });
+
+                if (error) throw error;
+
+                button.classList.add(
+                    "saved"
+                );
+
+                icon?.classList.remove(
+                    "fa-regular"
+                );
+
+                icon?.classList.add(
+                    "fa-solid"
+                );
+
+                toast(
+                    "تم حفظ الـReel."
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Save error:",
+                error
+            );
+
+            toast(
+                "تعذر تحديث المحفوظات."
+            );
+        }
+    }
+
+    /* =====================================================
+       Views
+    ===================================================== */
+
+    async function registerView(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        if (!client || !currentUserId) {
+            return;
+        }
+
+        try {
+
+            await client
+                .from("reel_views")
+                .upsert(
+                    {
+                        reel_id:
+                            reelId,
+                        user_id:
+                            currentUserId,
+                        viewed_at:
+                            new Date().toISOString()
+                    },
+                    {
+                        onConflict:
+                            "reel_id,user_id"
+                    }
+                );
+
+            const reel =
+                reels.find(
+                    item =>
+                        String(item.id) ===
+                        String(reelId)
+                );
+
+            if (reel) {
+
+                reel.viewCount =
+                    Math.max(
+                        Number(
+                            reel.viewCount ||
+                            0
+                        ),
+                        1
+                    );
+            }
+
+        } catch (error) {
+
+            console.error(
+                "View error:",
+                error
+            );
+        }
+    }
+
+    /* =====================================================
+       Privacy
+    ===================================================== */
+
+    function showPrivacyDialog(
+        reelId
+    ) {
+
+        const reel =
+            reels.find(
+                item =>
+                    String(item.id) ===
+                    String(reelId)
+            );
+
+        const current =
+            reel?.visibility ||
+            "public";
+
+        createDialog();
+
+        const dialog =
+            document.getElementById(
+                "student-reels-dialog"
+            );
 
         dialog.innerHTML = `
+            <div class="student-reels-dialog-box">
 
-            <div style="
-                width:100%;
-                max-width:390px;
-                background:#fff;
-                border-radius:24px;
-                padding:20px;
-                box-sizing:border-box;
-                box-shadow:0 20px 70px rgba(0,0,0,.3);
-            ">
+                <div class="student-reels-dialog-title">
+                    خصوصية الـReel
+                </div>
 
-                <div style="
-                    display:flex;
-                    align-items:center;
-                    margin-bottom:16px;
-                ">
+                <select
+                    id="student-reel-privacy-select"
+                    style="
+                        width:100%;
+                        padding:12px;
+                        border:1px solid #ddd;
+                        border-radius:12px;
+                    "
+                >
 
-                    <strong style="
-                        flex:1;
-                        font-size:19px;
-                    ">
-                        مشاركة Reel
-                    </strong>
+                    <option
+                        value="public"
+                        ${current === "public" ? "selected" : ""}
+                    >
+                        عام
+                    </option>
+
+                    <option
+                        value="followers"
+                        ${current === "followers" ? "selected" : ""}
+                    >
+                        المتابعون
+                    </option>
+
+                    <option
+                        value="private"
+                        ${current === "private" ? "selected" : ""}
+                    >
+                        خاص
+                    </option>
+
+                </select>
+
+                <div
+                    id="student-reels-dialog-message"
+                    class="
+                        student-reels-dialog-message
+                    "
+                ></div>
+
+                <div
+                    class="
+                        student-reels-dialog-buttons
+                    "
+                >
 
                     <button
-                        id="student-share-menu-close"
-                        type="button"
-                        style="
-                            width:40px;
-                            height:40px;
-                            border:0;
-                            border-radius:50%;
-                            background:#f1f3f5;
-                            font-size:20px;
-                            cursor:pointer;
+                        id="privacy-cancel"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-cancel
                         "
                     >
-                        ×
+                        إلغاء
+                    </button>
+
+                    <button
+                        id="privacy-save"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-save
+                        "
+                    >
+                        حفظ
                     </button>
 
                 </div>
-
-
-                <button
-                    id="student-share-internal"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:0;
-                        background:#f7f8fa;
-                        padding:16px;
-                        border-radius:15px;
-                        text-align:right;
-                        cursor:pointer;
-                        margin-bottom:10px;
-                        font-size:14px;
-                        font-weight:700;
-                    "
-                >
-                    📤 إرسال إلى مستخدم داخل Student
-                </button>
-
-
-                <button
-                    id="student-share-external"
-                    type="button"
-                    style="
-                        width:100%;
-                        border:0;
-                        background:#f7f8fa;
-                        padding:16px;
-                        border-radius:15px;
-                        text-align:right;
-                        cursor:pointer;
-                        font-size:14px;
-                        font-weight:700;
-                    "
-                >
-                    🔗 مشاركة خارجية / نسخ الرابط
-                </button>
-
             </div>
         `;
 
-        document.body.appendChild(
-            dialog
-        );
-
-
-        dialog
-            .querySelector(
-                "#student-share-menu-close"
+        document
+            .getElementById(
+                "privacy-cancel"
             )
             ?.addEventListener(
                 "click",
-                closeShareMenu
+                closeDialog
             );
 
-
-        dialog.addEventListener(
-            "click",
-            function(event) {
-
-                if (
-                    event.target ===
-                    dialog
-                ) {
-                    closeShareMenu();
-                }
-
-            }
-        );
-
-
-        dialog
-            .querySelector(
-                "#student-share-internal"
+        document
+            .getElementById(
+                "privacy-save"
             )
             ?.addEventListener(
                 "click",
-                function() {
+                function () {
 
-                    closeShareMenu();
-
-                    openSendDialog(
+                    updatePrivacy(
                         reelId
                     );
 
                 }
             );
 
-
-        dialog
-            .querySelector(
-                "#student-share-external"
-            )
-            ?.addEventListener(
-                "click",
-                async function() {
-
-                    closeShareMenu();
-
-                    const url =
-                        `${location.origin}${location.pathname}#reel=${reelId}`;
-
-                    try {
-
-                        if (
-                            navigator.share
-                        ) {
-
-                            await navigator.share({
-
-                                title:
-                                    "Student Reel",
-
-                                text:
-                                    "شاهد هذا الـReel",
-
-                                url:
-                                    url
-                            });
-
-                        } else {
-
-                            await navigator.clipboard.writeText(
-                                url
-                            );
-
-                            toast(
-                                "تم نسخ رابط الـReel."
-                            );
-                        }
-
-                    } catch (error) {
-
-                        try {
-
-                            await navigator.clipboard.writeText(
-                                url
-                            );
-
-                            toast(
-                                "تم نسخ الرابط."
-                            );
-
-                        } catch (
-                            copyError
-                        ) {
-
-                            toast(
-                                "تعذر مشاركة الرابط."
-                            );
-                        }
-                    }
-
-                }
-            );
+        dialog.classList.add(
+            "show"
+        );
     }
 
+    async function updatePrivacy(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        const select =
+            document.getElementById(
+                "student-reel-privacy-select"
+            );
+
+        const message =
+            document.getElementById(
+                "student-reels-dialog-message"
+            );
+
+        if (!client || !select) return;
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from("reels")
+                    .update({
+                        visibility:
+                            select.value,
+
+                        updated_at:
+                            new Date().toISOString()
+                    })
+                    .eq(
+                        "id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    );
+
+            if (error) throw error;
+
+            message.style.color =
+                "#16803c";
+
+            message.textContent =
+                "تم حفظ الخصوصية.";
+
+            setTimeout(
+                async function () {
+
+                    closeDialog();
+
+                    await openReels(
+                        currentIndex
+                    );
+
+                },
+                500
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Privacy error:",
+                error
+            );
+
+            message.style.color =
+                "#d93025";
+
+            message.textContent =
+                error?.message ||
+                "تعذر حفظ الخصوصية.";
+        }
+    }
 
     /* =====================================================
-       معلومات صاحب الـReel
+       Report
     ===================================================== */
 
-    async function openOwnerProfile(
+    async function reportReel(
+        reelId
+    ) {
+
+        const reason =
+            prompt(
+                "سبب الإبلاغ:"
+            );
+
+        if (!reason) return;
+
+        const client =
+            getSupabase();
+
+        if (!client || !currentUserId) return;
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from(
+                        "reel_reports"
+                    )
+                    .insert({
+
+                        reel_id:
+                            reelId,
+
+                        user_id:
+                            currentUserId,
+
+                        reason:
+                            reason.trim()
+                    });
+
+            if (error) throw error;
+
+            toast(
+                "تم إرسال البلاغ."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Report error:",
+                error
+            );
+
+            toast(
+                "تعذر إرسال البلاغ."
+            );
+        }
+    }
+
+    /* =====================================================
+       Edit
+    ===================================================== */
+
+    function showEditDialog(
         reelId
     ) {
 
         const reel =
-            await getReel(
-                reelId
+            reels.find(
+                item =>
+                    String(item.id) ===
+                    String(reelId)
             );
 
-        if (!reel) {
-
-            toast(
-                "تعذر تحميل بيانات المستخدم."
-            );
-
-            return;
-        }
-
-        const profile =
-            await getProfile(
-                reel.user_id
-            );
-
-        await showUserDialog(
-            reel.user_id,
-            profile
-        );
-    }
-
-
-    async function openProfileByUserId(userId) {
-
-        if (!userId) {
-            toast("تعذر تحديد حساب المستخدم.");
-            return;
-        }
-
-        const profile = await getProfile(userId);
-        await showUserDialog(userId, profile || {});
-    }
-
-
-    function closeUserDialog() {
+        createDialog();
 
         const dialog =
             document.getElementById(
-                "student-reel-user-dialog"
+                "student-reels-dialog"
             );
-
-        if (dialog) {
-            dialog.remove();
-        }
-    }
-
-
-    async function showUserDialog(
-        userId,
-        profile
-    ) {
-
-        closeUserDialog();
-
-        const dialog =
-            document.createElement(
-                "div"
-            );
-
-        dialog.id =
-            "student-reel-user-dialog";
-
-        dialog.style.cssText = `
-            position:fixed;
-            inset:0;
-            z-index:100001150;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-            background:rgba(0,0,0,.52);
-            direction:rtl;
-        `;
 
         dialog.innerHTML = `
-
-            <div style="
-                width:100%;
-                max-width:380px;
-                background:#fff;
-                border-radius:24px;
-                padding:22px;
-                text-align:center;
-                box-sizing:border-box;
-            ">
-
-                <button
-                    id="student-user-dialog-close"
-                    type="button"
-                    style="
-                        display:block;
-                        margin-right:auto;
-                        width:40px;
-                        height:40px;
-                        border:0;
-                        border-radius:50%;
-                        background:#f1f3f5;
-                        cursor:pointer;
-                        font-size:20px;
-                    "
-                >
-                    ×
-                </button>
-
-                ${
-                    profile.avatar_url
-                        ? `
-                            <img
-                                src="${escapeHTML(
-                                    profile.avatar_url
-                                )}"
-                                alt=""
-                                style="
-                                    width:86px;
-                                    height:86px;
-                                    border-radius:50%;
-                                    object-fit:cover;
-                                    margin-bottom:12px;
-                                "
-                            >
-                          `
-                        : `
-                            <div style="
-                                width:86px;
-                                height:86px;
-                                margin:0 auto 12px;
-                                border-radius:50%;
-                                background:#eaf5ff;
-                                color:#0095f6;
-                                display:flex;
-                                align-items:center;
-                                justify-content:center;
-                                font-size:32px;
-                            ">
-                                <i class="
-                                    fa-solid
-                                    fa-user
-                                "></i>
-                            </div>
-                          `
-                }
-
-                <div style="
-                    font-size:19px;
-                    font-weight:800;
-                ">
-                    ${escapeHTML(
-                        profile.full_name ||
-                        profile.username ||
-                        "مستخدم"
-                    )}
-                </div>
-
-                <div style="
-                    margin-top:5px;
-                    color:#888;
-                    font-size:13px;
-                ">
-                    @${escapeHTML(
-                        profile.username ||
-                        ""
-                    )}
-                </div>
+            <div class="student-reels-dialog-box">
 
                 <div
-                    id="student-user-follow-area"
-                    style="
-                        margin-top:18px;
+                    class="student-reels-dialog-title"
+                >
+                    تعديل Reel
+                </div>
+
+                <textarea
+                    id="edit-reel-caption"
+                    class="
+                        student-reels-dialog-input
+                    "
+                >${escapeHTML(
+                    reel?.caption || ""
+                )}</textarea>
+
+                <div
+                    id="student-reels-dialog-message"
+                    class="
+                        student-reels-dialog-message
                     "
                 ></div>
+
+                <div
+                    class="
+                        student-reels-dialog-buttons
+                    "
+                >
+
+                    <button
+                        id="edit-cancel"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-cancel
+                        "
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        id="edit-save"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-save
+                        "
+                    >
+                        حفظ
+                    </button>
+
+                </div>
 
             </div>
         `;
 
-        document.body.appendChild(
-            dialog
-        );
-
-        dialog
-            .querySelector(
-                "#student-user-dialog-close"
+        document
+            .getElementById(
+                "edit-cancel"
             )
             ?.addEventListener(
                 "click",
-                closeUserDialog
+                closeDialog
             );
 
-        dialog.addEventListener(
-            "click",
-            function(event) {
+        document
+            .getElementById(
+                "edit-save"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
 
-                if (
-                    event.target ===
-                    dialog
-                ) {
-                    closeUserDialog();
+                    updateCaption(
+                        reelId
+                    );
                 }
+            );
 
+        dialog.classList.add(
+            "show"
+        );
+    }
+
+    async function updateCaption(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        const input =
+            document.getElementById(
+                "edit-reel-caption"
+            );
+
+        const message =
+            document.getElementById(
+                "student-reels-dialog-message"
+            );
+
+        if (!client || !input) return;
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from("reels")
+                    .update({
+
+                        caption:
+                            input.value.trim() ||
+                            null,
+
+                        updated_at:
+                            new Date().toISOString()
+
+                    })
+                    .eq(
+                        "id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    );
+
+            if (error) throw error;
+
+            message.style.color =
+                "#16803c";
+
+            message.textContent =
+                "تم تعديل الـReel.";
+
+            setTimeout(
+                async function () {
+
+                    closeDialog();
+
+                    await openReels(
+                        currentIndex
+                    );
+
+                },
+                500
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Edit error:",
+                error
+            );
+
+            message.style.color =
+                "#d93025";
+
+            message.textContent =
+                error?.message ||
+                "تعذر تعديل الـReel.";
+        }
+    }
+
+    /* =====================================================
+       Delete
+    ===================================================== */
+
+    function showDeleteDialog(
+        reelId
+    ) {
+
+        createDialog();
+
+        const dialog =
+            document.getElementById(
+                "student-reels-dialog"
+            );
+
+        dialog.innerHTML = `
+            <div class="student-reels-dialog-box">
+
+                <div
+                    class="student-reels-dialog-title"
+                >
+                    حذف Reel
+                </div>
+
+                <div
+                    style="
+                        line-height:1.8;
+                        color:#666;
+                    "
+                >
+                    هل أنت متأكد من حذف هذا الـReel؟
+                </div>
+
+                <div
+                    id="student-reels-dialog-message"
+                    class="
+                        student-reels-dialog-message
+                    "
+                ></div>
+
+                <div
+                    class="
+                        student-reels-dialog-buttons
+                    "
+                >
+
+                    <button
+                        id="delete-cancel"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-cancel
+                        "
+                    >
+                        إلغاء
+                    </button>
+
+                    <button
+                        id="delete-confirm"
+                        class="
+                            student-reels-dialog-btn
+                            student-reels-dialog-delete
+                        "
+                    >
+                        حذف
+                    </button>
+
+                </div>
+            </div>
+        `;
+
+        document
+            .getElementById(
+                "delete-cancel"
+            )
+            ?.addEventListener(
+                "click",
+                closeDialog
+            );
+
+        document
+            .getElementById(
+                "delete-confirm"
+            )
+            ?.addEventListener(
+                "click",
+                function () {
+
+                    deleteReel(
+                        reelId
+                    );
+                }
+            );
+
+        dialog.classList.add(
+            "show"
+        );
+    }
+
+    async function deleteReel(
+        reelId
+    ) {
+
+        const client =
+            getSupabase();
+
+        const message =
+            document.getElementById(
+                "student-reels-dialog-message"
+            );
+
+        if (!client) return;
+
+        try {
+
+            const {
+                error
+            } =
+                await client
+                    .from("reels")
+                    .delete()
+                    .eq(
+                        "id",
+                        reelId
+                    )
+                    .eq(
+                        "user_id",
+                        currentUserId
+                    );
+
+            if (error) throw error;
+
+            message.style.color =
+                "#16803c";
+
+            message.textContent =
+                "تم حذف الـReel.";
+
+            setTimeout(
+                async function () {
+
+                    closeDialog();
+
+                    await openReels(
+                        Math.max(
+                            0,
+                            currentIndex - 1
+                        )
+                    );
+
+                },
+                500
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Delete error:",
+                error
+            );
+
+            message.style.color =
+                "#d93025";
+
+            message.textContent =
+                error?.message ||
+                "تعذر حذف الـReel.";
+        }
+    }
+
+    /* =====================================================
+       Scroll
+    ===================================================== */
+
+    function bindScroll() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (!container) return;
+
+        container.addEventListener(
+            "scroll",
+            function () {
+
+                clearTimeout(
+                    scrollTimer
+                );
+
+                scrollTimer =
+                    setTimeout(
+                        function () {
+
+                            const index =
+                                Math.round(
+                                    container.scrollTop /
+                                    window.innerHeight
+                                );
+
+                            if (
+                                index !==
+                                currentIndex
+                            ) {
+
+                                currentIndex =
+                                    index;
+
+                                playCurrent();
+
+                                const reel =
+                                    reels[
+                                        currentIndex
+                                    ];
+
+                                if (reel) {
+
+                                    registerView(
+                                        reel.id
+                                    );
+                                }
+                            }
+
+                        },
+                        120
+                    );
+            },
+            {
+                passive:true
             }
         );
+    }
 
+    function scrollToReel(
+        index,
+        smooth = true
+    ) {
 
-        const area =
-            dialog.querySelector(
-                "#student-user-follow-area"
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
             );
 
+        if (!container) return;
 
-        if (
-            String(userId) ===
-            String(currentUserId)
-        ) {
+        container.scrollTo({
 
-            area.innerHTML = `
-                <div style="
-                    padding:12px;
-                    border-radius:13px;
-                    background:#f1f3f5;
-                    color:#777;
-                ">
-                    هذا حسابك
-                </div>
-            `;
+            top:
+                index *
+                window.innerHeight,
+
+            behavior:
+                smooth
+                    ? "smooth"
+                    : "auto"
+        });
+
+        currentIndex =
+            index;
+
+        setTimeout(
+            function () {
+
+                playCurrent();
+
+                const reel =
+                    reels[
+                        currentIndex
+                    ];
+
+                if (reel) {
+                    registerView(
+                        reel.id
+                    );
+                }
+
+            },
+            80
+        );
+    }
+
+    function playCurrent() {
+
+        if (!overlay) return;
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (window.StudentReelsCore?.setActive) {
+            window.StudentReelsCore.setActive(
+                container,
+                currentIndex
+            );
 
             return;
         }
 
-
-        const following =
-            await isFollowing(
-                userId
-            );
-
-
-        const button =
-            document.createElement(
-                "button"
-            );
-
-
-        button.type =
-            "button";
-
-
-        button.textContent =
-            following
-                ? "متابَع"
-                : "متابعة";
-
-
-        button.style.cssText = `
-            width:100%;
-            border:0;
-            padding:13px;
-            border-radius:13px;
-            cursor:pointer;
-            font-weight:800;
-            background:
-                ${
-                    following
-                        ? "#f1f3f5"
-                        : "#0095f6"
-                };
-            color:
-                ${
-                    following
-                        ? "#222"
-                        : "#fff"
-                };
-        `;
-
-
-        button.addEventListener(
-            "click",
-            function() {
-
-                toggleFollow(
-                    userId,
-                    button
-                );
-
-            }
-        );
-
-
-        area.appendChild(
-            button
-        );
+        overlay
+            .querySelectorAll("video")
+            .forEach(function (video, index) {
+                if (index === currentIndex) {
+                    video.play().catch(function () {});
+                } else {
+                    video.pause();
+                }
+            });
     }
 
-
     /* =====================================================
-       تحسين الـReels
+       Buttons
     ===================================================== */
 
-    async function enhanceReels() {
+    function bindButtons() {
 
-        await loadCurrentUser();
-
-        const reels =
-            document.querySelectorAll(
-                ".student-reel"
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
             );
 
+        if (!container) return;
 
-        for (
-            const reel of reels
-        ) {
+        /* Publish */
 
-            const reelId =
-                getReelId(
-                    reel
-                );
+        container
+            .querySelectorAll(
+                "[data-publish]"
+            )
+            .forEach(
+                button => {
 
+                    button.onclick =
+                        openPublishReel;
+                }
+            );
 
-            if (!reelId) {
-                continue;
-            }
+        /* Close */
 
+        container
+            .querySelectorAll(
+                "[data-close]"
+            )
+            .forEach(
+                button => {
 
-            const data =
-                await getReel(
-                    reelId
-                );
+                    button.onclick =
+                        closeReels;
+                }
+            );
 
+        /* Video sound */
 
-            if (!data) {
-                continue;
-            }
+        container
+            .querySelectorAll(
+                "video"
+            )
+            .forEach(
+                video => {
 
-
-            usersCache[
-                String(reelId)
-            ] = data;
-
-
-            profileCache[
-                String(data.user_id)
-            ] =
-                profileCache[
-                    String(data.user_id)
-                ] ||
-                await getProfile(
-                    data.user_id
-                );
-
-
-            reel.dataset.userId =
-                data.user_id;
-
-
-            const owner =
-                String(
-                    data.user_id
-                ) ===
-                String(
-                    currentUserId
-                );
-
-
-            /* =============================================
-               فتح حساب المستخدم من الصورة أو اليوزر
-            ============================================= */
-
-            reel
-                .querySelectorAll("[data-user-profile], .student-reel-name")
-                .forEach(function(element) {
-
-                    if (element.dataset.userBound) return;
-
-                    element.dataset.userBound = "true";
-                    element.style.cursor = "pointer";
-
-                    element.addEventListener("click", function(event) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        openProfileByUserId(data.user_id);
-                    });
-                });
-
-
-            /* =============================================
-               زر المتابعة
-            ============================================= */
-
-            if (!owner) {
-
-                const followSlot =
-                    reel.querySelector("[data-follow-slot]") ||
-                    reel.querySelector(".student-reel-user-row") ||
-                    reel.querySelector(".student-reel-top");
-
-                reel.querySelectorAll("[data-user-follow]").forEach(function(existing) {
-                    if (!existing.dataset.realFollowButton) existing.remove();
-                });
-
-                if (
-                    followSlot &&
-                    !followSlot.querySelector("[data-user-follow]")
-                ) {
-
-                    const follow =
-                        document.createElement(
-                            "button"
-                        );
-
-
-                    follow.type =
-                        "button";
-
-
-                    follow.dataset.userFollow = "true";
-                    follow.dataset.realFollowButton = "true";
-
-
-                    const following =
-                        await isFollowing(
-                            data.user_id
-                        );
-
-
-                    follow.textContent =
-                        following
-                            ? "متابَع"
-                            : "متابعة";
-
-
-                    follow.style.cssText = `
-                        min-width:76px;
-                        height:38px;
-                        border:1.5px solid rgba(255,255,255,.95);
-                        padding:0 15px;
-                        border-radius:11px;
-                        cursor:pointer;
-                        font-size:14px;
-                        font-weight:900;
-                        font-family:inherit;
-                        line-height:1;
-                        background:${following ? "rgba(255,255,255,.18)" : "rgba(0,0,0,.18)"};
-                        color:#fff;
-                        text-shadow:0 1px 4px rgba(0,0,0,.8);
-                        backdrop-filter:blur(5px);
-                        -webkit-backdrop-filter:blur(5px);
-                        box-shadow:0 1px 4px rgba(0,0,0,.25);
-                        transition:transform .15s ease, background .15s ease;
-                    `;
-
-
-                    follow.addEventListener(
+                    video.addEventListener(
                         "click",
-                        function(event) {
+                        function () {
 
-                            event.preventDefault();
-                            event.stopPropagation();
+                            video.muted =
+                                !video.muted;
 
-                            toggleFollow(
-                                data.user_id,
-                                follow
-                            );
+                            if (
+                                video.paused
+                            ) {
 
+                                video.play()
+                                    .catch(
+                                        function () {}
+                                    );
+                            }
                         }
                     );
-
-
-                    followSlot.appendChild(follow);
-                }
-            }
-
-
-            /* =============================================
-               تحويل زر المشاركة الأصلي
-            ============================================= */
-
-            const shareButton =
-                reel.querySelector(
-                    "[data-share]"
-                );
-
-
-            if (
-                shareButton &&
-                !shareButton.dataset.studentShareConverted
-            ) {
-
-                shareButton.removeAttribute(
-                    "data-share"
-                );
-
-
-                shareButton.dataset.studentShare =
-                    "true";
-
-
-                shareButton.dataset.studentShareConverted =
-                    "true";
-            }
-
-        }
-    }
-
-
-    /* =====================================================
-       أزرار المستخدمين والمشاركة
-    ===================================================== */
-
-    function bindUserButtons() {
-
-        /* ---------------------------------------------
-           زر المشاركة
-        --------------------------------------------- */
-
-        document.addEventListener(
-            "click",
-            function(event) {
-
-                const shareButton =
-                    event.target.closest(
-                        ".student-reel [data-student-share]"
-                    );
-
-
-                if (shareButton) {
-
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-
-
-                    const reel =
-                        getReelFromButton(
-                            shareButton
-                        );
-
-
-                    const reelId =
-                        getReelId(
-                            reel
-                        );
-
-
-                    if (reelId) {
-
-                        openShareMenu(
-                            reelId
-                        );
-                    }
-
-
-                    return;
-                }
-
-            },
-            true
-        );
-
-
-        /* ---------------------------------------------
-           متابعة
-        --------------------------------------------- */
-
-        document.addEventListener(
-            "click",
-            function(event) {
-
-                const follow =
-                    event.target.closest(
-                        ".student-reel [data-user-follow]"
-                    );
-
-
-                if (!follow) {
-                    return;
-                }
-
-
-                event.preventDefault();
-                event.stopImmediatePropagation();
-
-            },
-            false
-        );
-    }
-
-
-    /* =====================================================
-       مراقبة DOM
-    ===================================================== */
-
-    function observeDOM() {
-
-        const observer =
-            new MutationObserver(
-                function() {
-
-                    enhanceReels();
-
                 }
             );
 
+        /* Like */
 
-        observer.observe(
-            document.body,
-            {
-                childList:true,
-                subtree:true
-            }
-        );
+        container
+            .querySelectorAll(
+                "[data-like]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                reel?.dataset.id;
+
+                            const counter =
+                                reel?.querySelector(
+                                    "[data-like-count]"
+                                );
+
+                            toggleLike(
+                                id,
+                                button,
+                                counter
+                            );
+
+                        };
+                }
+            );
+
+        /* Comments */
+
+        container
+            .querySelectorAll(
+                "[data-comments]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                reel?.dataset.id;
+
+                            openComments(
+                                id
+                            );
+                        };
+                }
+            );
+
+        /* Share */
+
+        container
+            .querySelectorAll(
+                "[data-share]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                reel?.dataset.id;
+
+                            openShareDialog(
+                                id
+                            );
+                        };
+                }
+            );
+
+        /* Save */
+
+        container
+            .querySelectorAll(
+                "[data-save]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                reel?.dataset.id;
+
+                            toggleSave(
+                                id,
+                                button
+                            );
+                        };
+                }
+            );
+
+        /* Volume */
+
+        container
+            .querySelectorAll(
+                "[data-volume]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const video =
+                                reel?.querySelector(
+                                    "video"
+                                );
+
+                            if (!video) return;
+
+                            video.muted =
+                                !video.muted;
+
+                            const icon =
+                                button.querySelector(
+                                    "i"
+                                );
+
+                            if (
+                                video.muted
+                            ) {
+
+                                icon?.classList.remove(
+                                    "fa-volume-high"
+                                );
+
+                                icon?.classList.add(
+                                    "fa-volume-xmark"
+                                );
+
+                            } else {
+
+                                icon?.classList.remove(
+                                    "fa-volume-xmark"
+                                );
+
+                                icon?.classList.add(
+                                    "fa-volume-high"
+                                );
+                            }
+                        };
+                }
+            );
+
+        /* More */
+
+        container
+            .querySelectorAll(
+                "[data-more]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            reel
+                                ?.querySelector(
+                                    "[data-menu]"
+                                )
+                                ?.classList.toggle(
+                                    "show"
+                                );
+                        };
+                }
+            );
+
+        /* Edit */
+
+        container
+            .querySelectorAll(
+                "[data-edit]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            const id =
+                                reel?.dataset.id;
+
+                            showEditDialog(
+                                id
+                            );
+                        };
+                }
+            );
+
+        /* Privacy */
+
+        container
+            .querySelectorAll(
+                "[data-privacy]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            showPrivacyDialog(
+                                reel?.dataset.id
+                            );
+                        };
+                }
+            );
+
+        /* Delete */
+
+        container
+            .querySelectorAll(
+                "[data-delete]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            showDeleteDialog(
+                                reel?.dataset.id
+                            );
+                        };
+                }
+            );
+
+        /* Report */
+
+        container
+            .querySelectorAll(
+                "[data-report]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            reportReel(
+                                reel?.dataset.id
+                            );
+                        };
+                }
+            );
+
+        /* Hide */
+
+        container
+            .querySelectorAll(
+                "[data-hide]"
+            )
+            .forEach(
+                button => {
+
+                    button.onclick =
+                        function () {
+
+                            const reel =
+                                button.closest(
+                                    ".student-reel"
+                                );
+
+                            reel.style.display =
+                                "none";
+
+                            toast(
+                                "تم إخفاء الـReel."
+                            );
+                        };
+                }
+            );
     }
 
+    /* =====================================================
+       Empty
+    ===================================================== */
+
+    function showEmpty() {
+
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
+            );
+
+        if (!container) return;
+
+        container.innerHTML = `
+
+            <div
+                class="student-reels-empty"
+            >
+
+                <div
+                    style="
+                        font-size:65px;
+                    "
+                >
+                    🎬
+                </div>
+
+                <div
+                    style="
+                        font-size:19px;
+                        font-weight:800;
+                    "
+                >
+                    لا توجد Reels بعد
+                </div>
+
+                <div
+                    style="
+                        color:#aaa;
+                        font-size:13px;
+                    "
+                >
+                    كن أول من ينشر Reel
+                </div>
+
+                <button
+                    type="button"
+                    class="
+                        student-reels-empty-publish
+                    "
+                    onclick="
+                        window.openStudentReelCreator &&
+                        window.openStudentReelCreator()
+                    "
+                >
+                    🎬 نشر أول Reel
+                </button>
+
+            </div>
+        `;
+    }
+
+    /* =====================================================
+       Toast
+    ===================================================== */
+
+    function toast(
+        message
+    ) {
+
+        const element =
+            document.createElement(
+                "div"
+            );
+
+        element.textContent =
+            message;
+
+        element.style.position =
+            "fixed";
+
+        element.style.left =
+            "50%";
+
+        element.style.bottom =
+            "30px";
+
+        element.style.transform =
+            "translateX(-50%)";
+
+        element.style.zIndex =
+            "100000000";
+
+        element.style.background =
+            "#fff";
+
+        element.style.color =
+            "#222";
+
+        element.style.padding =
+            "11px 16px";
+
+        element.style.borderRadius =
+            "12px";
+
+        element.style.direction =
+            "rtl";
+
+        element.style.boxShadow =
+            "0 8px 30px rgba(0,0,0,.25)";
+
+        document.body.appendChild(
+            element
+        );
+
+        setTimeout(
+            function () {
+                element.remove();
+            },
+            2200
+        );
+    }
 
     /* =====================================================
        API
     ===================================================== */
 
-    window.StudentReelsUsers =
-        window.StudentReelsUsers ||
-        {};
+    window.openStudentReels =
+        openReels;
 
-
-    window.StudentReelsUsers.openSend =
-        openSendDialog;
-
-
-    window.StudentReelsUsers.openShare =
-        openShareMenu;
-
-
-    window.StudentReelsUsers.toggleFollow =
-        toggleFollow;
-
-    window.StudentReelsUsers.openProfileByUserId =
-        openProfileByUserId;
-
+    window.closeStudentReels =
+        closeReels;
 
     /* =====================================================
        Start
     ===================================================== */
 
-    async function start() {
+    function start() {
 
-        await loadCurrentUser();
+        injectStyles();
+        createOverlay();
+        createCommentsDialog();
+        createReelsEntry();
+        protectEntry();
+    }
 
-        bindUserButtons();
+    if (
+        document.readyState ===
+        "loading"
+    ) {
 
-        await enhanceReels();
+        document.addEventListener(
+            "DOMContentLoaded",
+            start
+        );
 
-        observeDOM();
+    } else {
+
+        start();
+    }
+
+})();
+(function () {
+
+    "use strict";
+
+    const files = [
+        "reels-core.js",
+        "reels-social.js",
+        "reels-media.js",
+        "reels-manage.js",
+        "reels-safety.js"
+ ];
+
+    files.forEach(function (src) {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-module="' +
+                src +
+                '"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src = src;
+        script.async = true;
+
+        script.dataset.studentReelsModule =
+            src;
+
+        document.body.appendChild(script);
+
+    });
+
+})();
+(function () {
+
+    "use strict";
+
+    function loadStatsModule() {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-stats="true"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src = "reels-stats.js";
+        script.async = true;
+
+        script.dataset.studentReelsStats =
+            "true";
+
+        script.onload = function () {
+
+            console.log(
+                "Student Reels Stats loaded."
+            );
+
+        };
+
+        script.onerror = function () {
+
+            console.warn(
+                "reels-stats.js failed to load. Reels Core remains active."
+            );
+
+        };
+
+        document.body.appendChild(
+            script
+        );
     }
 
 
@@ -2021,7 +4541,14 @@
 
         document.addEventListener(
             "DOMContentLoaded",
-            start,
+            function () {
+
+                setTimeout(
+                    loadStatsModule,
+                    800
+                );
+
+            },
             {
                 once:true
             }
@@ -2029,8 +4556,168 @@
 
     } else {
 
-        start();
+        setTimeout(
+            loadStatsModule,
+            800
+        );
     }
 
+})();
+(function () {
+
+    "use strict";
+
+    function loadUsersModule() {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-users="true"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+            "reels-users.js";
+
+        script.async =
+            true;
+
+        script.dataset.studentReelsUsers =
+            "true";
+
+        script.onload =
+            function () {
+
+                console.log(
+                    "Student Reels Users loaded."
+                );
+
+            };
+
+        script.onerror =
+            function () {
+
+                console.warn(
+                    "reels-users.js failed to load. Reels Core remains active."
+                );
+
+            };
+
+        document.body.appendChild(
+            script
+        );
+    }
+
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+
+                setTimeout(
+                    loadUsersModule,
+                    1000
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+    } else {
+
+        setTimeout(
+            loadUsersModule,
+            1000
+        );
+    }
+
+})();
+(function () {
+
+    "use strict";
+
+    function loadAdvancedModule() {
+
+        if (
+            document.querySelector(
+                'script[data-student-reels-advanced="true"]'
+            )
+        ) {
+            return;
+        }
+
+        const script =
+            document.createElement("script");
+
+        script.src =
+            "reels-advanced.js";
+
+        script.async =
+            true;
+
+        script.dataset.studentReelsAdvanced =
+            "true";
+
+        script.onload =
+            function () {
+
+                console.log(
+                    "Student Reels Advanced loaded."
+                );
+
+            };
+
+        script.onerror =
+            function () {
+
+                console.warn(
+                    "reels-advanced.js failed to load."
+                );
+
+            };
+
+        document.body.appendChild(
+            script
+        );
+    }
+
+
+    if (
+        document.readyState ===
+        "loading"
+    ) {
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+
+                setTimeout(
+                    loadAdvancedModule,
+                    1200
+                );
+
+            },
+            {
+                once:true
+            }
+        );
+
+    } else {
+
+        setTimeout(
+            loadAdvancedModule,
+            1200
+        );
+    }
 
 })();
