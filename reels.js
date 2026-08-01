@@ -252,13 +252,13 @@
 
         .student-reel-user {
             position:absolute;
-            right:16px;
-            left:92px;
+            left:18px;
+            right:92px;
             bottom:24px;
             z-index:18;
             color:#fff;
-            direction:rtl;
-            text-align:right;
+            direction:ltr;
+            text-align:left;
             text-shadow:0 1px 7px rgba(0,0,0,.9);
         }
 
@@ -278,6 +278,7 @@
             justify-content:flex-start;
             gap:9px;
             margin-bottom:8px;
+            min-width:0;
         }
 
         .student-reel-avatar,
@@ -317,7 +318,7 @@
         .student-reel-caption {
             max-width:100%;
             margin-top:5px;
-            padding-right:55px;
+            padding-left:55px;
             font-size:14px;
             font-weight:500;
             line-height:1.65;
@@ -327,8 +328,8 @@
 
         @media (max-width:420px) {
             .student-reel-user {
-                right:13px;
-                left:82px;
+                left:13px;
+                right:82px;
                 bottom:20px;
             }
 
@@ -706,17 +707,28 @@
     ===================================================== */
 
     function findStoriesContainer() {
-        const story = document.querySelector(".story");
-        return story ? story.parentElement : null;
+        return document.querySelector(".stories-container");
+    }
+
+    function ensureReelsLauncherRow() {
+        const storiesContainer = findStoriesContainer();
+        if (!storiesContainer) return null;
+
+        let row = document.getElementById("student-reels-launcher-row");
+
+        if (!row) {
+            row = document.createElement("div");
+            row.id = "student-reels-launcher-row";
+            storiesContainer.insertAdjacentElement("afterend", row);
+        }
+
+        return row;
     }
 
     function createReelsEntry() {
 
-        const container = findStoriesContainer();
+        const container = ensureReelsLauncherRow();
         if (!container) return false;
-
-        const story = container.querySelector(".story");
-        if (!story) return false;
 
         let entry =
             document.getElementById(
@@ -757,10 +769,9 @@
             );
         }
 
-        container.insertBefore(
-            entry,
-            container.firstChild
-        );
+        if (entry.parentElement !== container) {
+            container.replaceChildren(entry);
+        }
 
         resizeEntry();
 
@@ -768,27 +779,11 @@
     }
 
     function resizeEntry() {
+        const circle = document.getElementById("student-reels-entry-circle");
+        if (!circle) return;
 
-        const story =
-            document.querySelector(".story");
-
-        const circle =
-            document.getElementById(
-                "student-reels-entry-circle"
-            );
-
-        if (!story || !circle) return;
-
-        const size =
-            Math.round(
-                story.getBoundingClientRect().width
-            );
-
-        circle.style.width =
-            `${size}px`;
-
-        circle.style.height =
-            `${size}px`;
+        circle.style.width = "52px";
+        circle.style.height = "52px";
     }
 
     function protectEntry() {
