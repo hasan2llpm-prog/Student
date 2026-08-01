@@ -3007,3 +3007,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+function switchTab(tabName) {
+    // إزالة التنشيط عن كل الأزرار
+    const buttons = document.querySelectorAll('.app-bottom-nav .nav-item');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // تنشيط الزر الحالي الذي تم ضغطه
+    event.currentTarget.classList.add('active');
+    
+    console.log("تم الانتقال إلى تبويب: " + tabName);
+}
