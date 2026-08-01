@@ -38,6 +38,9 @@
 
     let ignoreNextPopState = false;
 
+    let menuOpeningPromise = null;
+    let menuActionBusy = false;
+
 
     /* =====================================================
        Toast
@@ -274,6 +277,8 @@
        Saved
     ===================================================== */
 
+    let savedSystemPromise = null;
+
     async function ensureSavedSystem() {
 
         if (
@@ -282,6 +287,10 @@
         ) {
 
             return true;
+        }
+
+        if (savedSystemPromise) {
+            return savedSystemPromise;
         }
 
 
@@ -344,7 +353,7 @@
         }
 
 
-        return new Promise(
+        savedSystemPromise = new Promise(
             function (resolve) {
 
                 const script =
@@ -396,6 +405,17 @@
 
             }
         );
+
+        try {
+            return await savedSystemPromise;
+        } finally {
+            if (
+                typeof window.openStudentSaved !==
+                "function"
+            ) {
+                savedSystemPromise = null;
+            }
+        }
     }
 
 
@@ -1453,8 +1473,21 @@
                     async function (event) {
 
                         event.preventDefault();
+                        event.stopPropagation();
 
-                        await item.action();
+                        if (menuActionBusy) {
+                            return;
+                        }
+
+                        menuActionBusy = true;
+                        button.disabled = true;
+
+                        try {
+                            await item.action();
+                        } finally {
+                            menuActionBusy = false;
+                            button.disabled = false;
+                        }
 
                     }
                 );
@@ -2391,38 +2424,49 @@
 
     async function openMenu() {
 
-        injectMenuStyles();
-
-
-        const menu =
-            ensureMenuElement();
-
-
-        if (
-            !menu.classList.contains(
-                "is-open"
-            )
-        ) {
-
-            viewStack = [];
-
-            currentView =
-                "menu";
-
-            historyDepth =
-                0;
-
-            await renderMainMenu();
-
-            pushMenuHistoryState();
-
-            return;
+        if (menuOpeningPromise) {
+            return menuOpeningPromise;
         }
 
+        menuOpeningPromise = (async function () {
 
-        menu.classList.add(
-            "is-open"
-        );
+            injectMenuStyles();
+
+            const menu =
+                ensureMenuElement();
+
+            if (
+                !menu.classList.contains(
+                    "is-open"
+                )
+            ) {
+
+                viewStack = [];
+
+                currentView =
+                    "menu";
+
+                historyDepth =
+                    0;
+
+                await renderMainMenu();
+
+                pushMenuHistoryState();
+
+                return;
+            }
+
+            menu.classList.add(
+                "is-open"
+            );
+
+        })();
+
+        try {
+            await menuOpeningPromise;
+        } finally {
+            menuOpeningPromise = null;
+        }
     }
 
 
