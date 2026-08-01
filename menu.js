@@ -274,6 +274,63 @@
 
 
     /* =====================================================
+       Settings
+    ===================================================== */
+
+    let settingsSystemPromise = null;
+
+    async function ensureSettingsSystem() {
+
+        if (typeof window.openStudentSettings === "function") {
+            return true;
+        }
+
+        if (settingsSystemPromise) {
+            return settingsSystemPromise;
+        }
+
+        const existing = document.querySelector(
+            'script[data-student-settings="true"]'
+        );
+
+        if (existing) {
+            settingsSystemPromise = new Promise(function (resolve) {
+                let attempts = 0;
+                const timer = setInterval(function () {
+                    attempts += 1;
+                    if (typeof window.openStudentSettings === "function") {
+                        clearInterval(timer);
+                        resolve(true);
+                    } else if (attempts >= 40) {
+                        clearInterval(timer);
+                        resolve(false);
+                    }
+                }, 100);
+            });
+
+            return settingsSystemPromise;
+        }
+
+        settingsSystemPromise = new Promise(function (resolve) {
+            const script = document.createElement("script");
+            script.src = "settings.js";
+            script.async = true;
+            script.dataset.studentSettings = "true";
+            script.onload = function () {
+                resolve(typeof window.openStudentSettings === "function");
+            };
+            script.onerror = function () {
+                resolve(false);
+            };
+            document.body.appendChild(script);
+        });
+
+        const ready = await settingsSystemPromise;
+        if (!ready) settingsSystemPromise = null;
+        return ready;
+    }
+
+    /* =====================================================
        Saved
     ===================================================== */
 
@@ -1468,32 +1525,26 @@
                 }
 
 
-                button.addEventListener(
-                    "click",
+                button.onclick =
                     async function (event) {
 
                         event.preventDefault();
                         event.stopPropagation();
 
-                        if (button.dataset.studentBusy === "true") {
-                            return;
-                        }
-
-                        button.dataset.studentBusy = "true";
-                        button.disabled = true;
-
                         try {
-                            await Promise.resolve(item.action());
+                            await Promise.resolve(
+                                item.action()
+                            );
                         } catch (error) {
-                            console.error("Menu action error:", error);
-                            menuToast("تعذر فتح هذا القسم.");
-                        } finally {
-                            button.dataset.studentBusy = "false";
-                            button.disabled = false;
+                            console.error(
+                                "Menu action error:",
+                                error
+                            );
+                            menuToast(
+                                "تعذر فتح هذا القسم."
+                            );
                         }
-
-                    }
-                );
+                    };
             }
         );
     }
@@ -2245,21 +2296,24 @@
                     "الإعدادات",
 
                 action:
-                    function () {
+                    async function () {
+
+                        const ready =
+                            await ensureSettingsSystem();
 
                         if (
-                            typeof window.showSettingsPanel ===
+                            ready &&
+                            typeof window.openStudentSettings ===
                             "function"
                         ) {
 
-                            window.showSettingsPanel();
-
-                        } else {
-
-                            menuToast(
-                                "الإعدادات غير متاحة."
-                            );
+                            window.openStudentSettings();
+                            return;
                         }
+
+                        menuToast(
+                            "تعذر تحميل الإعدادات."
+                        );
 
                     }
 
