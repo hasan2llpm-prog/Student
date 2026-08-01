@@ -1475,17 +1475,20 @@
                         event.preventDefault();
                         event.stopPropagation();
 
-                        if (menuActionBusy) {
+                        if (button.dataset.studentBusy === "true") {
                             return;
                         }
 
-                        menuActionBusy = true;
+                        button.dataset.studentBusy = "true";
                         button.disabled = true;
 
                         try {
-                            await item.action();
+                            await Promise.resolve(item.action());
+                        } catch (error) {
+                            console.error("Menu action error:", error);
+                            menuToast("تعذر فتح هذا القسم.");
                         } finally {
-                            menuActionBusy = false;
+                            button.dataset.studentBusy = "false";
                             button.disabled = false;
                         }
 
