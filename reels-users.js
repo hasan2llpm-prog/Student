@@ -1387,6 +1387,18 @@
     }
 
 
+    async function openProfileByUserId(userId) {
+
+        if (!userId) {
+            toast("تعذر تحديد حساب المستخدم.");
+            return;
+        }
+
+        const profile = await getProfile(userId);
+        await showUserDialog(userId, profile || {});
+    }
+
+
     function closeUserDialog() {
 
         const dialog =
@@ -1714,42 +1726,24 @@
 
 
             /* =============================================
-               اسم المستخدم
+               فتح حساب المستخدم من الصورة أو اليوزر
             ============================================= */
 
-            const name =
-                reel.querySelector(
-                    ".student-reel-name"
-                );
+            reel
+                .querySelectorAll("[data-user-profile], .student-reel-name")
+                .forEach(function(element) {
 
+                    if (element.dataset.userBound) return;
 
-            if (
-                name &&
-                !name.dataset.userBound
-            ) {
+                    element.dataset.userBound = "true";
+                    element.style.cursor = "pointer";
 
-                name.dataset.userBound =
-                    "true";
-
-                name.style.cursor =
-                    "pointer";
-
-
-                name.addEventListener(
-                    "click",
-                    function(event) {
-
+                    element.addEventListener("click", function(event) {
                         event.preventDefault();
                         event.stopPropagation();
-
-
-                        openOwnerProfile(
-                            reelId
-                        );
-
-                    }
-                );
-            }
+                        openProfileByUserId(data.user_id);
+                    });
+                });
 
 
             /* =============================================
@@ -1758,17 +1752,18 @@
 
             if (!owner) {
 
-                const top =
-                    reel.querySelector(
-                        ".student-reel-top"
-                    );
+                const followSlot =
+                    reel.querySelector("[data-follow-slot]") ||
+                    reel.querySelector(".student-reel-user-row") ||
+                    reel.querySelector(".student-reel-top");
 
+                reel.querySelectorAll("[data-user-follow]").forEach(function(existing) {
+                    if (!existing.dataset.realFollowButton) existing.remove();
+                });
 
                 if (
-                    top &&
-                    !top.querySelector(
-                        "[data-user-follow]"
-                    )
+                    followSlot &&
+                    !followSlot.querySelector("[data-user-follow]")
                 ) {
 
                     const follow =
@@ -1781,8 +1776,8 @@
                         "button";
 
 
-                    follow.dataset.userFollow =
-                        "true";
+                    follow.dataset.userFollow = "true";
+                    follow.dataset.realFollowButton = "true";
 
 
                     const following =
@@ -1798,24 +1793,23 @@
 
 
                     follow.style.cssText = `
-                        border:0;
-                        padding:8px 12px;
-                        border-radius:12px;
+                        min-width:76px;
+                        height:38px;
+                        border:1.5px solid rgba(255,255,255,.95);
+                        padding:0 15px;
+                        border-radius:11px;
                         cursor:pointer;
-                        font-size:12px;
-                        font-weight:800;
-                        background:
-                            ${
-                                following
-                                    ? "#f1f3f5"
-                                    : "#0095f6"
-                            };
-                        color:
-                            ${
-                                following
-                                    ? "#222"
-                                    : "#fff"
-                            };
+                        font-size:14px;
+                        font-weight:900;
+                        font-family:inherit;
+                        line-height:1;
+                        background:${following ? "rgba(255,255,255,.18)" : "rgba(0,0,0,.18)"};
+                        color:#fff;
+                        text-shadow:0 1px 4px rgba(0,0,0,.8);
+                        backdrop-filter:blur(5px);
+                        -webkit-backdrop-filter:blur(5px);
+                        box-shadow:0 1px 4px rgba(0,0,0,.25);
+                        transition:transform .15s ease, background .15s ease;
                     `;
 
 
@@ -1835,10 +1829,7 @@
                     );
 
 
-                    top.insertBefore(
-                        follow,
-                        top.firstChild
-                    );
+                    followSlot.appendChild(follow);
                 }
             }
 
@@ -2002,6 +1993,9 @@
 
     window.StudentReelsUsers.toggleFollow =
         toggleFollow;
+
+    window.StudentReelsUsers.openProfileByUserId =
+        openProfileByUserId;
 
 
     /* =====================================================
