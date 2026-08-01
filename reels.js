@@ -20,6 +20,8 @@
     let loading = false;
     let observerStarted = false;
     let scrollTimer = null;
+    let reelsHistoryActive = false;
+    let closingFromHistory = false;
 
     /* كاش قصير يمنع إعادة تحميل الريلز عند الفتح المتكرر */
     let reelsCacheAt = 0;
@@ -1419,6 +1421,15 @@
             "show"
         );
 
+        if (!reelsHistoryActive) {
+            history.pushState(
+                { studentReels: true },
+                "",
+                location.href
+            );
+            reelsHistoryActive = true;
+        }
+
         await loadReels();
 
         if (!reels.length) {
@@ -1450,7 +1461,7 @@
         );
     }
 
-    function closeReels() {
+    function closeReels(fromHistory = false) {
 
         overlay
             ?.querySelectorAll("video")
@@ -1467,7 +1478,27 @@
         closeComments();
         closeShareDialog();
         closeDialog();
+
+        if (fromHistory) {
+            reelsHistoryActive = false;
+            return;
+        }
+
+        if (reelsHistoryActive && !closingFromHistory) {
+            closingFromHistory = true;
+            reelsHistoryActive = false;
+            history.back();
+            setTimeout(function () {
+                closingFromHistory = false;
+            }, 0);
+        }
     }
+
+    window.addEventListener("popstate", function () {
+        if (reelsHistoryActive && overlay?.classList.contains("show")) {
+            closeReels(true);
+        }
+    });
 
     /* =====================================================
        Load Reels
@@ -1846,7 +1877,7 @@
                             }
                             playsinline
                             loop
-                            preload="metadata"
+                            preload="auto"
                         ></video>
 
 
@@ -3732,7 +3763,7 @@
                 }
 
             },
-            250
+            80
         );
     }
 
