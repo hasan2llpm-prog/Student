@@ -21,6 +21,10 @@
     let observerStarted = false;
     let scrollTimer = null;
 
+    /* كاش قصير يمنع إعادة تحميل الريلز عند الفتح المتكرر */
+    let reelsCacheAt = 0;
+    const REELS_CACHE_TTL = 45000;
+
     /* =====================================================
        Supabase
     ===================================================== */
@@ -1458,6 +1462,8 @@
             "show"
         );
 
+        window.StudentReelsCore?.destroy();
+
         closeComments();
         closeShareDialog();
         closeDialog();
@@ -1468,6 +1474,13 @@
     ===================================================== */
 
     async function loadReels() {
+
+        if (
+            reels.length &&
+            Date.now() - reelsCacheAt < REELS_CACHE_TTL
+        ) {
+            return;
+        }
 
         loading = true;
 
@@ -1530,6 +1543,8 @@
                 client
             );
 
+            reelsCacheAt = Date.now();
+
         } catch (error) {
 
             console.error(
@@ -1577,6 +1592,8 @@
                 await loadStats(
                     client
                 );
+
+                reelsCacheAt = Date.now();
 
             } catch (fallbackError) {
 
@@ -1655,122 +1672,92 @@
         client
     ) {
 
-        await Promise.all(
-            reels.map(
-                async function (reel) {
-
-                    try {
-
-                        const {
-                            count:likes
-                        } =
-                            await client
-                                .from(
-                                    "reel_likes"
-                                )
-                                .select(
-                                    "reel_id",
-                                    {
-                                        count:"exact",
-                                        head:true
-                                    }
-                                )
-                                .eq(
-                                    "reel_id",
-                                    reel.id
-                                );
-
-                        const {
-                            count:comments
-                        } =
-                            await client
-                                .from(
-                                    "reel_comments"
-                                )
-                                .select(
-                                    "id",
-                                    {
-                                        count:"exact",
-                                        head:true
-                                    }
-                                )
-                                .eq(
-                                    "reel_id",
-                                    reel.id
-                                );
-
-                        const {
-                            count:views
-                        } =
-                            await client
-                                .from(
-                                    "reel_views"
-                                )
-                                .select(
-                                    "reel_id",
-                                    {
-                                        count:"exact",
-                                        head:true
-                                    }
-                                )
-                                .eq(
-                                    "reel_id",
-                                    reel.id
-                                );
-
-                        reel.likeCount =
-                            likes || 0;
-
-                        reel.commentCount =
-                            comments || 0;
-
-                        reel.viewCount =
-                            views || 0;
-
-                        reel.liked =
-                            false;
-
-                        if (currentUserId) {
-
-                            const {
-                                data:liked
-                            } =
-                                await client
-                                    .from(
-                                        "reel_likes"
-                                    )
-                                    .select(
-                                        "reel_id"
-                                    )
-                                    .eq(
-                                        "reel_id",
-                                        reel.id
-                                    )
-                                    .eq(
-                                        "user_id",
-                                        currentUserId
-                                    )
-                                    .maybeSingle();
-
-                            reel.liked =
-                                !!liked;
-                        }
-
-                    } catch (error) {
-
-                        console.error(
-                            "Stats error:",
-                            error
-                        );
-
-                        reel.likeCount = 0;
-                        reel.commentCount = 0;
-                        reel.viewCount = 0;
-                        reel.liked = false;
-                    }
-                }
-            )
+        const reelIds = reels.map(
+            reel => reel.id
         );
+
+        reels.forEach(function (reel) {
+            reel.likeCount = 0;
+            reel.commentCount = 0;
+            reel.viewCount = 0;
+            reel.liked = false;
+        });
+
+        if (!reelIds.length) return;
+
+        try {
+
+            const requests = [
+                client
+                    .from("reel_likes")
+                    .select("reel_id")
+                    .in("reel_id", reelIds),
+
+                client
+                    .from("reel_comments")
+                    .select("reel_id")
+                    .in("reel_id", reelIds),
+
+                client
+                    .from("reel_views")
+                    .select("reel_id")
+                    .in("reel_id", reelIds)
+            ];
+
+            if (currentUserId) {
+                requests.push(
+                    client
+                        .from("reel_likes")
+                        .select("reel_id")
+                        .eq("user_id", currentUserId)
+                        .in("reel_id", reelIds)
+                );
+            }
+
+            const results = await Promise.all(requests);
+
+            results.forEach(function (result) {
+                if (result.error) throw result.error;
+            });
+
+            const likeCounts = {};
+            const commentCounts = {};
+            const viewCounts = {};
+            const likedIds = new Set(
+                (results[3]?.data || []).map(
+                    item => String(item.reel_id)
+                )
+            );
+
+            (results[0].data || []).forEach(function (item) {
+                likeCounts[item.reel_id] =
+                    (likeCounts[item.reel_id] || 0) + 1;
+            });
+
+            (results[1].data || []).forEach(function (item) {
+                commentCounts[item.reel_id] =
+                    (commentCounts[item.reel_id] || 0) + 1;
+            });
+
+            (results[2].data || []).forEach(function (item) {
+                viewCounts[item.reel_id] =
+                    (viewCounts[item.reel_id] || 0) + 1;
+            });
+
+            reels.forEach(function (reel) {
+                reel.likeCount = likeCounts[reel.id] || 0;
+                reel.commentCount = commentCounts[reel.id] || 0;
+                reel.viewCount = viewCounts[reel.id] || 0;
+                reel.liked = likedIds.has(String(reel.id));
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Stats loading error:",
+                error
+            );
+        }
     }
 
     /* =====================================================
@@ -1842,7 +1829,12 @@
                     >
 
                         <video
-                            src="${escapeHTML(
+                            ${
+                                Math.abs(index - currentIndex) <= 1
+                                    ? `src="${escapeHTML(reel.video_url)}" data-loaded="true"`
+                                    : `data-loaded="false"`
+                            }
+                            data-src="${escapeHTML(
                                 reel.video_url
                             )}"
                             ${
@@ -2138,6 +2130,16 @@
             .join("");
 
         bindButtons();
+
+        window.StudentReelsCore?.observe(
+            container
+        );
+
+        window.StudentReelsCore?.prepareAround(
+            container,
+            currentIndex
+        );
+
         bindScroll();
     }
 
@@ -3738,33 +3740,29 @@
 
         if (!overlay) return;
 
-        overlay
-            .querySelectorAll(
-                "video"
-            )
-            .forEach(
-                function (
-                    video,
-                    index
-                ) {
-
-                    if (
-                        index ===
-                        currentIndex
-                    ) {
-
-                        video.play()
-                            .catch(
-                                function () {}
-                            );
-
-                    } else {
-
-                        video.pause();
-
-                    }
-                }
+        const container =
+            document.getElementById(
+                "student-reels-scroll"
             );
+
+        if (window.StudentReelsCore?.setActive) {
+            window.StudentReelsCore.setActive(
+                container,
+                currentIndex
+            );
+
+            return;
+        }
+
+        overlay
+            .querySelectorAll("video")
+            .forEach(function (video, index) {
+                if (index === currentIndex) {
+                    video.play().catch(function () {});
+                } else {
+                    video.pause();
+                }
+            });
     }
 
     /* =====================================================
