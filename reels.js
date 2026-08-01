@@ -89,38 +89,22 @@
 
         style.textContent = `
 
-        #student-reels-launcher-row {
-            display:flex;
-            align-items:center;
-            padding:10px 16px;
-            min-height:76px;
-            background:#fff;
-            border-bottom:1px solid #efefef;
-            box-sizing:border-box;
-            contain:layout paint;
-        }
-
         #student-reels-entry {
-            display:flex !important;
-            align-items:center !important;
-            gap:12px !important;
-            width:100% !important;
-            min-height:56px !important;
+            flex:0 0 auto !important;
+            width:auto !important;
+            height:auto !important;
             margin:0 !important;
-            padding:8px 10px !important;
+            padding:0 !important;
             border:0 !important;
-            border-radius:16px !important;
-            background:#fff5f5 !important;
+            background:transparent !important;
             cursor:pointer !important;
-            text-align:right !important;
+            text-align:center !important;
         }
 
         #student-reels-entry-inner {
             display:flex;
-            flex-direction:row;
+            flex-direction:column;
             align-items:center;
-            gap:12px;
-            width:100%;
         }
 
         #student-reels-entry-circle {
@@ -128,7 +112,7 @@
             height:58px;
             border-radius:50%;
             background:#fff;
-            border:3px solid #ed1c24;
+            border:3px solid #111;
             display:flex;
             align-items:center;
             justify-content:center;
@@ -139,7 +123,7 @@
         #student-reels-entry-icon {
             width:30px;
             height:24px;
-            border:3px solid #ed1c24;
+            border:3px solid #111;
             border-radius:7px;
             position:relative;
             box-sizing:border-box;
@@ -152,8 +136,8 @@
             top:-7px;
             width:18px;
             height:5px;
-            border-top:3px solid #ed1c24;
-            border-bottom:3px solid #ed1c24;
+            border-top:3px solid #111;
+            border-bottom:3px solid #111;
         }
 
         #student-reels-entry-icon::after {
@@ -165,14 +149,13 @@
             height:0;
             border-top:5px solid transparent;
             border-bottom:5px solid transparent;
-            border-left:8px solid #ed1c24;
+            border-left:8px solid #111;
         }
 
         #student-reels-entry-name {
-            margin:0;
-            font-size:14px;
-            font-weight:700;
-            color:#ed1c24;
+            margin-top:5px;
+            font-size:11px;
+            color:#333;
             white-space:nowrap;
         }
 
@@ -269,24 +252,102 @@
 
         .student-reel-user {
             position:absolute;
-            right:18px;
-            left:100px;
-            bottom:28px;
-            z-index:8;
+            right:16px;
+            left:92px;
+            bottom:24px;
+            z-index:18;
             color:#fff;
-            text-shadow:0 1px 7px #000;
+            direction:rtl;
+            text-align:right;
+            text-shadow:0 1px 7px rgba(0,0,0,.9);
         }
 
         .student-reel-name {
-            font-size:15px;
-            font-weight:800;
+            max-width:42vw;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+            font-size:16px;
+            font-weight:900;
+            cursor:pointer;
+        }
+
+        .student-reel-user-row {
+            display:flex;
+            align-items:center;
+            justify-content:flex-start;
+            gap:9px;
+            margin-bottom:8px;
+        }
+
+        .student-reel-avatar,
+        .student-reel-avatar-placeholder {
+            width:46px;
+            height:46px;
+            border-radius:50%;
+            flex:0 0 46px;
+            cursor:pointer;
+            box-sizing:border-box;
+            box-shadow:0 0 0 2px rgba(255,255,255,.95),
+                       0 0 0 4px #ff1744;
+        }
+
+        .student-reel-avatar {
+            object-fit:cover;
+            border:2px solid #111;
+            background:#111;
+        }
+
+        .student-reel-avatar-placeholder {
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#222;
+            border:2px solid #111;
+            color:#fff;
+        }
+
+        .student-reel-follow-slot {
+            display:flex;
+            align-items:center;
+            min-height:36px;
+            margin-inline-start:2px;
         }
 
         .student-reel-caption {
-            margin-top:7px;
-            font-size:13px;
-            line-height:1.7;
+            max-width:100%;
+            margin-top:5px;
+            padding-right:55px;
+            font-size:14px;
+            font-weight:500;
+            line-height:1.65;
             white-space:pre-wrap;
+            overflow-wrap:anywhere;
+        }
+
+        @media (max-width:420px) {
+            .student-reel-user {
+                right:13px;
+                left:82px;
+                bottom:20px;
+            }
+
+            .student-reel-name {
+                max-width:36vw;
+                font-size:15px;
+            }
+
+            .student-reel-avatar,
+            .student-reel-avatar-placeholder {
+                width:42px;
+                height:42px;
+                flex-basis:42px;
+            }
+
+            .student-reel-caption {
+                padding-right:51px;
+                font-size:13px;
+            }
         }
 
         .student-reel-actions {
@@ -645,26 +706,17 @@
     ===================================================== */
 
     function findStoriesContainer() {
-        return document.querySelector(".stories-container");
-    }
-
-    function ensureReelsLauncherRow() {
-        const storiesContainer = findStoriesContainer();
-        if (!storiesContainer) return null;
-
-        let row = document.getElementById("student-reels-launcher-row");
-        if (!row) {
-            row = document.createElement("div");
-            row.id = "student-reels-launcher-row";
-            storiesContainer.insertAdjacentElement("afterend", row);
-        }
-        return row;
+        const story = document.querySelector(".story");
+        return story ? story.parentElement : null;
     }
 
     function createReelsEntry() {
 
-        const container = ensureReelsLauncherRow();
+        const container = findStoriesContainer();
         if (!container) return false;
+
+        const story = container.querySelector(".story");
+        if (!story) return false;
 
         let entry =
             document.getElementById(
@@ -705,9 +757,10 @@
             );
         }
 
-        if (entry.parentElement !== container) {
-            container.replaceChildren(entry);
-        }
+        container.insertBefore(
+            entry,
+            container.firstChild
+        );
 
         resizeEntry();
 
@@ -715,10 +768,27 @@
     }
 
     function resizeEntry() {
-        const circle = document.getElementById("student-reels-entry-circle");
-        if (!circle) return;
-        circle.style.width = "52px";
-        circle.style.height = "52px";
+
+        const story =
+            document.querySelector(".story");
+
+        const circle =
+            document.getElementById(
+                "student-reels-entry-circle"
+            );
+
+        if (!story || !circle) return;
+
+        const size =
+            Math.round(
+                story.getBoundingClientRect().width
+            );
+
+        circle.style.width =
+            `${size}px`;
+
+        circle.style.height =
+            `${size}px`;
     }
 
     function protectEntry() {
@@ -1865,6 +1935,7 @@
                             reel.id
                         )}"
                         data-index="${index}"
+                        data-user-id="${escapeHTML(reel.user_id)}"
                     >
 
                         <video
@@ -1918,10 +1989,39 @@
 
                         <div class="student-reel-user">
 
-                            <div class="student-reel-name">
-                                @${escapeHTML(
-                                    username
-                                )}
+                            <div class="student-reel-user-row">
+                                ${
+                                    profile.avatar_url
+                                        ? `
+                                            <img
+                                                class="student-reel-avatar"
+                                                data-user-profile
+                                                src="${escapeHTML(profile.avatar_url)}"
+                                                alt=""
+                                            >
+                                          `
+                                        : `
+                                            <div
+                                                class="student-reel-avatar-placeholder"
+                                                data-user-profile
+                                            >
+                                                <i class="fa-solid fa-user"></i>
+                                            </div>
+                                          `
+                                }
+
+                                <div
+                                    class="student-reel-name"
+                                    data-user-profile
+                                >
+                                    @${escapeHTML(username)}
+                                </div>
+
+                                ${
+                                    owner
+                                        ? ""
+                                        : `<div class="student-reel-follow-slot" data-follow-slot></div>`
+                                }
                             </div>
 
                             ${
@@ -1930,9 +2030,7 @@
                                         <div
                                             class="student-reel-caption"
                                         >
-                                            ${escapeHTML(
-                                                reel.caption
-                                            )}
+                                            ${escapeHTML(reel.caption)}
                                         </div>
                                       `
                                     : ""
@@ -2078,30 +2176,21 @@
                             </div>
 
 
-                            ${
-                                owner
-                                    ? `
-                                        <div class="student-reel-action-wrap">
+                            <div class="student-reel-action-wrap">
 
-                                            <button
-                                                type="button"
-                                                class="student-reel-action"
-                                                data-more
-                                            >
-                                                <i class="
-                                                    fa-solid
-                                                    fa-ellipsis
-                                                "></i>
-                                            </button>
+                                <button
+                                    type="button"
+                                    class="student-reel-action"
+                                    data-more
+                                >
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                </button>
 
-                                            <span class="student-reel-label">
-                                                المزيد
-                                            </span>
+                                <span class="student-reel-label">
+                                    المزيد
+                                </span>
 
-                                        </div>
-                                      `
-                                    : ""
-                            }
+                            </div>
 
                         </div>
 
