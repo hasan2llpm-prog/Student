@@ -1554,7 +1554,7 @@
        Stack Back
     ===================================================== */
 
-    function goBackInsideMenu() {
+    async function goBackInsideMenu() {
 
         if (
             viewStack.length
@@ -1564,61 +1564,76 @@
                 viewStack.pop();
 
 
-            const contentBox =
-                menuElement?.querySelector(
-                    "#student-menu-content"
-                );
-
-
-            const titleBox =
-                menuElement?.querySelector(
-                    "#student-menu-title"
-                );
-
-
-            const backButton =
-                menuElement?.querySelector(
-                    "#student-menu-back"
-                );
-
-
+            /*
+             * عند الرجوع إلى القائمة الرئيسية لا نعيد HTML محفوظًا فقط،
+             * لأن innerHTML لا يحتفظ بمستمعات النقر. نعيد رسم القائمة
+             * وربط جميع الأزرار حتى تستجيب من أول ضغطة كل مرة.
+             */
             if (
-                contentBox &&
-                titleBox
+                previous.view ===
+                "menu"
             ) {
 
-                contentBox.innerHTML =
-                    previous.content;
+                await renderMainMenu();
+
+            } else {
+
+                const contentBox =
+                    menuElement?.querySelector(
+                        "#student-menu-content"
+                    );
 
 
-                titleBox.textContent =
-                    previous.title;
-            }
+                const titleBox =
+                    menuElement?.querySelector(
+                        "#student-menu-title"
+                    );
 
 
-            currentView =
-                previous.view;
+                const backButton =
+                    menuElement?.querySelector(
+                        "#student-menu-back"
+                    );
 
 
-            if (
-                !viewStack.length &&
-                backButton
-            ) {
+                if (
+                    contentBox &&
+                    titleBox
+                ) {
 
-                backButton.classList.remove(
-                    "visible"
+                    contentBox.innerHTML =
+                        previous.content;
+
+
+                    titleBox.textContent =
+                        previous.title;
+                }
+
+
+                currentView =
+                    previous.view;
+
+
+                if (
+                    !viewStack.length &&
+                    backButton
+                ) {
+
+                    backButton.classList.remove(
+                        "visible"
+                    );
+
+
+                    document.body.classList.remove(
+                        "student-menu-inner-open"
+                    );
+                }
+
+
+                bindInnerCloseButtons(
+                    contentBox
                 );
-
-
-                document.body.classList.remove(
-                    "student-menu-inner-open"
-                );
             }
-
-
-            bindInnerCloseButtons(
-                contentBox
-            );
 
 
             if (
@@ -1729,40 +1744,50 @@
 
 
                 if (
-                    contentBox &&
-                    titleBox
+                    previous.view ===
+                    "menu"
                 ) {
 
-                    contentBox.innerHTML =
-                        previous.content;
+                    void renderMainMenu();
 
-                    titleBox.textContent =
-                        previous.title;
-                }
+                } else {
+
+                    if (
+                        contentBox &&
+                        titleBox
+                    ) {
+
+                        contentBox.innerHTML =
+                            previous.content;
+
+                        titleBox.textContent =
+                            previous.title;
+                    }
 
 
-                if (
-                    !viewStack.length &&
-                    backButton
-                ) {
+                    if (
+                        !viewStack.length &&
+                        backButton
+                    ) {
 
-                    backButton.classList.remove(
-                        "visible"
+                        backButton.classList.remove(
+                            "visible"
+                        );
+
+                        document.body.classList.remove(
+                            "student-menu-inner-open"
+                        );
+                    }
+
+
+                    currentView =
+                        previous.view;
+
+
+                    bindInnerCloseButtons(
+                        contentBox
                     );
-
-                    document.body.classList.remove(
-                        "student-menu-inner-open"
-                    );
                 }
-
-
-                currentView =
-                    previous.view;
-
-
-                bindInnerCloseButtons(
-                    contentBox
-                );
 
             } else {
 
