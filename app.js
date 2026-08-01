@@ -2475,6 +2475,14 @@ function bindInterfaceButtons() {
 
                 event.preventDefault();
 
+                if (
+                    typeof window.openStudentMenu ===
+                    "function"
+                ) {
+                    window.openStudentMenu();
+                    return;
+                }
+
                 openMenu();
             }
         );
