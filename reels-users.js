@@ -2003,13 +2003,19 @@
                 if (!target) return;
 
                 const reel = target.closest(".student-reel");
-                const userId = reel?.dataset?.userId;
+                const userId =
+                    target.dataset.userId ||
+                    reel?.dataset?.userId ||
+                    reel?.getAttribute("data-user-id");
 
-                if (!userId) return;
+                if (!userId) {
+                    console.warn("Reel profile click: missing user id");
+                    return;
+                }
 
                 event.preventDefault();
-                event.stopPropagation();
-                openProfileByUserId(userId);
+                event.stopImmediatePropagation();
+                void openProfileByUserId(userId);
             },
             true
         );
@@ -2126,13 +2132,25 @@
 
     async function start() {
 
-        await loadCurrentUser();
-
+        /*
+         * اربط النقرات فورًا قبل أي طلب شبكة.
+         * انتظار Supabase هنا كان يجعل الصورة واليوزر والمتابعة
+         * غير مستجيبة عندما يتأخر تحميل الجلسة.
+         */
         bindUserButtons();
-
-        await enhanceReels();
-
         observeDOM();
+
+        try {
+            await loadCurrentUser();
+        } catch (error) {
+            console.error("Reels users session error:", error);
+        }
+
+        try {
+            await enhanceReels();
+        } catch (error) {
+            console.error("Reels users enhance error:", error);
+        }
     }
 
 
