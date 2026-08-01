@@ -315,6 +315,28 @@
             margin-inline-start:2px;
         }
 
+        .student-reel-follow-button {
+            min-width:76px;
+            height:38px;
+            border:1.5px solid rgba(255,255,255,.95);
+            padding:0 15px;
+            border-radius:11px;
+            cursor:pointer;
+            font-size:14px;
+            font-weight:800;
+            font-family:inherit;
+            line-height:1;
+            background:rgba(0,0,0,.28);
+            color:#fff;
+            text-shadow:0 1px 4px rgba(0,0,0,.8);
+            backdrop-filter:blur(5px);
+            -webkit-backdrop-filter:blur(5px);
+        }
+
+        .student-reel-follow-button.is-following {
+            background:rgba(255,255,255,.18);
+        }
+
         .student-reel-caption {
             max-width:100%;
             margin-top:5px;
@@ -2015,7 +2037,17 @@
                                 ${
                                     owner
                                         ? ""
-                                        : `<div class="student-reel-follow-slot" data-follow-slot></div>`
+                                        : `
+                                            <div class="student-reel-follow-slot" data-follow-slot>
+                                                <button
+                                                    type="button"
+                                                    class="student-reel-follow-button"
+                                                    data-user-follow
+                                                >
+                                                    متابعة
+                                                </button>
+                                            </div>
+                                          `
                                 }
                             </div>
 
