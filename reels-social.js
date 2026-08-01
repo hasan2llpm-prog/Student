@@ -838,6 +838,7 @@
                                                 profile.avatar_url
                                             )}"
                                             alt=""
+                                            data-comment-profile
                                             style="
                                                 width:40px;
                                                 height:40px;
@@ -848,7 +849,9 @@
                                         >
                                       `
                                     : `
-                                        <div style="
+                                        <div
+                                            data-comment-profile
+                                            style="
                                             width:40px;
                                             height:40px;
                                             border-radius:50%;
@@ -873,6 +876,8 @@
                                     data-comment-id="${escapeHTML(
                                         comment.id
                                     )}"
+                                    data-comment-user-id="${escapeHTML(comment.user_id)}"
+                                    data-comment-username="${escapeHTML(name)}"
                                     style="
                                         display:flex;
                                         gap:10px;
@@ -887,9 +892,12 @@
                                         min-width:0;
                                     ">
 
-                                        <div style="
+                                        <div
+                                            data-comment-profile
+                                            style="
                                             font-size:13px;
                                             font-weight:800;
+                                            cursor:pointer;
                                         ">
                                             @${escapeHTML(
                                                 name
@@ -952,6 +960,21 @@
                                                     ${likeCount}
                                                 </span>
 
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                data-comment-reply
+                                                style="
+                                                    border:0;
+                                                    background:transparent;
+                                                    color:#555;
+                                                    cursor:pointer;
+                                                    padding:0;
+                                                    font-weight:700;
+                                                "
+                                            >
+                                                رد
                                             </button>
 
 
@@ -1113,6 +1136,31 @@
 
                 }
             );
+
+
+        list
+            .querySelectorAll("[data-comment-reply]")
+            .forEach(function(button) {
+                button.addEventListener("click", function() {
+                    const item = button.closest("[data-social-comment]");
+                    const username = item?.dataset.commentUsername || "";
+                    const input = document.getElementById("student-social-comments-input");
+                    if (!input) return;
+                    input.value = username ? `@${username} ` : "";
+                    input.focus();
+                    input.setSelectionRange(input.value.length, input.value.length);
+                });
+            });
+
+        list
+            .querySelectorAll("[data-comment-profile]")
+            .forEach(function(element) {
+                element.addEventListener("click", function() {
+                    const item = element.closest("[data-social-comment]");
+                    const userId = item?.dataset.commentUserId;
+                    window.StudentReelsUsers?.openProfileByUserId?.(userId);
+                });
+            });
 
 
         list
