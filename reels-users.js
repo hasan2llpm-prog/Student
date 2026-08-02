@@ -1396,6 +1396,11 @@
             return;
         }
 
+        if (window.StudentNavigation?.openUserProfile) {
+            window.StudentNavigation.openUserProfile(userId);
+            return;
+        }
+
         const profile = await getProfile(userId);
 
         if (!profile) {
