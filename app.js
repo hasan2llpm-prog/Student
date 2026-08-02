@@ -2218,124 +2218,47 @@ function openNotifications() {
 
 
 /* =========================================================
-   الستوري
+   تحميل المتجر المستقل عند الحاجة فقط
 ========================================================= */
+function openStudentStoreSection() {
 
-function openStory(
-    name
-) {
+    if (window.StudentStore?.open) {
+        window.StudentStore.open();
+        return;
+    }
 
-    showFloatingPanel(
-        name || "الستوري",
-        `
-        <div style="
-            height:350px;
-            border-radius:18px;
-            background:
-                linear-gradient(
-                    135deg,
-                    #0095f6,
-                    #7c4dff
-                );
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            color:white;
-            font-size:23px;
-            font-weight:bold;
-        ">
-            ${escapeHTML(
-                name ||
-                "Story"
-            )}
-        </div>
-        `
-    );
-}
-
-
-/* =========================================================
-   إضافة ستوري
-========================================================= */
-
-function addStory() {
-
-    showFloatingPanel(
-        "إضافة ستوري",
-        `
-        <div style="
-            text-align:center;
-            padding:25px 10px;
-        ">
-
-            <div style="
-                border:2px dashed #0095f6;
-                border-radius:18px;
-                padding:35px 15px;
-                color:#777;
-            ">
-
-                <div style="
-                    font-size:45px;
-                    margin-bottom:10px;
-                ">
-                    📷
-                </div>
-
-                اختر صورة أو فيديو
-                لإضافة ستوري.
-
-            </div>
-
-        </div>
-        `
-    );
-}
-
-
-
-/* =========================================================
-   قائمة الإنشاء: ستوري أو ريلز فقط
-========================================================= */
-function openStudentCreateMenu() {
-
-    showFloatingPanel(
-        "إنشاء",
-        `
-        <div class="student-create-choice-menu" style="display:grid;gap:12px;padding:8px 2px 16px;">
-            <button id="student-create-story" type="button" style="border:0;border-radius:16px;padding:18px;background:#fff0f3;color:#c9184a;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;">
-                <i class="fa-regular fa-circle-play"></i>
-                إضافة ستوري
-            </button>
-            <button id="student-create-reel" type="button" style="border:0;border-radius:16px;padding:18px;background:#f1f5ff;color:#3157c8;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;">
-                <i class="fa-solid fa-clapperboard"></i>
-                نشر ريلز
-            </button>
-        </div>
-        `
+    const existing = document.querySelector(
+        'script[data-student-store="true"]'
     );
 
-    document.getElementById("student-create-story")?.addEventListener("click", function () {
-        closeFloatingPanel?.();
-        if (typeof window.StudentOpenStoryCreator === "function") {
-            window.StudentOpenStoryCreator();
-            return;
-        }
-        addStory();
-    }, { once: true });
+    if (existing) {
+        existing.addEventListener(
+            "load",
+            function () {
+                window.StudentStore?.open?.();
+            },
+            { once: true }
+        );
+        return;
+    }
 
-    document.getElementById("student-create-reel")?.addEventListener("click", function () {
-        closeFloatingPanel?.();
-        if (typeof window.openStudentReelCreator === "function") {
-            window.openStudentReelCreator();
-            return;
-        }
-        if (typeof window.openStudentReels === "function") {
-            window.openStudentReels(0);
-            return;
-        }
-        showMessage?.("", "تعذر فتح نشر الريلز حاليًا.");
-    }, { once: true });
+    const script = document.createElement("script");
+    script.src = "store.js";
+    script.async = true;
+    script.dataset.studentStore = "true";
+
+    script.onload = function () {
+        window.StudentStore?.open?.();
+    };
+
+    script.onerror = function () {
+        showFloatingPanel(
+            "المتجر",
+            `<div style="padding:35px 15px;text-align:center;color:#777;line-height:1.8;">تعذر فتح المتجر حاليًا.</div>`
+        );
+    };
+
+    document.body.appendChild(script);
 }
 
 /* =========================================================
@@ -2373,18 +2296,7 @@ function openBottomSection(section) {
     }
 
     if (section === "store") {
-        showFloatingPanel(
-            "المتجر",
-            `
-            <div style="text-align:center;padding:44px 20px;direction:rtl;">
-                <div style="width:86px;height:86px;border-radius:24px;background:#eaf5ff;color:#0095f6;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 18px;">
-                    <i class="fa-solid fa-store"></i>
-                </div>
-                <h3 style="margin:0 0 10px;color:#222;">المتجر</h3>
-                <p style="margin:0;color:#888;line-height:1.8;">لا توجد منتجات بعد.</p>
-            </div>
-            `
-        );
+        openStudentStoreSection();
         return;
     }
 
@@ -2480,73 +2392,6 @@ function bindInterfaceButtons() {
             }
         );
     }
-
-
-    const addStoryElement =
-        document.querySelector(
-            ".add-story"
-        );
-
-
-    if (addStoryElement) {
-
-        addStoryElement.style.cursor =
-            "pointer";
-
-
-        addStoryElement.addEventListener(
-            "click",
-            function(event) {
-
-                event.preventDefault();
-
-                addStory();
-            }
-        );
-    }
-
-
-    const stories =
-        document.querySelectorAll(
-            ".story:not(.add-story)"
-        );
-
-
-    stories.forEach(
-        function(story) {
-
-            story.style.cursor =
-                "pointer";
-
-
-            story.addEventListener(
-                "click",
-                function(event) {
-
-                    event.preventDefault();
-
-
-                    const nameElement =
-                        story.querySelector(
-                            ".story-name"
-                        );
-
-
-                    const name =
-                        nameElement
-                            ?.textContent
-                            ?.trim()
-                        ||
-                        "الستوري";
-
-
-                    openStory(
-                        name
-                    );
-                }
-            );
-        }
-    );
 
 
     const navLinks =
