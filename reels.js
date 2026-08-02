@@ -1812,21 +1812,42 @@
 
     function openPublishReel() {
 
-        closeReels();
-
         if (
-            typeof window.openStudentReelCreator ===
+            typeof window.openStudentReelCreator !==
             "function"
         ) {
-
-            window.openStudentReelCreator();
-
-        } else {
 
             toast(
                 "نظام نشر الـReel غير جاهز."
             );
+            return;
         }
+
+        const openCreator = function () {
+            window.openStudentReelCreator();
+        };
+
+        /*
+         * إغلاق شاشة الريلز ينفذ history.back().
+         * فتح نافذة النشر قبل اكتمال popstate يجعل مدير التنقل
+         * يغلقها فورًا ويعيد المستخدم إلى الرئيسية.
+         * لذلك ننتظر اكتمال الرجوع ثم نفتح ناشر الريلز.
+         */
+        if (reelsHistoryActive) {
+            window.addEventListener(
+                "popstate",
+                function () {
+                    setTimeout(openCreator, 0);
+                },
+                { once: true }
+            );
+
+            closeReels();
+            return;
+        }
+
+        closeReels(true);
+        openCreator();
     }
 
     /* =====================================================
