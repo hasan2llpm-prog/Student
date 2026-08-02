@@ -2342,22 +2342,60 @@ function openStudentCreateMenu() {
    الشريط السفلي
 ========================================================= */
 
+function openStudentReelsSection() {
+
+    if (typeof window.openStudentReels === "function") {
+        window.openStudentReels(0);
+        return;
+    }
+
+    let script = document.querySelector('script[data-student-reels="true"]');
+
+    if (!script) {
+        script = document.createElement("script");
+        script.src = "reels.js";
+        script.async = true;
+        script.dataset.studentReels = "true";
+        document.body.appendChild(script);
+    }
+
+    const startedAt = Date.now();
+    const timer = setInterval(function () {
+        if (typeof window.openStudentReels === "function") {
+            clearInterval(timer);
+            window.openStudentReels(0);
+            return;
+        }
+
+        if (Date.now() - startedAt > 8000) {
+            clearInterval(timer);
+            showFloatingPanel(
+                "الريلز",
+                `<div style="text-align:center;padding:30px 12px;color:#666;">تعذر فتح الريلز حاليًا.</div>`
+            );
+        }
+    }, 120);
+}
+
+
 function openBottomSection(
     section
 ) {
 
-    if (section === "add") {
-        openStudentCreateMenu();
+    if (section === "reels") {
+        openStudentReelsSection();
         return;
     }
 
-    if (
-        section ===
-        "profile"
-    ) {
-
-        showProfilePanel();
-
+    if (section === "store") {
+        showFloatingPanel(
+            "المتجر",
+            `<div style="text-align:center;padding:34px 18px;line-height:1.9;">
+                <div style="font-size:54px;margin-bottom:12px;">🛍️</div>
+                <strong style="display:block;font-size:20px;margin-bottom:8px;">متجر Student</strong>
+                <p style="margin:0;color:#666;">سيتم تفعيل المتجر ومنتجاته من لوحة الإدارة لاحقًا.</p>
+            </div>`
+        );
         return;
     }
 
@@ -2390,16 +2428,16 @@ function openBottomSection(
         },
 
 
-        add: {
+        store: {
 
             title:
-                "إضافة",
+                "المتجر",
 
             icon:
-                "➕",
+                "🛍️",
 
             text:
-                "سيتم إضافة النشر هنا."
+                "سيتم إضافة المتجر هنا."
         },
 
 
@@ -2585,11 +2623,11 @@ function bindInterfaceButtons() {
 
         "search",
 
-        "add",
+        "store",
 
         "messages",
 
-        "profile"
+        "reels"
 
     ];
 
