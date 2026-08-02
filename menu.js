@@ -1636,18 +1636,6 @@
             }
 
 
-            if (
-                historyDepth > 0
-            ) {
-
-                ignoreNextPopState =
-                    true;
-
-                history.back();
-
-                historyDepth--;
-            }
-
             return;
         }
 
@@ -1661,154 +1649,8 @@
     ===================================================== */
 
     function pushMenuHistoryState() {
-
-        try {
-
-            history.pushState(
-                {
-                    studentMenu:
-                        true,
-
-                    depth:
-                        historyDepth + 1
-                },
-                "",
-                location.href
-            );
-
-
-            historyDepth++;
-
-        } catch (error) {
-
-            console.warn(
-                "Menu history state error:",
-                error
-            );
-        }
+        historyDepth = 0;
     }
-
-
-    function handlePopState() {
-
-        if (
-            ignoreNextPopState
-        ) {
-
-            ignoreNextPopState =
-                false;
-
-            return;
-        }
-
-
-        if (
-            !isMenuOpen()
-        ) {
-
-            return;
-        }
-
-
-        if (
-            historyDepth > 0
-        ) {
-
-            historyDepth--;
-
-
-            if (
-                viewStack.length
-            ) {
-
-                const previous =
-                    viewStack.pop();
-
-
-                const contentBox =
-                    menuElement?.querySelector(
-                        "#student-menu-content"
-                    );
-
-
-                const titleBox =
-                    menuElement?.querySelector(
-                        "#student-menu-title"
-                    );
-
-
-                const backButton =
-                    menuElement?.querySelector(
-                        "#student-menu-back"
-                    );
-
-
-                if (
-                    previous.view ===
-                    "menu"
-                ) {
-
-                    void renderMainMenu();
-
-                } else {
-
-                    if (
-                        contentBox &&
-                        titleBox
-                    ) {
-
-                        contentBox.innerHTML =
-                            previous.content;
-
-                        titleBox.textContent =
-                            previous.title;
-                    }
-
-
-                    if (
-                        !viewStack.length &&
-                        backButton
-                    ) {
-
-                        backButton.classList.remove(
-                            "visible"
-                        );
-
-                        document.body.classList.remove(
-                            "student-menu-inner-open"
-                        );
-                    }
-
-
-                    currentView =
-                        previous.view;
-
-
-                    bindInnerCloseButtons(
-                        contentBox
-                    );
-                }
-
-            } else {
-
-                closeMainMenu(
-                    false
-                );
-            }
-
-        } else {
-
-            closeMainMenu(
-                false
-            );
-        }
-    }
-
-
-    window.addEventListener(
-        "popstate",
-        handlePopState
-    );
 
 
     /* =====================================================
@@ -1847,36 +1689,8 @@
         deactivateFloatingPanelInterceptor();
 
 
-        if (
-            changeHistory &&
-            historyDepth > 0
-        ) {
-
-            const amount =
-                historyDepth;
-
-
-            historyDepth = 0;
-
-
-            ignoreNextPopState =
-                true;
-
-
-            try {
-
-                history.go(
-                    -amount
-                );
-
-            } catch (error) {
-
-                console.warn(
-                    "Menu history close error:",
-                    error
-                );
-            }
-        }
+        historyDepth = 0;
+        ignoreNextPopState = false;
     }
 
 
@@ -2533,8 +2347,6 @@
 
                 await renderMainMenu();
 
-                pushMenuHistoryState();
-
                 return;
             }
 
@@ -2617,6 +2429,12 @@
             closeMainMenu();
 
         };
+
+    window.StudentMenuBack = async function () {
+        if (!isMenuOpen()) return false;
+        await goBackInsideMenu();
+        return true;
+    };
 
 
     window.clearStudentMenuFeatureCache =
