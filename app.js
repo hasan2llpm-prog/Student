@@ -1975,7 +1975,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education.js";
+        script.src = "education.js?v=2.2.0";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2243,7 +2243,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js?v=1.1.0";
+    script.src = "store.js?v=1.2.0";
     script.async = true;
     script.dataset.studentStore = "true";
 
@@ -2282,7 +2282,7 @@ function openBottomSection(section) {
         }
 
         loadExternalScript(
-            "reels.js",
+            "reels.js?v=2.2.0",
             "student-reels",
             "Student Reels"
         );
@@ -2510,7 +2510,7 @@ function loadExternalScript(
 function loadNavigationManager() {
 
     loadExternalScript(
-        "navigation-manager.js",
+        "navigation-manager.js?v=2.2.0",
         "student-navigation-manager",
         "Student Navigation Manager"
     );
@@ -2534,7 +2534,7 @@ function loadAdminSystem() {
 function loadMenuSystem() {
 
     loadExternalScript(
-        "menu.js",
+        "menu.js?v=2.2.0",
         "student-menu",
         "Student Menu"
     );
