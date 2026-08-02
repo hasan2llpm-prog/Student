@@ -1881,161 +1881,63 @@ function escapeAttribute(
    المراحل الدراسية
 ========================================================= */
 
-function openStage(
+function loadEducationModule() {
+
+    if (window.StudentEducationOpenStage) {
+        return Promise.resolve();
+    }
+
+    if (window.__studentEducationLoading) {
+        return window.__studentEducationLoading;
+    }
+
+    window.__studentEducationLoading = new Promise(function(resolve, reject) {
+
+        const existing = document.querySelector('script[data-student-education="true"]');
+
+        if (existing) {
+            existing.addEventListener("load", resolve, { once: true });
+            existing.addEventListener("error", reject, { once: true });
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "education.js";
+        script.async = true;
+        script.dataset.studentEducation = "true";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+
+    return window.__studentEducationLoading;
+}
+
+
+async function openStage(
     stageName
 ) {
 
-    const stages = {
-
-        primary: {
-
-            title:
-                "المرحلة الابتدائية",
-
-            icon:
-                "🎓",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        middle: {
-
-            title:
-                "المرحلة الإعدادية",
-
-            icon:
-                "🏫",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        secondary: {
-
-            title:
-                "المرحلة الثانوية",
-
-            icon:
-                "📚",
-
-            text:
-                "اختر الصف الذي تريد الدخول إليه."
-        },
-
-
-        university: {
-
-            title:
-                "المرحلة الجامعية",
-
-            icon:
-                "🎓",
-
-            text:
-                "اختر الكلية أو القسم."
-        }
-
-    };
-
-
-    const stage =
-        stages[
-            stageName
-        ];
-
-
-    if (!stage) {
-        return;
-    }
-
-
     showFloatingPanel(
-        stage.title,
-        `
-        <div style="
-            text-align:center;
-            padding:10px 0 5px;
-        ">
-
-            <div style="
-                font-size:52px;
-                margin-bottom:12px;
-            ">
-                ${stage.icon}
-            </div>
-
-
-            <p style="
-                color:#666;
-                line-height:1.8;
-                margin:0 0 20px;
-            ">
-                ${stage.text}
-            </p>
-
-
-            <button
-                id="stage-enter-btn"
-                type="button"
-                style="
-                    border:none;
-                    background:#0095f6;
-                    color:#fff;
-                    padding:13px 28px;
-                    border-radius:12px;
-                    font-size:15px;
-                    cursor:pointer;
-                "
-            >
-                الدخول
-            </button>
-
-        </div>
-        `
+        "التعليم",
+        `<div style="padding:30px 12px;text-align:center;color:#666;">جارٍ التحميل...</div>`
     );
 
+    try {
+        await loadEducationModule();
 
-    const enterButton =
-        document.getElementById(
-            "stage-enter-btn"
-        );
+        if (typeof window.StudentEducationOpenStage !== "function") {
+            throw new Error("Education module did not initialize");
+        }
 
+        window.StudentEducationOpenStage(stageName);
 
-    if (enterButton) {
+    } catch (error) {
+        console.error("Education module:", error);
 
-        enterButton.addEventListener(
-            "click",
-            function() {
-
-                showFloatingPanel(
-                    stage.title,
-                    `
-                    <div style="
-                        text-align:center;
-                        padding:25px 10px;
-                    ">
-
-                        <div style="
-                            font-size:50px;
-                        ">
-                            📚
-                        </div>
-
-                        <p style="
-                            color:#666;
-                            line-height:1.8;
-                        ">
-                            سيتم إضافة محتوى
-                            هذه المرحلة هنا.
-                        </p>
-
-                    </div>
-                    `
-                );
-            }
+        showFloatingPanel(
+            "التعليم",
+            `<div style="padding:28px 12px;text-align:center;color:#d93025;line-height:1.8;">تعذر فتح قسم التعليم حاليًا.</div>`
         );
     }
 }
@@ -2474,14 +2376,6 @@ function bindInterfaceButtons() {
             function(event) {
 
                 event.preventDefault();
-
-                if (
-                    typeof window.openStudentMenu ===
-                    "function"
-                ) {
-                    window.openStudentMenu();
-                    return;
-                }
 
                 openMenu();
             }
