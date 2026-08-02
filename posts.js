@@ -1348,6 +1348,26 @@
             return;
         }
 
+        const MAX_REEL_SIZE = 30 * 1024 * 1024;
+
+        if (!file.type.startsWith("video/")) {
+            showPostMessage(
+                "reel-message",
+                "الملف المختار ليس فيديو صالحًا.",
+                true
+            );
+            return;
+        }
+
+        if (file.size > MAX_REEL_SIZE) {
+            showPostMessage(
+                "reel-message",
+                "حجم الفيديو كبير. اختر فيديو أقل من 30MB لتشغيل أسرع.",
+                true
+            );
+            return;
+        }
+
 
         button.disabled = true;
         button.textContent =
