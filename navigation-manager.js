@@ -8,6 +8,8 @@
 
     const stack = [];
     let exitConfirm = null;
+    let recentlyClosedManagedLayer = false;
+    let floatingPanelHistoryActive = false;
 
     function ensureStyles() {
         if (document.getElementById("student-navigation-style")) return;
@@ -67,111 +69,46 @@
         const entry = { id, element: page, onClose };
         stack.push(entry);
         page.querySelector(".student-internal-back")?.addEventListener("click", back);
+        history.pushState({ studentNavigation: true, id: id || "page" }, "");
         return page;
     }
 
     function back(fromPopState = false) {
-        /* 1) صفحات StudentNavigation الداخلية */
         const entry = stack.pop();
         if (entry) {
             entry.element?.remove();
             try { entry.onClose?.(); } catch (_) {}
             const previous = stack[stack.length - 1];
             if (previous?.element) previous.element.style.display = "flex";
+            if (!fromPopState && history.state?.studentNavigation) history.back();
             return true;
         }
 
-        /* 2) نافذة تأكيد الخروج نفسها */
-        if (exitConfirm) {
-            exitConfirm.remove();
-            exitConfirm = null;
-            return true;
-        }
-
-        /* 3) النوافذ الفرعية فوق الأقسام */
-        const storeModal = document.getElementById("student-store-modal");
-        if (storeModal?.classList.contains("show")) {
-            storeModal.classList.remove("show");
-            storeModal.setAttribute("aria-hidden", "true");
-            return true;
-        }
-
-        const reelDialog = document.querySelector(
-            "#student-reels-dialog.show,#student-reels-comments.show,#student-reels-share-dialog.show,.student-reels-dialog.show"
-        );
-        if (reelDialog) {
-            reelDialog.classList.remove("show", "active", "open");
-            return true;
-        }
-
-        /* 4) ناشر الريلز */
-        if (document.getElementById("student-reel-publisher")?.classList.contains("show")) {
-            if (typeof window.closeStudentPostCreator === "function") window.closeStudentPostCreator();
-            else document.getElementById("student-reel-publisher")?.classList.remove("show");
-            return true;
-        }
-
-        /* 5) عارض الستوري ونوافذه */
-        const storyClosable = findFirstVisible([
-            "#studentStoryDeleteConfirm.active",
-            "#studentStoryViewersModal.active",
-            "#studentStoryViewer.active",
-            "#student-story-form-modal.active"
-        ]);
-        if (storyClosable) {
-            closeElement(storyClosable);
-            return true;
-        }
-
-        /* 6) القائمة: ترجع داخل القائمة أولًا ثم تغلقها */
-        if (document.getElementById("student-main-menu")?.classList.contains("is-open")) {
-            if (typeof window.StudentMenuBack === "function") {
-                Promise.resolve(window.StudentMenuBack()).catch(() => {});
-            } else if (typeof window.closeStudentMenu === "function") {
-                window.closeStudentMenu();
-            }
-            return true;
-        }
-
-        /* 7) المتجر */
-        if (document.getElementById("student-store-overlay")?.classList.contains("show")) {
-            if (typeof window.StudentStore?.close === "function") window.StudentStore.close();
-            else document.getElementById("student-store-overlay")?.classList.remove("show");
-            return true;
-        }
-
-        /* 8) الريلز */
-        if (document.getElementById("student-reels-overlay")?.classList.contains("show")) {
-            if (typeof window.closeStudentReels === "function") window.closeStudentReels();
-            else document.getElementById("student-reels-overlay")?.classList.remove("show");
-            return true;
-        }
-
-        /* 9) المراحل: خطوة داخلية قبل إغلاق اللوحة */
-        const floatingPanel = document.getElementById("floating-panel");
-        if (floatingPanel?.classList.contains("show")) {
-            if (typeof window.StudentEducationBack === "function" && window.StudentEducationBack()) {
-                return true;
-            }
-            if (typeof window.StudentEducationReset === "function") window.StudentEducationReset();
-            if (typeof window.closeFloatingPanel === "function") window.closeFloatingPanel();
-            else floatingPanel.classList.remove("show");
-            return true;
-        }
-
-        /* 10) أي طبقة معروفة أخرى */
         const closable = findTopClosable();
         if (closable) {
             closeElement(closable);
             return true;
         }
 
-        /* لا نظهر الخروج إلا عندما لا توجد أي طبقة مفتوحة. */
         showExitConfirm();
         return false;
     }
 
-    function findFirstVisible(selectors) {
+    function findTopClosable() {
+        const selectors = [
+            '#studentStoryViewer.active',
+            '#student-story-form-modal.active',
+            '#studentStoryViewersModal.active',
+            '#studentStoryDeleteConfirm.active',
+            '#student-reel-publisher.show',
+            '#student-reels-overlay.show',
+            '#student-store-overlay.show',
+            '#student-posts-overlay.show',
+            '#student-main-menu.is-open',
+            '#floating-panel',
+            '.student-overlay.show',
+            '.student-modal.show'
+        ];
         for (const selector of selectors) {
             const el = document.querySelector(selector);
             if (el) return el;
@@ -179,13 +116,30 @@
         return null;
     }
 
-    function findTopClosable() {
-        return findFirstVisible([
-            '#studentStoryViewer.active', '#student-story-form-modal.active',
-            '#studentStoryViewersModal.active', '#studentStoryDeleteConfirm.active',
-            '#student-posts-overlay.show', '#floating-panel.show',
-            '.student-action-sheet', '.student-overlay.show', '.student-modal.show'
-        ]);
+    function isManagedByOwnPopState(el) {
+        return Boolean(el && [
+            'student-reel-publisher',
+            'student-reels-overlay',
+            'student-store-overlay',
+            'student-main-menu'
+        ].includes(el.id));
+    }
+
+    function closeFloatingOrEducationPanel() {
+        const panel = document.getElementById('floating-panel');
+        if (!panel) return false;
+
+        const educationBack = panel.querySelector('#edu-back-btn');
+        if (educationBack) {
+            educationBack.click();
+        } else if (typeof window.closeFloatingPanel === 'function') {
+            window.closeFloatingPanel();
+        } else {
+            panel.remove();
+        }
+
+        floatingPanelHistoryActive = false;
+        return true;
     }
 
     function closeElement(el) {
@@ -329,29 +283,84 @@
         setInterval(markOwnedPosts, 1600);
     }
 
-    function restoreBackGuard() {
-        try {
-            history.pushState({ studentBackGuard: true }, "", location.href);
-        } catch (_) {}
+    // posts.js is loaded before this file. When its publisher closes itself on popstate,
+    // it dispatches this event before our popstate handler runs. Remember that closure so
+    // we do not incorrectly show the exit confirmation afterward.
+    window.addEventListener("student:reel-creator-closed", () => {
+        recentlyClosedManagedLayer = true;
+        setTimeout(() => { recentlyClosedManagedLayer = false; }, 80);
+    });
+
+    // Education uses the shared floating panel and originally had no browser-history entry.
+    // Wrap it once so the hardware/browser Back button returns inside Education first.
+    function installFloatingPanelHistoryBridge() {
+        const original = window.showFloatingPanel;
+        if (typeof original !== "function" || original.__studentHistoryWrapped) return;
+
+        function wrappedShowFloatingPanel(title, content) {
+            const result = original.apply(this, arguments);
+            if (!floatingPanelHistoryActive) {
+                history.pushState({ studentFloatingPanel: true }, "", location.href);
+                floatingPanelHistoryActive = true;
+            }
+            return result;
+        }
+        wrappedShowFloatingPanel.__studentHistoryWrapped = true;
+        window.showFloatingPanel = wrappedShowFloatingPanel;
+
+        const originalClose = window.closeFloatingPanel;
+        if (typeof originalClose === "function" && !originalClose.__studentHistoryWrapped) {
+            function wrappedCloseFloatingPanel() {
+                floatingPanelHistoryActive = false;
+                return originalClose.apply(this, arguments);
+            }
+            wrappedCloseFloatingPanel.__studentHistoryWrapped = true;
+            window.closeFloatingPanel = wrappedCloseFloatingPanel;
+        }
     }
 
-    function handleSystemBack(event) {
-        event?.preventDefault?.();
-        event?.stopImmediatePropagation?.();
-        back(true);
-        restoreBackGuard();
-    }
+    window.addEventListener("popstate", () => {
+        if (recentlyClosedManagedLayer) {
+            recentlyClosedManagedLayer = false;
+            return;
+        }
 
-    /* حارس واحد فقط لزر رجوع المتصفح وAndroid WebView. */
-    try {
-        history.replaceState({ studentRoot: true }, "", location.href);
-        restoreBackGuard();
-    } catch (_) {}
+        if (stack.length) {
+            back(true);
+            return;
+        }
 
-    window.addEventListener("popstate", handleSystemBack, true);
-    document.addEventListener("backbutton", handleSystemBack, true);
+        const closable = findTopClosable();
+        if (closable) {
+            if (closable.id === "floating-panel") {
+                closeFloatingOrEducationPanel();
+                return;
+            }
+
+            // Reels, Store, Menu and Reel Publisher already own a popstate handler.
+            // Do not close them twice and never show the exit dialog in the same Back press.
+            if (isManagedByOwnPopState(closable)) return;
+
+            closeElement(closable);
+            return;
+        }
+
+        showExitConfirm();
+    });
+
+    document.addEventListener("backbutton", e => {
+        e.preventDefault();
+        const closable = findTopClosable();
+        if (closable?.id === "floating-panel") {
+            closeFloatingOrEducationPanel();
+            return;
+        }
+        back();
+    }, false);
 
     ensureStyles();
+    installFloatingPanelHistoryBridge();
+    setTimeout(installFloatingPanelHistoryBridge, 0);
     bindGlobalClicks();
     patchOwnProfile();
     startObservers();
