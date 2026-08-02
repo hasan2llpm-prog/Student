@@ -1417,7 +1417,7 @@
             <span
                 class="story-name"
             >
-                ستوري ستوري
+                ستوري
             </span>
         `;
 
@@ -3880,6 +3880,9 @@
             openCreateModal();
         };
 
+    window.StudentOpenStoryCreator =
+        window.openStudentStoryCreator;
+
 
     /* =========================================================
        INIT
@@ -3891,6 +3894,14 @@
 
         ensureUI();
 
+        /*
+         * Render the permanent Add Story entry immediately.
+         * It must not depend on Supabase/session initialization, otherwise
+         * a slow or failed connection leaves the stories strip empty.
+         */
+        setupStoriesContainer();
+        document.body.classList.add("student-stories-ready");
+
         const ready =
             await initSupabase();
 
@@ -3901,8 +3912,6 @@
         }
 
         await loadUser();
-
-        setupStoriesContainer();
 
         setupEvents();
 
