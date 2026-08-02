@@ -2243,7 +2243,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js";
+    script.src = "store.js?v=1.1.0";
     script.async = true;
     script.dataset.studentStore = "true";
 
