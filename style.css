@@ -39,3 +39,10 @@ body:not(.student-session-resolved)::before {
 }
 body:not(.student-stories-ready) .stories-container > * { visibility:hidden !important; }
 body:not(.student-stories-ready) .stories-container { min-height:88px; }
+
+
+/* Student: المراحل في الأعلى، والإنشاء من زر + فقط */
+.stories-container[hidden]{display:none!important;min-height:0!important;padding:0!important;border:0!important;}
+#student-reels-launcher-row,#student-reels-entry{display:none!important;}
+.main-content{padding-top:10px!important;}
+.student-post-owner-menu{margin-inline-start:auto;border:0;background:transparent;padding:8px;border-radius:50%;font-size:18px;cursor:pointer;}
