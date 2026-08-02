@@ -278,10 +278,7 @@
         overlay.setAttribute("aria-hidden", "false");
         document.body.style.overflow = "hidden";
 
-        if (!creatorHistoryActive) {
-            history.pushState({ studentReelCreator: true }, "", location.href);
-            creatorHistoryActive = true;
-        }
+        creatorHistoryActive = true;
 
         window.dispatchEvent(new CustomEvent("student:reel-creator-opened"));
     }
@@ -295,29 +292,10 @@
         window.dispatchEvent(new CustomEvent("student:reel-creator-closed"));
     }
 
-    function closeCreator(fromHistory = false) {
-        if (fromHistory) {
-            creatorHistoryActive = false;
-            hideCreator();
-            return;
-        }
-
-        if (creatorHistoryActive && !closingFromHistory) {
-            closingFromHistory = true;
-            creatorHistoryActive = false;
-            history.back();
-            setTimeout(function () { closingFromHistory = false; }, 0);
-            return;
-        }
-
+    function closeCreator() {
+        creatorHistoryActive = false;
         hideCreator();
     }
-
-    window.addEventListener("popstate", function () {
-        if (creatorHistoryActive && overlay?.classList.contains("show")) {
-            closeCreator(true);
-        }
-    });
 
     function videoDuration(file) {
         return new Promise(function (resolve, reject) {
