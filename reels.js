@@ -1876,14 +1876,11 @@
                     >
 
                         <video
-                            ${
-                                Math.abs(index - currentIndex) <= 1
-                                    ? `src="${escapeHTML(reel.video_url)}" data-loaded="true"`
-                                    : `data-loaded="false"`
-                            }
-                            data-src="${escapeHTML(
-                                reel.video_url
-                            )}"
+                            data-loaded="false"
+                            data-src="${escapeHTML(reel.video_url || "")}"
+                            data-src-low="${escapeHTML(reel.video_url_low || reel.video_url_360 || "")}"
+                            data-src-medium="${escapeHTML(reel.video_url_medium || reel.video_url_480 || reel.video_url || "")}"
+                            data-src-high="${escapeHTML(reel.video_url_high || reel.video_url_720 || reel.video_url || "")}"
                             ${
                                 reel.thumbnail_url
                                     ? `poster="${escapeHTML(
@@ -1893,7 +1890,7 @@
                             }
                             playsinline
                             loop
-                            preload="auto"
+                            preload="metadata"
                         ></video>
 
 
