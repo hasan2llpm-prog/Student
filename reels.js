@@ -748,55 +748,10 @@
     }
 
     function createReelsEntry() {
-
-        const container = ensureReelsLauncherRow();
-        if (!container) return false;
-
-        let entry =
-            document.getElementById(
-                "student-reels-entry"
-            );
-
-        if (!entry) {
-
-            entry =
-                document.createElement("button");
-
-            entry.id =
-                "student-reels-entry";
-
-            entry.type =
-                "button";
-
-            entry.innerHTML = `
-                <span id="student-reels-entry-inner">
-                    <span id="student-reels-entry-circle">
-                        <span id="student-reels-entry-icon"></span>
-                    </span>
-                    <span id="student-reels-entry-name">
-                        Reels
-                    </span>
-                </span>
-            `;
-
-            entry.addEventListener(
-                "click",
-                function (event) {
-
-                    event.preventDefault();
-                    event.stopPropagation();
-
-                    openReels(0);
-                }
-            );
-        }
-
-        if (entry.parentElement !== container) {
-            container.replaceChildren(entry);
-        }
-
-        resizeEntry();
-
+        const oldEntry = document.getElementById("student-reels-entry");
+        const oldRow = document.getElementById("student-reels-launcher-row");
+        oldEntry?.remove();
+        oldRow?.remove();
         return true;
     }
 
@@ -809,42 +764,7 @@
     }
 
     function protectEntry() {
-
-        if (observerStarted) return;
-
-        observerStarted = true;
-
-        const observer =
-            new MutationObserver(
-                function () {
-
-                    if (
-                        !document.getElementById(
-                            "student-reels-entry"
-                        )
-                    ) {
-                        setTimeout(
-                            createReelsEntry,
-                            100
-                        );
-                    }
-
-                    resizeEntry();
-                }
-            );
-
-        observer.observe(
-            document.body,
-            {
-                childList:true,
-                subtree:true
-            }
-        );
-
-        window.addEventListener(
-            "resize",
-            resizeEntry
-        );
+        createReelsEntry();
     }
 
     /* =====================================================
