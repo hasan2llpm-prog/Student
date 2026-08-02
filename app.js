@@ -2293,6 +2293,51 @@ function addStory() {
 }
 
 
+
+/* =========================================================
+   قائمة الإنشاء: ستوري أو ريلز فقط
+========================================================= */
+function openStudentCreateMenu() {
+
+    showFloatingPanel(
+        "إنشاء",
+        `
+        <div class="student-create-choice-menu" style="display:grid;gap:12px;padding:8px 2px 16px;">
+            <button id="student-create-story" type="button" style="border:0;border-radius:16px;padding:18px;background:#fff0f3;color:#c9184a;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;">
+                <i class="fa-regular fa-circle-play"></i>
+                إضافة ستوري
+            </button>
+            <button id="student-create-reel" type="button" style="border:0;border-radius:16px;padding:18px;background:#f1f5ff;color:#3157c8;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;">
+                <i class="fa-solid fa-clapperboard"></i>
+                نشر ريلز
+            </button>
+        </div>
+        `
+    );
+
+    document.getElementById("student-create-story")?.addEventListener("click", function () {
+        closeFloatingPanel?.();
+        if (typeof window.StudentOpenStoryCreator === "function") {
+            window.StudentOpenStoryCreator();
+            return;
+        }
+        addStory();
+    }, { once: true });
+
+    document.getElementById("student-create-reel")?.addEventListener("click", function () {
+        closeFloatingPanel?.();
+        if (typeof window.openStudentReelCreator === "function") {
+            window.openStudentReelCreator();
+            return;
+        }
+        if (typeof window.openStudentReels === "function") {
+            window.openStudentReels(0);
+            return;
+        }
+        showMessage?.("", "تعذر فتح نشر الريلز حاليًا.");
+    }, { once: true });
+}
+
 /* =========================================================
    الشريط السفلي
 ========================================================= */
@@ -2300,6 +2345,11 @@ function addStory() {
 function openBottomSection(
     section
 ) {
+
+    if (section === "add") {
+        openStudentCreateMenu();
+        return;
+    }
 
     if (
         section ===
