@@ -110,8 +110,26 @@
     }
 
     function renderList(title, items, emptyText, onSelect) {
-        panel(title, `${backButton()}${listMarkup(items, emptyText)}`);
+        panel(title, `${backButton()}${listMarkup(items, emptyText)}
+            <button id="edu-teacher-portal-btn" type="button" style="
+                border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;
+                padding:11px 14px;border-radius:12px;font-size:14px;font-weight:700;
+                cursor:pointer;margin-top:12px;width:100%;
+            ">مساحة المدرس وطلب الاعتماد</button>`);
         bindBack();
+
+        const teacherPortalButton = document.getElementById("edu-teacher-portal-btn");
+        if (teacherPortalButton) {
+            teacherPortalButton.addEventListener("click", async function () {
+                try {
+                    await loadTeachersEducation();
+                    await window.StudentTeachersEducation.openTeacherPortal(db());
+                } catch (error) {
+                    errorMessage(error);
+                }
+            });
+        }
+
         document.querySelectorAll(".edu-list-item").forEach((button) => {
             button.addEventListener("click", function () {
                 const selected = items.find((item) => item.id === this.dataset.id);
@@ -197,7 +215,11 @@
                 [["eq", "level_id", level.id]]
             );
             const subjects = await resolveSubjects("education_subjects", links);
-            renderSubjects(level.name, subjects);
+            renderSubjects(level.name, subjects, {
+                education_type: "school",
+                level_id: level.id,
+                track_id: null
+            });
         } catch (error) {
             errorMessage(error);
         }
@@ -212,7 +234,11 @@
                 [["eq", "track_id", track.id]]
             );
             const subjects = await resolveSubjects("education_subjects", links);
-            renderSubjects(track.name, subjects);
+            renderSubjects(track.name, subjects, {
+                education_type: "school",
+                level_id: level.id,
+                track_id: track.id
+            });
         } catch (error) {
             errorMessage(error);
         }
@@ -234,14 +260,57 @@
             .sort((a, b) => a.link_order - b.link_order);
     }
 
-    function renderSubjects(title, subjects) {
+    function loadTeachersEducation() {
+        return new Promise(function (resolve, reject) {
+            if (window.StudentTeachersEducation) return resolve();
+
+            const existing = document.querySelector(
+                'script[data-student-teachers-education="true"]'
+            );
+
+            if (existing) {
+                existing.addEventListener("load", resolve, { once: true });
+                existing.addEventListener("error", reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "teachers-education.js";
+            script.async = true;
+            script.dataset.studentTeachersEducation = "true";
+            script.onload = resolve;
+            script.onerror = function () {
+                reject(new Error("تعذر تحميل teachers-education.js"));
+            };
+            document.body.appendChild(script);
+        });
+    }
+
+    function renderSubjects(title, subjects, context) {
         renderList(title, subjects.map((x) => ({
             id: x.id,
             name: x.name,
             description: x.description,
             icon: "📖"
-        })), "لا توجد مواد مضافة حاليًا.", (subject) => {
-            message(subject.name, "لم تتم إضافة مدرسين أو ملفات لهذه المادة بعد.");
+        })), "لا توجد مواد مضافة حاليًا.", async (subject) => {
+            try {
+                await loadTeachersEducation();
+                if (
+                    !window.StudentTeachersEducation ||
+                    typeof window.StudentTeachersEducation.openSubject !== "function"
+                ) {
+                    throw new Error("واجهة المدرسين غير جاهزة");
+                }
+
+                await window.StudentTeachersEducation.openSubject({
+                    ...context,
+                    subject_id: subject.id,
+                    title: subject.name,
+                    client: db()
+                });
+            } catch (error) {
+                errorMessage(error);
+            }
         });
     }
 
@@ -322,7 +391,10 @@
                 [["eq", "university_level_id", level.id]]
             );
             const subjects = await resolveSubjects("university_subjects", links);
-            renderSubjects(level.name, subjects);
+            renderSubjects(level.name, subjects, {
+                education_type: "university",
+                university_level_id: level.id
+            });
         } catch (error) {
             errorMessage(error);
         }
