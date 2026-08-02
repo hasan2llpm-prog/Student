@@ -429,23 +429,23 @@
             <div class="student-post-type-grid">
 
                 <button
-                    id="create-text-post"
+                    id="create-story-item"
                     class="student-post-type"
                     type="button"
                 >
 
                     <div class="student-post-type-icon">
-                        <i class="fa-solid fa-pen"></i>
+                        <i class="fa-regular fa-circle-play"></i>
                     </div>
 
                     <div>
 
                         <div class="student-post-type-title">
-                            منشور نصي
+                            إضافة ستوري
                         </div>
 
                         <div class="student-post-type-desc">
-                            اكتب أفكارك أو رأيك
+                            صورة أو فيديو أو نص لمدة 24 ساعة
                         </div>
 
                     </div>
@@ -454,23 +454,23 @@
 
 
                 <button
-                    id="create-image-post"
+                    id="create-reel-item"
                     class="student-post-type"
                     type="button"
                 >
 
                     <div class="student-post-type-icon">
-                        <i class="fa-regular fa-image"></i>
+                        <i class="fa-solid fa-clapperboard"></i>
                     </div>
 
                     <div>
 
                         <div class="student-post-type-title">
-                            صورة
+                            نشر ريلز
                         </div>
 
                         <div class="student-post-type-desc">
-                            انشر صورة مع وصف اختياري
+                            اختر فيديو قصيرًا للنشر
                         </div>
 
                     </div>
@@ -483,27 +483,41 @@
 
         document
             .getElementById(
-                "create-text-post"
+                "create-story-item"
             )
             ?.addEventListener(
                 "click",
-                showTextPostForm
+                function() {
+
+                    closePosts();
+
+                    if (
+                        typeof window.openStudentStoryCreator ===
+                        "function"
+                    ) {
+
+                        window.openStudentStoryCreator();
+                        return;
+                    }
+
+                    console.error(
+                        "Story creator is not ready"
+                    );
+                }
             );
 
 
         document
             .getElementById(
-                "create-image-post"
+                "create-reel-item"
             )
             ?.addEventListener(
                 "click",
-                showImagePostForm
+                function() {
+
+                    showReelForm();
+                }
             );
-    }
-
-
-    function backToTypes() {
-        showPostTypes();
     }
 
 
