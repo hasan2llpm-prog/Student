@@ -46,3 +46,18 @@ body:not(.student-stories-ready) .stories-container { min-height:88px; }
 #student-reels-launcher-row,#student-reels-entry{display:none!important;}
 .main-content{padding-top:10px!important;}
 .student-post-owner-menu{margin-inline-start:auto;border:0;background:transparent;padding:8px;border-radius:50%;font-size:18px;cursor:pointer;}
+
+
+/* Student navigation layout update: Stories + Reels + Store */
+#main-screen > .stories-container {
+    width:100%;
+    box-sizing:border-box;
+    background:#fff;
+}
+#main-screen nav a {
+    -webkit-tap-highlight-color:transparent;
+}
+#main-screen nav a .fa-store,
+#main-screen nav a .fa-clapperboard {
+    font-size:24px;
+}
