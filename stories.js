@@ -3870,9 +3870,16 @@
         );
     }
 
+    /* =========================================================
+       PUBLIC API
+    ========================================================= */
 
-    window.StudentOpenStoryCreator = openCreateModal;
-    window.StudentReloadStories = loadStories;
+    window.openStudentStoryCreator =
+        function() {
+
+            openCreateModal();
+        };
+
 
     /* =========================================================
        INIT
