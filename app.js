@@ -2342,153 +2342,91 @@ function openStudentCreateMenu() {
    الشريط السفلي
 ========================================================= */
 
-function openStudentReelsSection() {
+function openBottomSection(section) {
 
-    if (typeof window.openStudentReels === "function") {
-        window.openStudentReels(0);
+    if (section === "home") {
+        if (typeof closeFloatingPanel === "function") {
+            closeFloatingPanel();
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
     }
 
-    let script = document.querySelector('script[data-student-reels="true"]');
-
-    if (!script) {
-        script = document.createElement("script");
-        script.src = "reels.js";
-        script.async = true;
-        script.dataset.studentReels = "true";
-        document.body.appendChild(script);
-    }
-
-    const startedAt = Date.now();
-    const timer = setInterval(function () {
+    if (section === "reels") {
         if (typeof window.openStudentReels === "function") {
-            clearInterval(timer);
             window.openStudentReels(0);
             return;
         }
 
-        if (Date.now() - startedAt > 8000) {
-            clearInterval(timer);
-            showFloatingPanel(
-                "الريلز",
-                `<div style="text-align:center;padding:30px 12px;color:#666;">تعذر فتح الريلز حاليًا.</div>`
-            );
-        }
-    }, 120);
-}
+        loadExternalScript(
+            "reels.js",
+            "student-reels",
+            "Student Reels"
+        );
 
-
-function openBottomSection(
-    section
-) {
-
-    if (section === "reels") {
-        openStudentReelsSection();
+        setTimeout(function () {
+            if (typeof window.openStudentReels === "function") {
+                window.openStudentReels(0);
+            }
+        }, 250);
         return;
     }
 
     if (section === "store") {
         showFloatingPanel(
             "المتجر",
-            `<div style="text-align:center;padding:34px 18px;line-height:1.9;">
-                <div style="font-size:54px;margin-bottom:12px;">🛍️</div>
-                <strong style="display:block;font-size:20px;margin-bottom:8px;">متجر Student</strong>
-                <p style="margin:0;color:#666;">سيتم تفعيل المتجر ومنتجاته من لوحة الإدارة لاحقًا.</p>
-            </div>`
+            `
+            <div style="text-align:center;padding:44px 20px;direction:rtl;">
+                <div style="width:86px;height:86px;border-radius:24px;background:#eaf5ff;color:#0095f6;display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto 18px;">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <h3 style="margin:0 0 10px;color:#222;">المتجر</h3>
+                <p style="margin:0;color:#888;line-height:1.8;">لا توجد منتجات بعد.</p>
+            </div>
+            `
         );
         return;
     }
 
+    if (section === "search") {
+        if (typeof window.openStudentSearch === "function") {
+            window.openStudentSearch();
+            return;
+        }
+    }
+
+    if (section === "messages") {
+        if (typeof window.openStudentMessages === "function") {
+            window.openStudentMessages();
+            return;
+        }
+    }
 
     const sections = {
-
-        home: {
-
-            title:
-                "الرئيسية",
-
-            icon:
-                "🏠",
-
-            text:
-                "أنت الآن في الصفحة الرئيسية."
-        },
-
-
         search: {
-
-            title:
-                "البحث",
-
-            icon:
-                "🔎",
-
-            text:
-                "سيتم إضافة البحث هنا."
+            title: "البحث",
+            icon: "🔎",
+            text: "سيتم إضافة البحث هنا."
         },
-
-
-        store: {
-
-            title:
-                "المتجر",
-
-            icon:
-                "🛍️",
-
-            text:
-                "سيتم إضافة المتجر هنا."
-        },
-
-
         messages: {
-
-            title:
-                "الرسائل",
-
-            icon:
-                "💬",
-
-            text:
-                "ستظهر المحادثات هنا."
+            title: "الرسائل",
+            icon: "💬",
+            text: "ستظهر المحادثات هنا."
         }
-
     };
 
-
-    const item =
-        sections[section] ||
-        sections.home;
-
+    const item = sections[section] || sections.search;
 
     showFloatingPanel(
         item.title,
         `
-        <div style="
-            text-align:center;
-            padding:25px;
-        ">
-
-            <div style="
-                font-size:50px;
-                margin-bottom:15px;
-            ">
-                ${item.icon}
-            </div>
-
-            <p style="
-                color:#666;
-                line-height:1.8;
-                margin:0;
-            ">
-                ${item.text}
-            </p>
-
+        <div style="text-align:center;padding:25px;">
+            <div style="font-size:50px;margin-bottom:15px;">${item.icon}</div>
+            <p style="color:#666;line-height:1.8;margin:0;">${item.text}</p>
         </div>
         `
     );
 }
-
 
 /* =========================================================
    ربط الواجهة
@@ -2617,19 +2555,6 @@ function bindInterfaceButtons() {
         );
 
 
-    const sections = [
-
-        "home",
-
-        "search",
-
-        "store",
-
-        "messages",
-
-        "reels"
-
-    ];
 
 
     navLinks.forEach(
@@ -2661,8 +2586,7 @@ function bindInterfaceButtons() {
 
 
                     openBottomSection(
-                        sections[index] ||
-                        "home"
+                        link.dataset.section || "home"
                     );
                 }
             );
@@ -3052,11 +2976,12 @@ document.addEventListener(
 
         loadSettingsSystem();
 
-        loadPostsSystem();
-
         loadSearchSystem();
 
-        loadFeedSystem();
+        /* المنشورات أزيلت من الواجهة الرئيسية */
+        document.querySelectorAll(".student-feed-container").forEach(function (element) {
+            element.remove();
+        });
 
     }
 );
