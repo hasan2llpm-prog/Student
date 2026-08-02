@@ -156,8 +156,20 @@
         body.innerHTML = `<div class="student-profile-page-card">${avatar}<h2 style="text-align:center;margin:0 0 5px">${escapeHTML(profile.full_name || "مستخدم")}</h2><div style="text-align:center;color:#0095f6;direction:ltr">@${escapeHTML(profile.username || "username")}</div><div style="display:flex;justify-content:center;gap:35px;margin:20px 0"><div><b>${stats.followers}</b><div style="font-size:12px;color:#777">متابعون</div></div><div><b>${stats.following}</b><div style="font-size:12px;color:#777">يتابع</div></div></div><p style="line-height:1.9;text-align:center;color:#555">${escapeHTML(profile.bio || "لا توجد نبذة بعد.")}</p></div>`;
     }
 
+    async function getSignedInUserId() {
+        if (!window.supabaseClient) return null;
+        try {
+            const { data } = await window.supabaseClient.auth.getUser();
+            return data?.user?.id || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     async function markOwnedPosts() {
-        if (!window.supabaseClient || !window.currentUser) return;
+        if (!window.supabaseClient) return;
+        const signedInUserId = await getSignedInUserId();
+        if (!signedInUserId) return;
         const cards = [...document.querySelectorAll('.student-feed-card[data-feed-id]:not([data-owner-checked])')];
         if (!cards.length) return;
         cards.forEach(c => c.dataset.ownerChecked = "1");
@@ -172,16 +184,16 @@
             const avatar = header?.querySelector('.student-feed-avatar,.student-feed-avatar-placeholder');
             const user = header?.querySelector('.student-feed-user');
             [avatar,user].forEach(el => { if (el) { el.style.cursor = "pointer"; el.dataset.openProfile = post.user_id; } });
-            if (post.user_id === window.currentUser.id && !header?.querySelector('.student-post-owner-menu')) {
+            if (String(post.user_id) === String(signedInUserId) && !header?.querySelector('.student-post-owner-menu')) {
                 const btn = document.createElement("button");
                 btn.type = "button"; btn.className = "student-post-owner-menu"; btn.innerHTML = '<i class="fa-solid fa-ellipsis"></i>';
-                btn.onclick = e => { e.stopPropagation(); showPostActions(post, card); };
+                btn.onclick = e => { e.stopPropagation(); showPostActions(post, card, signedInUserId); };
                 header.appendChild(btn);
             }
         });
     }
 
-    function showPostActions(post, card) {
+    function showPostActions(post, card, signedInUserId) {
         const sheet = document.createElement("div");
         sheet.className = "student-action-sheet";
         sheet.innerHTML = `<div class="student-action-sheet-card"><button type="button" data-edit><i class="fa-solid fa-pen"></i> تعديل المنشور</button><button type="button" class="danger" data-delete><i class="fa-solid fa-trash"></i> حذف المنشور</button><button type="button" data-cancel>إلغاء</button></div>`;
@@ -191,7 +203,7 @@
         sheet.querySelector('[data-edit]').onclick = async () => {
             const next = prompt("عدّل نص المنشور:", post.content || "");
             if (next === null) return;
-            const { error } = await window.supabaseClient.from("posts").update({ content: next.trim(), updated_at: new Date().toISOString() }).eq("id", post.id).eq("user_id", window.currentUser.id);
+            const { error } = await window.supabaseClient.from("posts").update({ content: next.trim(), updated_at: new Date().toISOString() }).eq("id", post.id).eq("user_id", signedInUserId);
             if (!error) {
                 const text = card.querySelector('.student-feed-text,.student-feed-caption');
                 if (text) text.textContent = next.trim();
@@ -203,7 +215,7 @@
             sheet.innerHTML = `<div class="student-action-sheet-card" style="text-align:center"><h3>حذف المنشور؟</h3><p style="color:#777">لا يمكن التراجع عن هذا الإجراء.</p><button type="button" class="danger" data-confirm>حذف نهائي</button><button type="button" data-cancel>إلغاء</button></div>`;
             sheet.querySelector('[data-cancel]').onclick = () => sheet.remove();
             sheet.querySelector('[data-confirm]').onclick = async () => {
-                const { error } = await window.supabaseClient.from("posts").delete().eq("id", post.id).eq("user_id", window.currentUser.id);
+                const { error } = await window.supabaseClient.from("posts").delete().eq("id", post.id).eq("user_id", signedInUserId);
                 if (!error) { card.remove(); sheet.remove(); } else alert("تعذر حذف المنشور.");
             };
         };
