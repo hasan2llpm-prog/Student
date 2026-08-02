@@ -16,6 +16,7 @@
     let creatorHistoryActive = false;
     let closingFromHistory = false;
     let selectedObjectUrl = "";
+    let publishing = false;
 
     function db() {
         if (typeof supabaseClient !== "undefined" && supabaseClient) {
@@ -196,16 +197,16 @@
                     <button id="student-reel-publisher-close" class="student-reel-publisher-close" type="button" aria-label="إغلاق">×</button>
                 </div>
                 <div class="student-reel-publisher-body">
-                    <form id="student-reel-form" class="student-reel-form">
+                    <form id="student-reel-form" class="student-reel-form" novalidate>
                         <label class="student-reel-file" for="student-reel-file-input">
                             <i class="fa-solid fa-clapperboard"></i>
                             <strong>اختر مقطع فيديو</strong>
                             <small>الحد الأقصى 30MB ومدة 90 ثانية</small>
                         </label>
-                        <input id="student-reel-file-input" type="file" accept="video/*" hidden required>
+                        <input id="student-reel-file-input" type="file" accept="video/*" hidden>
                         <video id="student-reel-preview" class="student-reel-preview" controls playsinline preload="metadata"></video>
                         <textarea id="student-reel-caption" class="student-reel-caption" maxlength="2000" placeholder="اكتب وصف الريلز (اختياري)"></textarea>
-                        <button id="student-reel-submit" class="student-reel-submit" type="submit">نشر الريلز</button>
+                        <button id="student-reel-submit" class="student-reel-submit" type="button">نشر الريلز</button>
                         <div id="student-reel-message" class="student-reel-message" role="status"></div>
                     </form>
                 </div>
@@ -220,7 +221,17 @@
         });
 
         document.getElementById("student-reel-file-input")?.addEventListener("change", previewFile);
-        document.getElementById("student-reel-form")?.addEventListener("submit", publishReel);
+
+        /* زر مستقل لتفادي مشاكل submit داخل Android WebView. */
+        document.getElementById("student-reel-submit")?.addEventListener("click", function (event) {
+            publishReel(event);
+        });
+
+        /* دعم لوحة المفاتيح وأي استدعاء قديم للنموذج. */
+        document.getElementById("student-reel-form")?.addEventListener("submit", function (event) {
+            event.preventDefault();
+            publishReel(event);
+        });
     }
 
     function setMessage(message, isError = false) {
@@ -249,6 +260,8 @@
             preview.style.display = "none";
             preview.load();
         }
+
+        publishing = false;
 
         if (button) {
             button.disabled = false;
@@ -386,48 +399,63 @@
     }
 
     async function publishReel(event) {
-        event.preventDefault();
-        event.stopPropagation();
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+
+        if (publishing) return;
 
         const client = db();
-        const file = document.getElementById("student-reel-file-input")?.files?.[0];
+        const input = document.getElementById("student-reel-file-input");
+        const file = input?.files?.[0] || null;
         const caption = document.getElementById("student-reel-caption")?.value?.trim() || null;
         const button = document.getElementById("student-reel-submit");
 
+        if (!button) return;
+
         if (!client) {
-            setMessage("الخدمة غير متاحة حاليًا.", true);
+            setMessage("الخدمة غير متاحة حاليًا. أعد فتح التطبيق ثم حاول مجددًا.", true);
             return;
         }
 
-        if (!button || button.disabled) return;
+        if (!file) {
+            setMessage("اختر مقطع فيديو أولًا.", true);
+            input?.click();
+            return;
+        }
 
         let uploadedPath = "";
+        publishing = true;
         button.disabled = true;
 
         try {
+            button.textContent = "جارٍ فحص الفيديو...";
+            setMessage("جارٍ تجهيز الفيديو للنشر.");
             await validateFile(file);
 
-            const { data: { user }, error: userError } = await client.auth.getUser();
-            if (userError) throw userError;
+            const { data: sessionData, error: sessionError } = await client.auth.getSession();
+            if (sessionError) throw sessionError;
+
+            const user = sessionData?.session?.user || null;
             if (!user) throw new Error("يجب تسجيل الدخول أولًا.");
 
             button.textContent = "جارٍ رفع الفيديو...";
-            setMessage("لا تغلق الصفحة حتى يكتمل النشر.");
+            setMessage("لا تغلق الصفحة حتى يكتمل الرفع.");
 
             const uploaded = await uploadVideo(client, user.id, file);
             uploadedPath = uploaded.path;
 
             button.textContent = "جارٍ حفظ الريلز...";
 
-            const { error } = await client.from("reels").insert({
+            const reelData = {
                 user_id: user.id,
                 video_url: uploaded.url,
                 video_url_low: uploaded.url,
                 video_url_medium: uploaded.url,
                 video_url_high: uploaded.url,
                 caption
-            });
+            };
 
+            const { error } = await client.from("reels").insert(reelData);
             if (error) throw error;
 
             setMessage("تم نشر الريلز بنجاح.");
@@ -435,7 +463,7 @@
 
             setTimeout(function () {
                 closeCreator();
-            }, 450);
+            }, 650);
         } catch (error) {
             console.error("Student reel publish:", error);
 
@@ -445,10 +473,21 @@
                 } catch (_) {}
             }
 
-            setMessage(error?.message || "تعذر نشر الريلز.", true);
+            const message = String(error?.message || "");
+            if (message.includes("row-level security")) {
+                setMessage("صلاحية رفع الريلز غير مفعلة في Supabase.", true);
+            } else if (message.includes("column") && message.includes("video_url_")) {
+                setMessage("حقول جودة الريلز غير موجودة في جدول reels.", true);
+            } else {
+                setMessage(message || "تعذر نشر الريلز.", true);
+            }
         } finally {
-            button.disabled = false;
-            button.textContent = "نشر الريلز";
+            publishing = false;
+            const currentButton = document.getElementById("student-reel-submit");
+            if (currentButton) {
+                currentButton.disabled = false;
+                currentButton.textContent = "نشر الريلز";
+            }
         }
     }
 
