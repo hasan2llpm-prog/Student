@@ -7,24 +7,14 @@
 (function () {
     "use strict";
 
-    const STORE_VERSION = "1.3.0";
-
-    // اسمح باستبدال نسخة المتجر القديمة دون إبقاء الواجهة أو التنسيق السابقين.
-    if (window.StudentStore?.version === STORE_VERSION) return;
-    try { window.StudentStore?.close?.(); } catch (_) {}
-    document.getElementById("student-store-overlay")?.remove();
-    document.getElementById("student-store-style")?.remove();
+    if (window.StudentStore?.version) return;
 
     const PRODUCT_IMAGE_MAX = 5 * 1024 * 1024;
-    const STORE_MASTER_NUMBER = "6783943118";
-    const STORE_MASTER_NAME = "JAWAD R SAGBAN";
-    const STORE_WHATSAPP = "9647725541189";
 
     const state = {
         products: [],
         tasks: [],
         balance: 0,
-        currentOrder: null,
         activeTab: "products",
         isAdmin: false,
         user: null,
@@ -76,11 +66,11 @@
         style.id = "student-store-style";
         style.textContent = `
             #student-store-overlay {
-                position:fixed; inset:0; z-index:9999994; display:none !important;
+                position:fixed; inset:0; z-index:9999994; display:none;
                 flex-direction:column; background:#f7f8fa; color:#1f2937;
                 direction:rtl; box-sizing:border-box;
             }
-            #student-store-overlay.show { display:flex !important; }
+            #student-store-overlay.show { display:flex; }
             .student-store-header {
                 min-height:64px; display:grid;
                 grid-template-columns:44px minmax(70px,1fr) auto auto;
@@ -205,7 +195,7 @@
                 position:absolute; inset:0; z-index:4; display:none; align-items:center;
                 justify-content:center; padding:16px; background:rgba(0,0,0,.46);
             }
-            .student-store-modal.show { display:flex !important; }
+            .student-store-modal.show { display:flex; }
             .student-store-modal-card {
                 width:100%; max-width:470px; max-height:90vh; overflow-y:auto;
                 padding:18px; border-radius:20px; background:#fff;
@@ -261,23 +251,6 @@
             .student-store-confirm-button { min-height:44px; border:0; border-radius:12px; font-weight:900; cursor:pointer; }
             .student-store-confirm-button.cancel { background:#eef0f3; color:#374151; }
             .student-store-confirm-button.danger { background:#c62828; color:#fff; }
-            .student-store-task-admin { display:flex; gap:8px; margin-top:10px; }
-            .student-store-task-admin button { flex:1; min-height:38px; border:0; border-radius:10px; font-weight:900; cursor:pointer; }
-            .student-store-task-admin .edit { background:#edf5ff; color:#1767c2; }
-            .student-store-task-admin .delete { background:#fff0f0; color:#bb2525; }
-            .student-store-payment-card { border:1px solid #d9e7f6; border-radius:18px; padding:16px; background:linear-gradient(180deg,#f7fbff,#fff); }
-            .student-store-payment-card h3 { margin:0 0 12px; font-size:18px; color:#17324d; }
-            .student-store-payment-row { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px dashed #d9e2ec; font-size:13px; }
-            .student-store-payment-row:last-child { border-bottom:0; }
-            .student-store-payment-row strong { direction:ltr; text-align:left; word-break:break-all; }
-            .student-store-master-box { margin-top:12px; padding:14px; border-radius:15px; background:#eef7ff; border:1px solid #cfe6fb; }
-            .student-store-master-number { direction:ltr; font-size:22px; font-weight:900; letter-spacing:1px; text-align:center; margin:8px 0; }
-            .student-store-action-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:14px; }
-            .student-store-action { min-height:45px; border:0; border-radius:12px; font-weight:900; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:7px; }
-            .student-store-action.primary { background:#1473e6; color:#fff; }
-            .student-store-action.whatsapp { background:#20b15a; color:#fff; }
-            .student-store-action.light { background:#edf1f5; color:#263442; }
-            .student-store-paid-check { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:12px; border-radius:12px; background:#fff8e8; color:#71540d; line-height:1.6; font-size:13px; }
             .student-store-toast {
                 position:fixed; left:50%; bottom:82px; z-index:100000000;
                 transform:translateX(-50%); max-width:88vw; padding:11px 16px;
@@ -309,7 +282,7 @@
                 <button id="student-store-close" class="student-store-close" type="button" aria-label="رجوع">‹</button>
                 <div class="student-store-title">المتجر</div>
                 <button id="student-store-admin-add" class="student-store-admin-add" type="button">
-                    <i class="fa-solid fa-plus"></i><span id="student-store-admin-add-label">منتج</span>
+                    <i class="fa-solid fa-plus"></i><span>منتج</span>
                 </button>
                 <div class="student-store-balance" title="رصيد الألماس">
                     <i class="fa-solid fa-gem student-store-diamond"></i>
@@ -332,9 +305,7 @@
 
         document.getElementById("student-store-admin-add")?.addEventListener("click", function (event) {
             event.preventDefault();
-            if (!state.isAdmin) return;
-            if (state.activeTab === "tasks") openTaskForm(null);
-            else openProductForm(null);
+            if (state.isAdmin) openProductForm(null);
         });
 
         overlay.querySelectorAll("[data-store-tab]").forEach(function (button) {
@@ -366,17 +337,13 @@
     }
 
     function updateAdminUI() {
-        const button = document.getElementById("student-store-admin-add");
-        button?.classList.toggle("show", state.isAdmin);
-        const label = document.getElementById("student-store-admin-add-label");
-        if (label) label.textContent = state.activeTab === "tasks" ? "مهمة" : "منتج";
+        document.getElementById("student-store-admin-add")?.classList.toggle("show", state.isAdmin);
     }
 
     function updateTabs() {
         overlay?.querySelectorAll("[data-store-tab]").forEach(function (button) {
             button.classList.toggle("active", button.dataset.storeTab === state.activeTab);
         });
-        updateAdminUI();
     }
 
     function renderLoading() {
@@ -442,7 +409,7 @@
         if (!body) return;
 
         if (!state.tasks.length) {
-            body.innerHTML = `<div class="student-store-empty"><i class="fa-solid fa-list-check"></i><strong>لا توجد مهام متاحة حاليًا</strong>${state.isAdmin ? `<button class="student-store-empty-add" type="button" data-store-add-task>إضافة مهمة</button>` : ""}</div>`;
+            body.innerHTML = `<div class="student-store-empty"><i class="fa-solid fa-list-check"></i><strong>لا توجد مهام متاحة حاليًا</strong></div>`;
             return;
         }
 
@@ -459,7 +426,6 @@
                                 <div class="student-store-task-reward">+${Number(task.reward_diamonds || 0)} ألماسة</div>
                             </div>
                             ${claimable ? `<button class="student-store-claim" type="button" data-store-task="${esc(task.id)}">استلام</button>` : `<span class="student-store-status">تلقائي</span>`}
-                            ${state.isAdmin ? `<div class="student-store-task-admin" style="grid-column:1/-1"><button class="edit" type="button" data-store-edit-task="${esc(task.id)}">تعديل</button><button class="delete" type="button" data-store-delete-task="${esc(task.id)}">حذف</button></div>` : ""}
                         </article>
                     `;
                 }).join("")}
@@ -515,18 +481,17 @@
     }
 
     async function loadTasks(client) {
-        let query = client
+        const { data, error } = await client
             .from("store_tasks")
-            .select("id,title,description,reward_diamonds,repeat_kind,verification_type,starts_at,ends_at,sort_order,is_active");
-        if (!state.isAdmin) query = query.eq("is_active", true);
-        const { data, error } = await query.order("sort_order", { ascending: true });
+            .select("id,title,description,reward_diamonds,repeat_kind,verification_type,starts_at,ends_at,sort_order")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true });
 
         if (error) {
             if (isMissingTable(error)) return [];
             throw error;
         }
 
-        if (state.isAdmin) return data || [];
         const now = Date.now();
         return (data || []).filter(function (task) {
             const startsAt = task.starts_at ? Date.parse(task.starts_at) : null;
@@ -651,7 +616,7 @@
                     ${product.allow_money ? `<button class="student-store-payment" type="button" data-store-pay="money" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-money-bill-wave"></i> الدفع المالي</span><strong>${money(product.price_money, product.currency)}</strong></button>` : ""}
                     ${product.allow_diamonds ? `<button class="student-store-payment" type="button" data-store-pay="diamonds" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-gem student-store-diamond"></i> الدفع بالألماس</span><strong>${Number(product.price_diamonds || 0)} ألماسة</strong></button>` : ""}
                 </div>
-                ${product.allow_money ? `<div class="student-store-note">حوّل المبلغ إلى رقم الماستر، ثم أنشئ الطلب وأرسل صورة بطاقة الدفع عبر تواصل معنا.</div>` : ""}
+                ${product.allow_money ? `<div class="student-store-note">الدفع المالي يُسجل كطلب قيد المراجعة. ربط بوابة دفع إلكترونية يتم لاحقًا.</div>` : ""}
             </div>
         `);
     }
@@ -714,87 +679,6 @@
                 </form>
             </div>
         `);
-    }
-
-    function selectedTask(id) {
-        return state.tasks.find(function (task) { return task.id === id; }) || null;
-    }
-
-    function openTaskForm(task) {
-        if (!state.isAdmin) return;
-        const editing = Boolean(task?.id);
-        showModal(`
-            <div class="student-store-modal-card" role="dialog" aria-modal="true">
-                <div class="student-store-modal-head"><div class="student-store-modal-title">${editing ? "تعديل المهمة" : "إضافة مهمة"}</div><button class="student-store-modal-close" type="button" data-store-modal-close>×</button></div>
-                <form class="student-store-form" novalidate>
-                    <input type="hidden" id="student-store-task-id" value="${esc(task?.id || "")}">
-                    <div class="student-store-field"><label>اسم المهمة</label><input id="student-store-task-title" class="student-store-input" maxlength="120" value="${esc(task?.title || "")}"></div>
-                    <div class="student-store-field"><label>الوصف</label><textarea id="student-store-task-description" class="student-store-textarea" maxlength="1000">${esc(task?.description || "")}</textarea></div>
-                    <div class="student-store-form-row">
-                        <div class="student-store-field"><label>مكافأة الألماس</label><input id="student-store-task-reward" class="student-store-input" type="number" min="1" step="1" value="${task?.reward_diamonds ?? 5}"></div>
-                        <div class="student-store-field"><label>التكرار</label><select id="student-store-task-repeat" class="student-store-input"><option value="once" ${task?.repeat_kind === "once" ? "selected" : ""}>مرة واحدة</option><option value="daily" ${task?.repeat_kind === "daily" ? "selected" : ""}>يوميًا</option></select></div>
-                    </div>
-                    <div class="student-store-field"><label>نوع التحقق</label><select id="student-store-task-verification" class="student-store-input"><option value="daily_visit" ${task?.verification_type === "daily_visit" ? "selected" : ""}>زيارة المتجر</option><option value="manual" ${task?.verification_type === "manual" ? "selected" : ""}>تحقق يدوي</option></select></div>
-                    <div class="student-store-form-row"><div class="student-store-field"><label>الترتيب</label><input id="student-store-task-sort" class="student-store-input" type="number" step="1" value="${task?.sort_order ?? 0}"></div><label class="student-store-check"><input id="student-store-task-active" type="checkbox" ${task?.is_active === false ? "" : "checked"}> المهمة مفعلة</label></div>
-                    <button class="student-store-save" type="button" data-store-save-task>${editing ? "حفظ التعديلات" : "إضافة المهمة"}</button>
-                    <div id="student-store-task-message" class="student-store-form-message"></div>
-                </form>
-            </div>`);
-    }
-
-    async function saveTask(button) {
-        if (!state.isAdmin || state.saving) return;
-        const client = db();
-        if (!client || !state.user) return;
-        const title = document.getElementById("student-store-task-title")?.value.trim() || "";
-        const reward = Number(document.getElementById("student-store-task-reward")?.value || 0);
-        const id = document.getElementById("student-store-task-id")?.value || "";
-        const msg = document.getElementById("student-store-task-message");
-        if (!title || !Number.isInteger(reward) || reward < 1) { if (msg) { msg.textContent = "اكتب اسمًا ومكافأة صحيحة."; msg.classList.add("error"); } return; }
-        const payload = {
-            title,
-            description: document.getElementById("student-store-task-description")?.value.trim() || "",
-            reward_diamonds: reward,
-            repeat_kind: document.getElementById("student-store-task-repeat")?.value || "once",
-            verification_type: document.getElementById("student-store-task-verification")?.value || "manual",
-            sort_order: Number(document.getElementById("student-store-task-sort")?.value || 0),
-            is_active: Boolean(document.getElementById("student-store-task-active")?.checked)
-        };
-        state.saving = true; button.disabled = true; button.textContent = "جارٍ الحفظ...";
-        try {
-            const result = id ? await client.from("store_tasks").update(payload).eq("id", id) : await client.from("store_tasks").insert({ ...payload, created_by: state.user.id });
-            if (result.error) throw result.error;
-            toast(id ? "تم تعديل المهمة." : "تمت إضافة المهمة."); closeModal(); await refresh();
-        } catch (error) { console.error(error); if (msg) { msg.textContent = error?.message || "تعذر حفظ المهمة."; msg.classList.add("error"); } }
-        finally { state.saving = false; if (button.isConnected) { button.disabled = false; button.textContent = id ? "حفظ التعديلات" : "إضافة المهمة"; } }
-    }
-
-    function openDeleteTask(task) {
-        if (!state.isAdmin || !task) return;
-        showModal(`<div class="student-store-modal-card"><div class="student-store-modal-head"><div class="student-store-modal-title">حذف المهمة</div><button class="student-store-modal-close" data-store-modal-close>×</button></div><div class="student-store-note">سيتم حذف المهمة «${esc(task.title)}» نهائيًا.</div><div class="student-store-confirm-actions"><button class="student-store-confirm-button cancel" data-store-modal-close>إلغاء</button><button class="student-store-confirm-button danger" data-store-confirm-delete-task="${esc(task.id)}">حذف</button></div></div>`);
-    }
-
-    async function deleteTask(id, button) {
-        if (!state.isAdmin || state.saving) return;
-        state.saving = true; button.disabled = true;
-        try { const { error } = await db().from("store_tasks").delete().eq("id", id); if (error) throw error; toast("تم حذف المهمة."); closeModal(); await refresh(); }
-        catch (error) { toast(error?.message || "تعذر حذف المهمة."); button.disabled = false; }
-        finally { state.saving = false; }
-    }
-
-    function openMoneyInstructions(product) {
-        showModal(`<div class="student-store-modal-card"><div class="student-store-modal-head"><div class="student-store-modal-title">الدفع المالي</div><button class="student-store-modal-close" data-store-modal-close>×</button></div>
-            <div class="student-store-payment-card"><h3>بيانات التحويل</h3><div class="student-store-payment-row"><span>المنتج</span><strong>${esc(product.name)}</strong></div><div class="student-store-payment-row"><span>المبلغ</span><strong>${money(product.price_money, product.currency)}</strong></div>
-            <div class="student-store-master-box"><div style="text-align:center;font-weight:900">رقم الماستر</div><div class="student-store-master-number">${STORE_MASTER_NUMBER}</div><div style="text-align:center">${STORE_MASTER_NAME}</div></div>
-            <label class="student-store-paid-check"><input id="student-store-paid-confirm" type="checkbox"><span>أؤكد أنني حوّلت المبلغ، وسأرسل صورة بطاقة الطلب عبر تواصل معنا.</span></label>
-            <div class="student-store-action-grid"><button class="student-store-action light" type="button" data-store-copy-master><i class="fa-regular fa-copy"></i>نسخ الرقم</button><button class="student-store-action primary" type="button" data-store-create-money-order="${esc(product.id)}">تم الدفع وإنشاء الطلب</button></div></div></div>`);
-    }
-
-    function showPaymentReceipt(product, result) {
-        const orderId = result?.order_id || result?.id || result?.orderId || `ST-${Date.now().toString().slice(-8)}`;
-        const text = `مرحبًا، أرسل إثبات دفع طلب متجر Student%0Aرقم الطلب: ${encodeURIComponent(orderId)}%0Aالمنتج: ${encodeURIComponent(product.name)}%0Aالمبلغ: ${encodeURIComponent(money(product.price_money, product.currency))}%0Aرقم الماستر: ${STORE_MASTER_NUMBER}`;
-        state.currentOrder = { orderId, productId: product.id };
-        showModal(`<div class="student-store-modal-card"><div class="student-store-modal-head"><div class="student-store-modal-title">بطاقة الطلب</div><button class="student-store-modal-close" data-store-modal-close>×</button></div><div class="student-store-payment-card" id="student-store-receipt"><h3>بانتظار إثبات الدفع</h3><div class="student-store-payment-row"><span>رقم الطلب</span><strong>${esc(orderId)}</strong></div><div class="student-store-payment-row"><span>المنتج</span><strong>${esc(product.name)}</strong></div><div class="student-store-payment-row"><span>المبلغ</span><strong>${money(product.price_money, product.currency)}</strong></div><div class="student-store-payment-row"><span>التحويل إلى</span><strong>${STORE_MASTER_NUMBER}</strong></div><div class="student-store-payment-row"><span>اسم المستلم</span><strong>${STORE_MASTER_NAME}</strong></div><div class="student-store-note">التقط صورة لهذه البطاقة، ثم اضغط تواصل معنا وأرسل الصورة لإكمال مراجعة طلبك.</div><div class="student-store-action-grid"><button class="student-store-action light" type="button" data-store-copy-order="${esc(orderId)}">نسخ رقم الطلب</button><a class="student-store-action whatsapp" href="https://wa.me/${STORE_WHATSAPP}?text=${text}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i>تواصل معنا</a></div></div></div>`);
     }
 
     function setProductMessage(message, isError = false) {
@@ -1006,8 +890,6 @@
         const client = db();
         if (!client) return toast("الخدمة غير متاحة حاليًا.");
         if (!productId || !paymentMethod || button?.disabled) return;
-        const product = selectedProduct(productId);
-        if (!product) return toast("المنتج غير موجود.");
         button.disabled = true;
         const oldText = button.innerHTML;
         button.textContent = "جارٍ إنشاء الطلب...";
@@ -1023,8 +905,8 @@
                 state.balance = Number(result.new_balance);
                 updateBalance();
             }
-            if (paymentMethod === "money") showPaymentReceipt(product, result || {});
-            else { closeModal(); toast("تم شراء المنتج بالألماس."); }
+            closeModal();
+            toast(paymentMethod === "diamonds" ? "تم شراء المنتج بالألماس." : "تم تسجيل الطلب المالي للمراجعة.");
             await refresh();
         } catch (error) {
             console.error("Create store order:", error);
@@ -1035,13 +917,6 @@
     }
 
     function handleBodyClick(event) {
-        const addTask = event.target.closest("[data-store-add-task]");
-        if (addTask) { event.preventDefault(); openTaskForm(null); return; }
-        const editTask = event.target.closest("[data-store-edit-task]");
-        if (editTask) { event.preventDefault(); openTaskForm(selectedTask(editTask.dataset.storeEditTask)); return; }
-        const deleteTaskButton = event.target.closest("[data-store-delete-task]");
-        if (deleteTaskButton) { event.preventDefault(); openDeleteTask(selectedTask(deleteTaskButton.dataset.storeDeleteTask)); return; }
-
         const addButton = event.target.closest("[data-store-add-product]");
         if (addButton) {
             event.preventDefault();
@@ -1099,23 +974,10 @@
             return;
         }
 
-        const saveTaskButton = event.target.closest("[data-store-save-task]");
-        if (saveTaskButton) { event.preventDefault(); saveTask(saveTaskButton); return; }
-        const deleteTaskButton = event.target.closest("[data-store-confirm-delete-task]");
-        if (deleteTaskButton) { event.preventDefault(); deleteTask(deleteTaskButton.dataset.storeConfirmDeleteTask, deleteTaskButton); return; }
-        const copyMaster = event.target.closest("[data-store-copy-master]");
-        if (copyMaster) { event.preventDefault(); navigator.clipboard?.writeText(STORE_MASTER_NUMBER).then(() => toast("تم نسخ رقم الماستر.")).catch(() => toast(STORE_MASTER_NUMBER)); return; }
-        const copyOrder = event.target.closest("[data-store-copy-order]");
-        if (copyOrder) { event.preventDefault(); navigator.clipboard?.writeText(copyOrder.dataset.storeCopyOrder).then(() => toast("تم نسخ رقم الطلب.")).catch(() => toast(copyOrder.dataset.storeCopyOrder)); return; }
-        const createMoney = event.target.closest("[data-store-create-money-order]");
-        if (createMoney) { event.preventDefault(); if (!document.getElementById("student-store-paid-confirm")?.checked) return toast("أكد أنك حوّلت المبلغ أولًا."); createOrder(createMoney.dataset.storeCreateMoneyOrder, "money", createMoney); return; }
         const paymentButton = event.target.closest("[data-store-pay]");
         if (paymentButton) {
             event.preventDefault();
-            const method = paymentButton.dataset.storePay;
-            const product = selectedProduct(paymentButton.dataset.productId);
-            if (method === "money") openMoneyInstructions(product);
-            else createOrder(paymentButton.dataset.productId, method, paymentButton);
+            createOrder(paymentButton.dataset.productId, paymentButton.dataset.storePay, paymentButton);
         }
     }
 
@@ -1148,7 +1010,7 @@
     }
 
     window.StudentStore = {
-        version: STORE_VERSION,
+        version: "1.1.0",
         open,
         close,
         refresh
