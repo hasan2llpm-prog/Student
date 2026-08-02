@@ -321,10 +321,16 @@
 
         .stories-container{
             display:flex!important;
+            flex-direction:row!important;
+            direction:rtl!important;
             overflow-x:auto!important;
+            overscroll-behavior-inline:contain!important;
             gap:14px!important;
-            padding:14px!important;
+            padding:14px 18px 10px!important;
+            margin:8px 0 4px!important;
+            min-height:98px!important;
             scrollbar-width:none!important;
+            -webkit-overflow-scrolling:touch!important;
         }
 
         .stories-container::-webkit-scrollbar{
@@ -383,14 +389,28 @@
         }
 
         .stories-add-new .story-ring{
-            border:2px dashed #ed1c24!important;
+            border:0!important;
+            background:#0b9ff2!important;
+            padding:4px!important;
+            box-shadow:0 3px 10px rgba(11,159,242,.24)!important;
+        }
+
+        .stories-add-new .story-ring-inner{
             background:#fff!important;
-            padding:0!important;
+            position:relative!important;
         }
 
         .stories-add-new i{
-            color:#ed1c24!important;
-            font-size:25px!important;
+            width:30px!important;
+            height:30px!important;
+            border-radius:50%!important;
+            display:flex!important;
+            align-items:center!important;
+            justify-content:center!important;
+            background:#ed1c24!important;
+            color:#fff!important;
+            font-size:17px!important;
+            box-shadow:0 2px 6px rgba(237,28,36,.28)!important;
         }
 
         .student-story-preview{
@@ -1417,7 +1437,7 @@
             <span
                 class="story-name"
             >
-                إضافة ستوري
+                ستوري
             </span>
         `;
 
