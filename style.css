@@ -28,3 +28,14 @@ header { display: flex; justify-content: space-between; align-items: center; pad
 nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #fff; border-top: 1px solid #dbdbdb; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
 nav a { font-size: 22px; color: #262626; text-decoration: none; }
 nav a.active { color: #0095f6; }
+
+/* Student boot stability: prevent auth/story placeholders flashing */
+body:not(.student-session-resolved) #auth-screen,
+body:not(.student-session-resolved) #main-screen { display:none !important; }
+body:not(.student-session-resolved)::before {
+    content:"Student"; position:fixed; inset:0; z-index:2147483000;
+    display:flex; align-items:center; justify-content:center;
+    background:#fff; color:#0095f6; font-size:34px; font-weight:800; font-style:italic;
+}
+body:not(.student-stories-ready) .stories-container > * { visibility:hidden !important; }
+body:not(.student-stories-ready) .stories-container { min-height:88px; }
