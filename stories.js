@@ -3870,6 +3870,10 @@
         );
     }
 
+
+    window.StudentOpenStoryCreator = openCreateModal;
+    window.StudentReloadStories = loadStories;
+
     /* =========================================================
        INIT
     ========================================================= */
