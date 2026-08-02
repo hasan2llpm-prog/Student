@@ -47,17 +47,65 @@ body:not(.student-stories-ready) .stories-container { min-height:88px; }
 .main-content{padding-top:10px!important;}
 .student-post-owner-menu{margin-inline-start:auto;border:0;background:transparent;padding:8px;border-radius:50%;font-size:18px;cursor:pointer;}
 
+/* =========================================================
+   Student - Home stories / no posts feed
+========================================================= */
+.student-home-stories {
+    width: 100%;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+    border-bottom: 1px solid #eeeeee;
+    margin-top: 8px;
+    overflow: hidden;
+}
 
-/* Student navigation layout update: Stories + Reels + Store */
-#main-screen > .stories-container {
-    width:100%;
-    box-sizing:border-box;
-    background:#fff;
+.student-home-stories .stories-container {
+    display: flex !important;
+    visibility: visible !important;
+    width: 100%;
+    min-height: 104px;
+    padding: 10px 14px 8px;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    direction: rtl;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    background: #fff;
+    border: 0;
 }
-#main-screen nav a {
-    -webkit-tap-highlight-color:transparent;
+
+.student-home-stories .stories-container > * {
+    visibility: visible !important;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
 }
-#main-screen nav a .fa-store,
-#main-screen nav a .fa-clapperboard {
-    font-size:24px;
+
+.student-home-stories .stories-add-new .story-ring {
+    position: relative;
+    border: 3px solid #0095f6 !important;
+    background: #0095f6;
+    padding: 3px;
+}
+
+.student-home-stories .stories-add-new .story-ring-inner {
+    background: #fff !important;
+}
+
+.student-home-stories .stories-add-new i,
+.student-home-stories .stories-add-new .fa-plus {
+    color: #ed1c24 !important;
+    font-size: 23px !important;
+}
+
+.student-home-stories .stories-add-new .story-name {
+    font-weight: 700;
+}
+
+.student-feed-container,
+.student-feed-loading,
+.student-feed-empty,
+#student-feed-container {
+    display: none !important;
 }
