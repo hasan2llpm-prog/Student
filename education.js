@@ -400,6 +400,20 @@
         }
     }
 
+
+    window.StudentEducationBack = function () {
+        const previous = state.history.pop();
+        if (typeof previous === "function") {
+            previous();
+            return true;
+        }
+        return false;
+    };
+
+    window.StudentEducationReset = function () {
+        state.history = [];
+    };
+
     window.StudentEducationOpenStage = function (stageSlug) {
         state.history = [];
         if (stageSlug === "university") return openUniversities();
