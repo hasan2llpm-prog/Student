@@ -1449,14 +1449,7 @@
             "show"
         );
 
-        if (!reelsHistoryActive) {
-            history.pushState(
-                { studentReels: true },
-                "",
-                location.href
-            );
-            reelsHistoryActive = true;
-        }
+        reelsHistoryActive = true;
 
         await loadReels();
 
@@ -1489,7 +1482,7 @@
         );
     }
 
-    function closeReels(fromHistory = false) {
+    function closeReels() {
 
         overlay
             ?.querySelectorAll("video")
@@ -1507,26 +1500,8 @@
         closeShareDialog();
         closeDialog();
 
-        if (fromHistory) {
-            reelsHistoryActive = false;
-            return;
-        }
-
-        if (reelsHistoryActive && !closingFromHistory) {
-            closingFromHistory = true;
-            reelsHistoryActive = false;
-            history.back();
-            setTimeout(function () {
-                closingFromHistory = false;
-            }, 0);
-        }
+        reelsHistoryActive = false;
     }
-
-    window.addEventListener("popstate", function () {
-        if (reelsHistoryActive && overlay?.classList.contains("show")) {
-            closeReels(true);
-        }
-    });
 
     window.addEventListener("student:reel-creator-opened", function () {
         overlay
