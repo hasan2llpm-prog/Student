@@ -228,7 +228,9 @@ async function loadProfile(userId) {
                     bio,
                     avatar_url,
                     account_status,
-                    role
+                    role,
+                    account_type_selected,
+                    role_selected_at
                 `)
                 .eq(
                     "id",
@@ -387,6 +389,8 @@ async function handleSession(
             session.user.id
         );
 
+        await openAccountRoleOnboarding();
+
     } else {
 
         currentUser =
@@ -396,6 +400,8 @@ async function handleSession(
             null;
 
         showAuthScreen();
+
+        await openAccountRoleOnboarding();
     }
 }
 
@@ -1874,6 +1880,71 @@ function escapeAttribute(
     return escapeHTML(
         value
     );
+}
+
+
+/* =========================================================
+   اختيار نوع الحساب
+========================================================= */
+
+function loadAccountRoleOnboardingModule() {
+
+    if (window.StudentAccountRoleOnboarding) {
+        return Promise.resolve();
+    }
+
+    if (window.__studentAccountRoleLoading) {
+        return window.__studentAccountRoleLoading;
+    }
+
+    window.__studentAccountRoleLoading = new Promise(function(resolve, reject) {
+
+        const existing = document.querySelector(
+            'script[data-student-account-role="true"]'
+        );
+
+        if (existing) {
+            existing.addEventListener("load", resolve, { once: true });
+            existing.addEventListener("error", reject, { once: true });
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "account-role-onboarding.js";
+        script.async = true;
+        script.dataset.studentAccountRole = "true";
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+
+    return window.__studentAccountRoleLoading;
+}
+
+
+async function openAccountRoleOnboarding() {
+
+    try {
+        await loadAccountRoleOnboardingModule();
+
+        if (!window.StudentAccountRoleOnboarding?.open) {
+            return;
+        }
+
+        await window.StudentAccountRoleOnboarding.open({
+            supabaseClient: supabaseClient,
+            user: currentUser,
+            profile: currentProfile,
+            onSelected: async function(profile) {
+                if (profile) {
+                    currentProfile = profile;
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Account role onboarding error:", error);
+    }
 }
 
 
