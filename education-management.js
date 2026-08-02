@@ -178,7 +178,20 @@
             .sem-actions{display:flex;gap:5px;flex-wrap:wrap}.sem-actions button{border:0;border-radius:8px;padding:7px 9px;cursor:pointer;font-size:11px}.sem-edit{background:#eaf5ff;color:#0878c9}.sem-archive{background:#fff4df;color:#9a6500}.sem-delete{background:#fff0ef;color:#b3261e}
             .sem-form-layer,.sem-confirm-layer{position:absolute;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:12px;z-index:2}.sem-form-layer.show,.sem-confirm-layer.show{display:flex}
             .sem-dialog{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:16px}.sem-dialog h3{margin:0 0 14px}.sem-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sem-field{margin-bottom:10px}.sem-field.full{grid-column:1/-1}.sem-field label{display:block;font-size:12px;color:#666;margin-bottom:5px}.sem-field input,.sem-field textarea,.sem-field select{width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:10px;background:#fff}.sem-field textarea{min-height:75px;resize:vertical}.sem-checks{display:flex;gap:16px;margin:10px 0}.sem-dialog-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}.sem-dialog-actions button{border:0;border-radius:9px;padding:9px 14px;cursor:pointer}.sem-primary{background:#0095f6;color:#fff}.sem-secondary{background:#eee}.sem-danger{background:#d93025;color:#fff}.sem-empty{text-align:center;color:#888;padding:35px}
-            @media(max-width:720px){.sem-body{grid-template-columns:1fr}.sem-nav{display:flex;overflow:auto;border-left:0;border-bottom:1px solid #eee}.sem-nav button{min-width:max-content;margin:0 4px}.sem-grid{grid-template-columns:1fr}.sem-panel{height:95vh}}
+            @media(max-width:720px){
+                .sem-overlay{padding:0;align-items:stretch;justify-content:stretch}
+                .sem-panel{width:100%;height:100dvh;max-height:none;border-radius:0}
+                .sem-header{flex:0 0 auto;padding:14px 16px}
+                .sem-body{display:flex;flex-direction:column;min-height:0;flex:1}
+                .sem-nav{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:8px;border-left:0;border-bottom:1px solid #eee;background:#fafafa;scrollbar-width:none}
+                .sem-nav::-webkit-scrollbar{display:none}
+                .sem-nav button{width:auto;min-width:max-content;flex:0 0 auto;margin:0;padding:9px 12px}
+                .sem-main{flex:1;min-height:0;overflow-y:auto;padding:12px}
+                .sem-toolbar{position:sticky;top:0;z-index:1;background:#fff;padding:4px 0 10px}
+                .sem-grid{grid-template-columns:1fr}
+                .sem-card{align-items:flex-start;flex-direction:column}
+                .sem-actions{width:100%}
+            }
         `;
         document.head.appendChild(style);
 
