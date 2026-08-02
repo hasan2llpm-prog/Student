@@ -369,6 +369,33 @@
             color: #d93025;
         }
 
+        .student-admin-tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .student-admin-tool-button {
+            border: 1px solid #dcecff;
+            background: #f5f9ff;
+            color: #0878c9;
+            padding: 13px 12px;
+            border-radius: 13px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .student-admin-tool-button:disabled {
+            opacity: .6;
+            cursor: wait;
+        }
+
         .student-admin-empty {
             text-align: center;
             color: #888;
@@ -436,6 +463,16 @@
 
             <div class="student-admin-content">
 
+                <div class="student-admin-tools">
+                    <button
+                        class="student-admin-tool-button"
+                        id="student-open-education-management"
+                    >
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        إدارة التعليم
+                    </button>
+                </div>
+
                 <div
                     class="student-admin-status"
                     id="student-admin-status"
@@ -470,6 +507,12 @@
     const list =
         document.getElementById(
             "student-features-list"
+        );
+
+
+    const educationButton =
+        document.getElementById(
+            "student-open-education-management"
         );
 
 
@@ -822,6 +865,74 @@
             .replace(/'/g, "&#039;");
     }
 
+
+    /* =====================================================
+       إدارة التعليم
+    ===================================================== */
+
+    function loadEducationManagement() {
+        return new Promise(function (resolve, reject) {
+
+            if (window.StudentEducationManagement) {
+                resolve();
+                return;
+            }
+
+            const existing = document.querySelector(
+                'script[data-student-education-management="true"]'
+            );
+
+            if (existing) {
+                existing.addEventListener("load", resolve, { once: true });
+                existing.addEventListener("error", reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "education-management.js";
+            script.async = true;
+            script.dataset.studentEducationManagement = "true";
+            script.onload = resolve;
+            script.onerror = function () {
+                reject(new Error("تعذر تحميل education-management.js"));
+            };
+
+            document.body.appendChild(script);
+        });
+    }
+
+    async function openEducationManagement() {
+        if (!educationButton) return;
+
+        educationButton.disabled = true;
+
+        try {
+            await loadEducationManagement();
+
+            if (
+                !window.StudentEducationManagement ||
+                typeof window.StudentEducationManagement.open !== "function"
+            ) {
+                throw new Error("ملف إدارة التعليم غير صالح");
+            }
+
+            closeAdminPanel();
+            await window.StudentEducationManagement.open(client);
+
+        } catch (error) {
+            console.error("Education management error:", error);
+            status.textContent = error.message || "تعذر فتح إدارة التعليم.";
+        } finally {
+            educationButton.disabled = false;
+        }
+    }
+
+    if (educationButton) {
+        educationButton.addEventListener(
+            "click",
+            openEducationManagement
+        );
+    }
 
     /* =====================================================
        فتح اللوحة
