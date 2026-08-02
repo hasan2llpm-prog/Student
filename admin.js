@@ -471,6 +471,14 @@
                         <i class="fa-solid fa-graduation-cap"></i>
                         إدارة التعليم
                     </button>
+
+                    <button
+                        class="student-admin-tool-button"
+                        id="student-open-teachers-management"
+                    >
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                        طلبات المدرسين
+                    </button>
                 </div>
 
                 <div
@@ -513,6 +521,11 @@
     const educationButton =
         document.getElementById(
             "student-open-education-management"
+        );
+
+    const teachersButton =
+        document.getElementById(
+            "student-open-teachers-management"
         );
 
 
@@ -932,6 +945,71 @@
             "click",
             openEducationManagement
         );
+    }
+
+
+
+    /* =====================================================
+       إدارة طلبات المدرسين
+    ===================================================== */
+
+    function loadTeachersEducation() {
+        return new Promise(function (resolve, reject) {
+            if (window.StudentTeachersEducation) {
+                resolve();
+                return;
+            }
+
+            const existing = document.querySelector(
+                'script[data-student-teachers-education="true"]'
+            );
+
+            if (existing) {
+                existing.addEventListener("load", resolve, { once: true });
+                existing.addEventListener("error", reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "teachers-education.js";
+            script.async = true;
+            script.dataset.studentTeachersEducation = "true";
+            script.onload = resolve;
+            script.onerror = function () {
+                reject(new Error("تعذر تحميل teachers-education.js"));
+            };
+
+            document.body.appendChild(script);
+        });
+    }
+
+    async function openTeachersManagement() {
+        if (!teachersButton) return;
+        teachersButton.disabled = true;
+
+        try {
+            await loadTeachersEducation();
+
+            if (
+                !window.StudentTeachersEducation ||
+                typeof window.StudentTeachersEducation.openAdmin !== "function"
+            ) {
+                throw new Error("ملف إدارة المدرسين غير صالح");
+            }
+
+            closeAdminPanel();
+            await window.StudentTeachersEducation.openAdmin(client);
+
+        } catch (error) {
+            console.error("Teachers management error:", error);
+            status.textContent = error.message || "تعذر فتح طلبات المدرسين.";
+        } finally {
+            teachersButton.disabled = false;
+        }
+    }
+
+    if (teachersButton) {
+        teachersButton.addEventListener("click", openTeachersManagement);
     }
 
     /* =====================================================
