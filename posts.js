@@ -1100,6 +1100,161 @@
     }
 
 
+
+    /* =====================================================
+       ضغط Reel للإنترنت المتوسط والضعيف
+       - يحتفظ بالملف الأصلي للجودة العالية
+       - ينشئ نسخة MP4 بعرض أقصى 480px
+       - يعود للملف الأصلي تلقائيًا إذا تعذر الضغط
+    ===================================================== */
+
+    let reelFFmpegLoader = null;
+    let reelFFmpegInstance = null;
+
+    function loadExternalScript(src, id) {
+
+        const existing = document.getElementById(id);
+
+        if (existing) {
+            if (existing.dataset.loaded === "true") {
+                return Promise.resolve();
+            }
+
+            return new Promise(function(resolve, reject) {
+                existing.addEventListener("load", resolve, { once:true });
+                existing.addEventListener("error", reject, { once:true });
+            });
+        }
+
+        return new Promise(function(resolve, reject) {
+            const script = document.createElement("script");
+            script.id = id;
+            script.src = src;
+            script.async = true;
+            script.crossOrigin = "anonymous";
+
+            script.addEventListener("load", function() {
+                script.dataset.loaded = "true";
+                resolve();
+            }, { once:true });
+
+            script.addEventListener("error", function() {
+                reject(new Error("تعذر تحميل أداة ضغط الفيديو."));
+            }, { once:true });
+
+            document.head.appendChild(script);
+        });
+    }
+
+    async function getReelFFmpeg(onProgress) {
+
+        if (reelFFmpegInstance) {
+            if (typeof reelFFmpegInstance.setProgress === "function") {
+                reelFFmpegInstance.setProgress(function({ ratio }) {
+                    onProgress?.(Math.max(0, Math.min(1, Number(ratio || 0))));
+                });
+            }
+            return reelFFmpegInstance;
+        }
+
+        if (!reelFFmpegLoader) {
+            reelFFmpegLoader = (async function() {
+                await loadExternalScript(
+                    "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js",
+                    "student-ffmpeg-script"
+                );
+
+                if (!window.FFmpeg?.createFFmpeg || !window.FFmpeg?.fetchFile) {
+                    throw new Error("أداة ضغط الفيديو غير مدعومة على هذا الجهاز.");
+                }
+
+                const instance = window.FFmpeg.createFFmpeg({
+                    log: false,
+                    corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+                });
+
+                instance.setProgress(function({ ratio }) {
+                    onProgress?.(Math.max(0, Math.min(1, Number(ratio || 0))));
+                });
+
+                await instance.load();
+                reelFFmpegInstance = instance;
+                return instance;
+            })();
+        }
+
+        try {
+            return await reelFFmpegLoader;
+        } catch (error) {
+            reelFFmpegLoader = null;
+            throw error;
+        }
+    }
+
+    async function createMediumReelVersion(file, onProgress) {
+
+        const ffmpeg = await getReelFFmpeg(onProgress);
+        const inputExtension = getFileExtension(file.name) || "mp4";
+        const token = crypto.randomUUID();
+        const inputName = `reel-input-${token}.${inputExtension}`;
+        const outputName = `reel-medium-${token}.mp4`;
+
+        try {
+            ffmpeg.FS("writeFile", inputName, await window.FFmpeg.fetchFile(file));
+
+            await ffmpeg.run(
+                "-i", inputName,
+                "-vf", "scale=if(gt(iw\\,480)\\,480\\,iw):-2",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "30",
+                "-maxrate", "700k",
+                "-bufsize", "1400k",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                "-c:a", "aac",
+                "-b:a", "64k",
+                "-ac", "2",
+                outputName
+            );
+
+            const data = ffmpeg.FS("readFile", outputName);
+
+            return new File(
+                [data.buffer],
+                `${Date.now()}-medium.mp4`,
+                { type:"video/mp4" }
+            );
+
+        } finally {
+            try { ffmpeg.FS("unlink", inputName); } catch (_) {}
+            try { ffmpeg.FS("unlink", outputName); } catch (_) {}
+        }
+    }
+
+    async function uploadReelFile(client, bucket, path, file) {
+
+        const { error } = await client.storage
+            .from(bucket)
+            .upload(path, file, {
+                cacheControl:"3600",
+                upsert:false,
+                contentType:file.type || "video/mp4"
+            });
+
+        if (error) throw error;
+
+        const { data } = client.storage
+            .from(bucket)
+            .getPublicUrl(path);
+
+        if (!data?.publicUrl) {
+            throw new Error("تعذر الحصول على رابط الفيديو.");
+        }
+
+        return data.publicUrl;
+    }
+
     /* =====================================================
        Reels
        هذه الدالة لا تظهر في قائمة ➕
@@ -1297,65 +1452,37 @@
 
         event.preventDefault();
 
-
-        const client =
-            getSupabase();
-
+        const client = getSupabase();
 
         if (!client) {
-
             showPostMessage(
                 "reel-message",
                 "الخدمة غير متاحة حاليًا.",
                 true
             );
-
             return;
         }
 
+        const file = document
+            .getElementById("reel-file")
+            ?.files?.[0];
 
-        const file =
-            document
-                .getElementById(
-                    "reel-file"
-                )
-                ?.files?.[0];
+        const caption = document
+            .getElementById("reel-caption")
+            ?.value
+            .trim();
 
-
-        const caption =
-            document
-                .getElementById(
-                    "reel-caption"
-                )
-                ?.value
-                .trim();
-
-
-        const button =
-            document.getElementById(
-                "reel-submit"
-            );
-
+        const button = document.getElementById("reel-submit");
 
         if (!file) {
-
-            showPostMessage(
-                "reel-message",
-                "اختر فيديو أولًا.",
-                true
-            );
-
+            showPostMessage("reel-message", "اختر فيديو أولًا.", true);
             return;
         }
 
         const MAX_REEL_SIZE = 30 * 1024 * 1024;
 
         if (!file.type.startsWith("video/")) {
-            showPostMessage(
-                "reel-message",
-                "الملف المختار ليس فيديو صالحًا.",
-                true
-            );
+            showPostMessage("reel-message", "الملف المختار ليس فيديو صالحًا.", true);
             return;
         }
 
@@ -1368,164 +1495,114 @@
             return;
         }
 
-
         button.disabled = true;
-        button.textContent =
-            "جارٍ رفع الفيديو...";
 
+        let uploadedPaths = [];
 
         try {
-
-            const {
-                data:{
-                    user
-                }
-            } =
-                await client.auth.getUser();
-
+            const { data:{ user } } = await client.auth.getUser();
 
             if (!user) {
+                throw new Error("يجب تسجيل الدخول أولًا.");
+            }
 
-                throw new Error(
-                    "يجب تسجيل الدخول أولًا."
+            let mediumFile = null;
+
+            try {
+                button.textContent = "جارٍ تجهيز جودة سريعة 0%";
+
+                mediumFile = await createMediumReelVersion(
+                    file,
+                    function(ratio) {
+                        const percent = Math.round(ratio * 100);
+                        button.textContent = `جارٍ تجهيز جودة سريعة ${percent}%`;
+                        showPostMessage(
+                            "reel-message",
+                            "يتم إنشاء نسخة أخف للإنترنت المتوسط والضعيف. لا تغلق الصفحة.",
+                            false
+                        );
+                    }
+                );
+            } catch (compressionError) {
+                console.warn("Reel compression fallback:", compressionError);
+                mediumFile = null;
+                showPostMessage(
+                    "reel-message",
+                    "تعذر الضغط على هذا الجهاز؛ سيُنشر الفيديو بالجودة الأصلية.",
+                    false
                 );
             }
 
+            const bucket = "post-media";
+            const stamp = Date.now();
+            const id = crypto.randomUUID();
+            const originalExtension = getFileExtension(file.name) || "mp4";
+            const highPath = `${user.id}/reels/${stamp}-${id}-high.${originalExtension}`;
 
-            const extension =
-                getFileExtension(
-                    file.name
-                );
+            button.textContent = "جارٍ رفع الجودة العالية...";
+            const highURL = await uploadReelFile(client, bucket, highPath, file);
+            uploadedPaths.push(highPath);
 
+            let mediumURL = highURL;
 
-            const filePath =
-                `${user.id}/reels/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-
-
-            const {
-                error:uploadError
-            } =
-                await client.storage
-                    .from(
-                        "post-media"
-                    )
-                    .upload(
-                        filePath,
-                        file,
-                        {
-                            cacheControl:
-                                "3600",
-                            upsert:
-                                false,
-                            contentType:
-                                file.type
-                        }
-                    );
-
-
-            if (uploadError) {
-                throw uploadError;
+            if (mediumFile && mediumFile.size > 0) {
+                const mediumPath = `${user.id}/reels/${stamp}-${id}-medium.mp4`;
+                button.textContent = "جارٍ رفع الجودة السريعة...";
+                mediumURL = await uploadReelFile(client, bucket, mediumPath, mediumFile);
+                uploadedPaths.push(mediumPath);
             }
 
+            button.textContent = "جارٍ حفظ الـReel...";
 
-            const {
-                data:publicData
-            } =
-                client.storage
-                    .from(
-                        "post-media"
-                    )
-                    .getPublicUrl(
-                        filePath
-                    );
+            const { error } = await client
+                .from("reels")
+                .insert({
+                    user_id:user.id,
+                    video_url:mediumURL,
+                    video_url_low:mediumURL,
+                    video_url_medium:mediumURL,
+                    video_url_high:highURL,
+                    caption:caption || null
+                });
 
-
-            const videoURL =
-                publicData?.publicUrl;
-
-
-            if (!videoURL) {
-
-                throw new Error(
-                    "تعذر الحصول على رابط الفيديو."
-                );
-            }
-
-
-            const {
-                error
-            } =
-                await client
-                    .from("reels")
-                    .insert({
-
-                        user_id:
-                            user.id,
-
-                        video_url:
-                            videoURL,
-
-                        caption:
-                            caption ||
-                            null
-                    });
-
-
-            if (error) {
-                throw error;
-            }
-
+            if (error) throw error;
 
             showPostMessage(
                 "reel-message",
-                "تم نشر الـReel بنجاح.",
+                mediumFile
+                    ? "تم نشر الـReel بجودتين ويتغير التشغيل حسب سرعة الإنترنت."
+                    : "تم نشر الـReel بنجاح.",
                 false
             );
 
+            setTimeout(async function() {
+                closePosts();
 
-            setTimeout(
-                async function() {
-
-                    closePosts();
-
-                    if (
-                        typeof window.openStudentReels ===
-                        "function"
-                    ) {
-
-                        await window.openStudentReels(
-                            0
-                        );
-                    }
-
-                },
-                600
-            );
-
+                if (typeof window.openStudentReels === "function") {
+                    await window.openStudentReels(0);
+                }
+            }, 700);
 
         } catch (error) {
+            console.error("Reel error:", error);
 
-            console.error(
-                "Reel error:",
-                error
-            );
-
+            if (uploadedPaths.length) {
+                try {
+                    await client.storage
+                        .from("post-media")
+                        .remove(uploadedPaths);
+                } catch (_) {}
+            }
 
             showPostMessage(
                 "reel-message",
-                error?.message ||
-                "تعذر نشر الـReel.",
+                error?.message || "تعذر نشر الـReel.",
                 true
             );
 
-
         } finally {
-
-            button.disabled =
-                false;
-
-            button.textContent =
-                "نشر Reel";
+            button.disabled = false;
+            button.textContent = "نشر Reel";
         }
     }
 
