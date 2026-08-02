@@ -34,10 +34,6 @@
 
     let floatingPanelInterceptActive = false;
 
-    let historyDepth = 0;
-
-    let ignoreNextPopState = false;
-
     let menuOpeningPromise = null;
     let menuActionBusy = false;
 
@@ -1266,8 +1262,6 @@
             contentBox
         );
 
-
-        pushMenuHistoryState();
     }
 
 
@@ -1645,21 +1639,10 @@
 
 
     /* =====================================================
-       History
-    ===================================================== */
-
-    function pushMenuHistoryState() {
-        historyDepth = 0;
-    }
-
-
-    /* =====================================================
        إغلاق القائمة
     ===================================================== */
 
-    function closeMainMenu(
-        changeHistory = true
-    ) {
+    function closeMainMenu() {
 
         if (!menuElement) {
             return;
@@ -1688,9 +1671,6 @@
 
         deactivateFloatingPanelInterceptor();
 
-
-        historyDepth = 0;
-        ignoreNextPopState = false;
     }
 
 
@@ -2342,9 +2322,6 @@
                 currentView =
                     "menu";
 
-                historyDepth =
-                    0;
-
                 await renderMainMenu();
 
                 return;
@@ -2429,12 +2406,6 @@
             closeMainMenu();
 
         };
-
-    window.StudentMenuBack = async function () {
-        if (!isMenuOpen()) return false;
-        await goBackInsideMenu();
-        return true;
-    };
 
 
     window.clearStudentMenuFeatureCache =
