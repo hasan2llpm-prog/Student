@@ -7,7 +7,13 @@
 (function () {
     "use strict";
 
-    if (window.StudentStore?.version) return;
+    const STORE_VERSION = "1.3.0";
+
+    // اسمح باستبدال نسخة المتجر القديمة دون إبقاء الواجهة أو التنسيق السابقين.
+    if (window.StudentStore?.version === STORE_VERSION) return;
+    try { window.StudentStore?.close?.(); } catch (_) {}
+    document.getElementById("student-store-overlay")?.remove();
+    document.getElementById("student-store-style")?.remove();
 
     const PRODUCT_IMAGE_MAX = 5 * 1024 * 1024;
     const STORE_MASTER_NUMBER = "6783943118";
@@ -70,11 +76,11 @@
         style.id = "student-store-style";
         style.textContent = `
             #student-store-overlay {
-                position:fixed; inset:0; z-index:9999994; display:none;
+                position:fixed; inset:0; z-index:9999994; display:none !important;
                 flex-direction:column; background:#f7f8fa; color:#1f2937;
                 direction:rtl; box-sizing:border-box;
             }
-            #student-store-overlay.show { display:flex; }
+            #student-store-overlay.show { display:flex !important; }
             .student-store-header {
                 min-height:64px; display:grid;
                 grid-template-columns:44px minmax(70px,1fr) auto auto;
@@ -199,7 +205,7 @@
                 position:absolute; inset:0; z-index:4; display:none; align-items:center;
                 justify-content:center; padding:16px; background:rgba(0,0,0,.46);
             }
-            .student-store-modal.show { display:flex; }
+            .student-store-modal.show { display:flex !important; }
             .student-store-modal-card {
                 width:100%; max-width:470px; max-height:90vh; overflow-y:auto;
                 padding:18px; border-radius:20px; background:#fff;
@@ -1142,7 +1148,7 @@
     }
 
     window.StudentStore = {
-        version: "1.2.0",
+        version: STORE_VERSION,
         open,
         close,
         refresh
