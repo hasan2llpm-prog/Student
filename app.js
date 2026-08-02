@@ -378,6 +378,8 @@ async function handleSession(
     session
 ) {
 
+    document.body.classList.add("student-session-resolved");
+
     if (session?.user) {
 
         currentUser =
@@ -2648,6 +2650,16 @@ function loadExternalScript(
    تحميل لوحة المشرف
 ========================================================= */
 
+function loadNavigationManager() {
+
+    loadExternalScript(
+        "navigation-manager.js",
+        "student-navigation-manager",
+        "Student Navigation Manager"
+    );
+}
+
+
 function loadAdminSystem() {
 
     loadExternalScript(
@@ -2939,6 +2951,8 @@ function initInterface() {
 document.addEventListener(
     "DOMContentLoaded",
     function() {
+
+        loadNavigationManager();
 
         initInterface();
 
