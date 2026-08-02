@@ -67,43 +67,125 @@
         const entry = { id, element: page, onClose };
         stack.push(entry);
         page.querySelector(".student-internal-back")?.addEventListener("click", back);
-        history.pushState({ studentNavigation: true, id: id || "page" }, "");
         return page;
     }
 
     function back(fromPopState = false) {
+        /* 1) صفحات StudentNavigation الداخلية */
         const entry = stack.pop();
         if (entry) {
             entry.element?.remove();
             try { entry.onClose?.(); } catch (_) {}
             const previous = stack[stack.length - 1];
             if (previous?.element) previous.element.style.display = "flex";
-            if (!fromPopState && history.state?.studentNavigation) history.back();
             return true;
         }
 
+        /* 2) نافذة تأكيد الخروج نفسها */
+        if (exitConfirm) {
+            exitConfirm.remove();
+            exitConfirm = null;
+            return true;
+        }
+
+        /* 3) النوافذ الفرعية فوق الأقسام */
+        const storeModal = document.getElementById("student-store-modal");
+        if (storeModal?.classList.contains("show")) {
+            storeModal.classList.remove("show");
+            storeModal.setAttribute("aria-hidden", "true");
+            return true;
+        }
+
+        const reelDialog = document.querySelector(
+            "#student-reels-dialog.show,#student-reels-comments.show,#student-reels-share-dialog.show,.student-reels-dialog.show"
+        );
+        if (reelDialog) {
+            reelDialog.classList.remove("show", "active", "open");
+            return true;
+        }
+
+        /* 4) ناشر الريلز */
+        if (document.getElementById("student-reel-publisher")?.classList.contains("show")) {
+            if (typeof window.closeStudentPostCreator === "function") window.closeStudentPostCreator();
+            else document.getElementById("student-reel-publisher")?.classList.remove("show");
+            return true;
+        }
+
+        /* 5) عارض الستوري ونوافذه */
+        const storyClosable = findFirstVisible([
+            "#studentStoryDeleteConfirm.active",
+            "#studentStoryViewersModal.active",
+            "#studentStoryViewer.active",
+            "#student-story-form-modal.active"
+        ]);
+        if (storyClosable) {
+            closeElement(storyClosable);
+            return true;
+        }
+
+        /* 6) القائمة: ترجع داخل القائمة أولًا ثم تغلقها */
+        if (document.getElementById("student-main-menu")?.classList.contains("is-open")) {
+            if (typeof window.StudentMenuBack === "function") {
+                Promise.resolve(window.StudentMenuBack()).catch(() => {});
+            } else if (typeof window.closeStudentMenu === "function") {
+                window.closeStudentMenu();
+            }
+            return true;
+        }
+
+        /* 7) المتجر */
+        if (document.getElementById("student-store-overlay")?.classList.contains("show")) {
+            if (typeof window.StudentStore?.close === "function") window.StudentStore.close();
+            else document.getElementById("student-store-overlay")?.classList.remove("show");
+            return true;
+        }
+
+        /* 8) الريلز */
+        if (document.getElementById("student-reels-overlay")?.classList.contains("show")) {
+            if (typeof window.closeStudentReels === "function") window.closeStudentReels();
+            else document.getElementById("student-reels-overlay")?.classList.remove("show");
+            return true;
+        }
+
+        /* 9) المراحل: خطوة داخلية قبل إغلاق اللوحة */
+        const floatingPanel = document.getElementById("floating-panel");
+        if (floatingPanel?.classList.contains("show")) {
+            if (typeof window.StudentEducationBack === "function" && window.StudentEducationBack()) {
+                return true;
+            }
+            if (typeof window.StudentEducationReset === "function") window.StudentEducationReset();
+            if (typeof window.closeFloatingPanel === "function") window.closeFloatingPanel();
+            else floatingPanel.classList.remove("show");
+            return true;
+        }
+
+        /* 10) أي طبقة معروفة أخرى */
         const closable = findTopClosable();
         if (closable) {
             closeElement(closable);
             return true;
         }
 
+        /* لا نظهر الخروج إلا عندما لا توجد أي طبقة مفتوحة. */
         showExitConfirm();
         return false;
     }
 
-    function findTopClosable() {
-        const selectors = [
-            '#studentStoryViewer.active', '#student-story-form-modal.active',
-            '#studentStoryViewersModal.active', '#studentStoryDeleteConfirm.active',
-            '#student-posts-overlay.show', '#floating-panel.show',
-            '#student-main-menu.is-open', '.student-overlay.show', '.student-modal.show'
-        ];
+    function findFirstVisible(selectors) {
         for (const selector of selectors) {
             const el = document.querySelector(selector);
             if (el) return el;
         }
         return null;
+    }
+
+    function findTopClosable() {
+        return findFirstVisible([
+            '#studentStoryViewer.active', '#student-story-form-modal.active',
+            '#studentStoryViewersModal.active', '#studentStoryDeleteConfirm.active',
+            '#student-posts-overlay.show', '#floating-panel.show',
+            '.student-action-sheet', '.student-overlay.show', '.student-modal.show'
+        ]);
     }
 
     function closeElement(el) {
@@ -247,12 +329,27 @@
         setInterval(markOwnedPosts, 1600);
     }
 
-    window.addEventListener("popstate", () => {
-        if (stack.length) back(true);
-        else if (findTopClosable()) closeElement(findTopClosable());
-        else showExitConfirm();
-    });
-    document.addEventListener("backbutton", e => { e.preventDefault(); back(); }, false);
+    function restoreBackGuard() {
+        try {
+            history.pushState({ studentBackGuard: true }, "", location.href);
+        } catch (_) {}
+    }
+
+    function handleSystemBack(event) {
+        event?.preventDefault?.();
+        event?.stopImmediatePropagation?.();
+        back(true);
+        restoreBackGuard();
+    }
+
+    /* حارس واحد فقط لزر رجوع المتصفح وAndroid WebView. */
+    try {
+        history.replaceState({ studentRoot: true }, "", location.href);
+        restoreBackGuard();
+    } catch (_) {}
+
+    window.addEventListener("popstate", handleSystemBack, true);
+    document.addEventListener("backbutton", handleSystemBack, true);
 
     ensureStyles();
     bindGlobalClicks();
