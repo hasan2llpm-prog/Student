@@ -1,289 +1,177 @@
 /* =========================================================
-   Student - Posts System
-   منشور نصي + صورة
-   نشر Reels يتم من داخل reels.js
+   Student - Reel Publisher
+   ناشر ريلز خفيف ومستقل
 ========================================================= */
 
 (function () {
-
     "use strict";
 
-    if (window.__studentPostsLoaded) {
-        return;
-    }
+    if (window.__studentReelPublisherLoaded) return;
+    window.__studentReelPublisherLoaded = true;
 
-    window.__studentPostsLoaded = true;
+    const MAX_REEL_SIZE = 30 * 1024 * 1024;
+    const MAX_REEL_DURATION = 90;
 
     let overlay = null;
+    let creatorHistoryActive = false;
+    let closingFromHistory = false;
+    let selectedObjectUrl = "";
 
-
-    /* =====================================================
-       Supabase
-    ===================================================== */
-
-    function getSupabase() {
-
-        if (
-            typeof supabaseClient !== "undefined" &&
-            supabaseClient
-        ) {
+    function db() {
+        if (typeof supabaseClient !== "undefined" && supabaseClient) {
             return supabaseClient;
         }
-
-        return null;
+        return window.supabaseClient || null;
     }
 
-
-    /* =====================================================
-       حماية HTML
-    ===================================================== */
-
-    function escapeHTML(value) {
-
-        return String(value || "")
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    function randomId() {
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
-
-    /* =====================================================
-       CSS
-    ===================================================== */
+    function fileExtension(name) {
+        const match = String(name || "").toLowerCase().match(/\.([a-z0-9]{2,8})$/);
+        return match ? match[1] : "mp4";
+    }
 
     function injectStyles() {
+        if (document.getElementById("student-reel-publisher-style")) return;
 
-        if (
-            document.getElementById(
-                "student-posts-style"
-            )
-        ) {
-            return;
-        }
-
-        const style =
-            document.createElement("style");
-
-        style.id =
-            "student-posts-style";
-
+        const style = document.createElement("style");
+        style.id = "student-reel-publisher-style";
         style.textContent = `
-
-            #student-posts-overlay {
+            #student-reel-publisher {
                 position:fixed;
                 inset:0;
-                z-index:9999996;
-                background:rgba(0,0,0,.42);
+                z-index:9999998;
                 display:none;
                 align-items:center;
                 justify-content:center;
-                padding:15px;
-                box-sizing:border-box;
+                padding:14px;
+                background:rgba(0,0,0,.48);
                 direction:rtl;
+                box-sizing:border-box;
             }
-
-            #student-posts-overlay.show {
-                display:flex;
-            }
-
-            .student-posts-window {
+            #student-reel-publisher.show { display:flex; }
+            .student-reel-publisher-window {
                 width:100%;
                 max-width:520px;
-                max-height:92vh;
+                max-height:94vh;
+                display:flex;
+                flex-direction:column;
                 overflow:hidden;
                 background:#fff;
-                border-radius:24px;
-                box-shadow:
-                    0 20px 70px
-                    rgba(0,0,0,.28);
-                display:flex;
-                flex-direction:column;
+                border-radius:22px;
+                box-shadow:0 22px 70px rgba(0,0,0,.28);
             }
-
-            .student-posts-header {
-                display:flex;
+            .student-reel-publisher-header {
+                min-height:66px;
+                display:grid;
+                grid-template-columns:46px 1fr 46px;
                 align-items:center;
-                gap:12px;
-                padding:16px;
-                border-bottom:1px solid #eee;
+                gap:10px;
+                padding:10px 14px;
+                border-bottom:1px solid #eceff2;
+                background:#fff;
                 flex-shrink:0;
             }
-
-            .student-posts-title {
-                flex:1;
-                font-size:20px;
+            .student-reel-publisher-title {
+                text-align:center;
+                font-size:19px;
                 font-weight:800;
-                color:#222;
+                color:#1f2937;
             }
-
-            .student-posts-close {
-                width:40px;
-                height:40px;
-                border:none;
+            .student-reel-publisher-close {
+                grid-column:3;
+                width:42px;
+                height:42px;
+                border:0;
                 border-radius:50%;
                 background:#f1f3f5;
-                color:#333;
+                color:#222;
+                font-size:22px;
                 cursor:pointer;
-                font-size:20px;
+                touch-action:manipulation;
             }
-
-            .student-posts-body {
+            .student-reel-publisher-spacer { grid-column:1; }
+            .student-reel-publisher-body {
+                flex:1;
                 overflow-y:auto;
                 padding:16px;
+                background:#fff;
             }
-
-            .student-post-type-grid {
-                display:grid;
-                grid-template-columns:1fr;
-                gap:10px;
-            }
-
-            .student-post-type {
-                width:100%;
-                border:none;
-                background:#f7f8fa;
-                border-radius:17px;
-                padding:17px;
-                display:flex;
-                align-items:center;
-                gap:13px;
-                direction:rtl;
-                text-align:right;
-                cursor:pointer;
-            }
-
-            .student-post-type:hover {
-                background:#eef3f7;
-            }
-
-            .student-post-type-icon {
-                width:48px;
-                height:48px;
-                border-radius:14px;
-                background:#eaf5ff;
-                color:#0095f6;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:20px;
-                flex-shrink:0;
-            }
-
-            .student-post-type-title {
-                font-size:15px;
-                font-weight:800;
-                color:#222;
-            }
-
-            .student-post-type-desc {
-                margin-top:4px;
-                font-size:12px;
-                color:#888;
-            }
-
-            .student-post-form {
+            .student-reel-form {
                 display:flex;
                 flex-direction:column;
-                gap:12px;
+                gap:14px;
             }
-
-            .student-post-textarea {
+            .student-reel-file {
                 width:100%;
+                min-height:128px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                gap:7px;
+                border:2px dashed #cbd5e1;
+                border-radius:18px;
+                background:#f8fafc;
+                color:#334155;
+                cursor:pointer;
                 box-sizing:border-box;
-                border:1px solid #ddd;
-                border-radius:13px;
+                text-align:center;
+                padding:18px;
+            }
+            .student-reel-file i { font-size:34px; color:#0095f6; }
+            .student-reel-file small { color:#7b8794; line-height:1.6; }
+            .student-reel-preview {
+                width:100%;
+                max-height:380px;
+                display:none;
+                object-fit:contain;
+                border-radius:16px;
+                background:#000;
+            }
+            .student-reel-caption {
+                width:100%;
+                min-height:94px;
+                resize:vertical;
+                border:1px solid #d9dee5;
+                border-radius:14px;
                 padding:13px;
                 outline:none;
                 font-size:14px;
-                background:#fff;
-                min-height:150px;
-                resize:vertical;
-            }
-
-            .student-post-textarea:focus {
-                border-color:#0095f6;
-                box-shadow:
-                    0 0 0 3px
-                    rgba(0,149,246,.08);
-            }
-
-            .student-post-file {
-                width:100%;
                 box-sizing:border-box;
-                border:2px dashed #cfd6dc;
-                border-radius:16px;
-                padding:25px 15px;
-                text-align:center;
-                cursor:pointer;
-                background:#fafbfc;
+                background:#fff;
             }
-
-            .student-post-file-icon {
-                font-size:35px;
-                color:#0095f6;
-                margin-bottom:9px;
+            .student-reel-caption:focus {
+                border-color:#0095f6;
+                box-shadow:0 0 0 3px rgba(0,149,246,.09);
             }
-
-            .student-post-preview {
+            .student-reel-submit {
                 width:100%;
-                max-height:320px;
-                object-fit:contain;
-                border-radius:15px;
-                background:#f3f4f6;
-                display:none;
-            }
-
-            .student-post-submit {
-                border:none;
+                min-height:48px;
+                border:0;
+                border-radius:14px;
                 background:#0095f6;
                 color:#fff;
-                padding:14px;
-                border-radius:13px;
+                font-size:16px;
+                font-weight:800;
                 cursor:pointer;
-                font-size:15px;
-                font-weight:700;
+                touch-action:manipulation;
             }
-
-            .student-post-submit:disabled {
-                opacity:.6;
-                cursor:not-allowed;
-            }
-
-            .student-post-message {
-                min-height:22px;
+            .student-reel-submit:disabled { opacity:.58; cursor:not-allowed; }
+            .student-reel-message {
+                min-height:24px;
                 text-align:center;
                 font-size:13px;
                 line-height:1.7;
+                color:#5f6b76;
             }
-
-            .student-post-back {
-                border:none;
-                background:#f1f3f5;
-                width:40px;
-                height:40px;
-                border-radius:50%;
-                cursor:pointer;
-            }
-
-            .student-reels-video-preview {
-                width:100%;
-                max-height:380px;
-                border-radius:16px;
-                background:#000;
-                display:none;
-                margin-top:10px;
-            }
-
-            @media (max-width:480px) {
-
-                #student-posts-overlay {
-                    padding:0;
-                    align-items:stretch;
-                }
-
-                .student-posts-window {
+            .student-reel-message.error { color:#c62828; }
+            @media (max-width:560px) {
+                #student-reel-publisher { padding:0; align-items:stretch; }
+                .student-reel-publisher-window {
                     max-width:none;
                     max-height:none;
                     height:100%;
@@ -291,1542 +179,282 @@
                 }
             }
         `;
-
         document.head.appendChild(style);
     }
 
-
-    /* =====================================================
-       إنشاء النافذة
-    ===================================================== */
-
     function createOverlay() {
+        if (overlay) return;
 
-        if (overlay) {
-            return;
-        }
-
-        overlay =
-            document.createElement("div");
-
-        overlay.id =
-            "student-posts-overlay";
-
+        overlay = document.createElement("div");
+        overlay.id = "student-reel-publisher";
+        overlay.setAttribute("aria-hidden", "true");
         overlay.innerHTML = `
-
-            <div class="student-posts-window">
-
-                <div class="student-posts-header">
-
-                    <div
-                        id="student-posts-title"
-                        class="student-posts-title"
-                    >
-                        إضافة
-                    </div>
-
-                    <button
-                        id="student-posts-close"
-                        class="student-posts-close"
-                        type="button"
-                    >
-                        ×
-                    </button>
-
+            <div class="student-reel-publisher-window" role="dialog" aria-modal="true" aria-labelledby="student-reel-publisher-title">
+                <div class="student-reel-publisher-header">
+                    <div class="student-reel-publisher-spacer" aria-hidden="true"></div>
+                    <div id="student-reel-publisher-title" class="student-reel-publisher-title">نشر ريلز</div>
+                    <button id="student-reel-publisher-close" class="student-reel-publisher-close" type="button" aria-label="إغلاق">×</button>
                 </div>
-
-                <div
-                    id="student-posts-body"
-                    class="student-posts-body"
-                ></div>
-
+                <div class="student-reel-publisher-body">
+                    <form id="student-reel-form" class="student-reel-form">
+                        <label class="student-reel-file" for="student-reel-file-input">
+                            <i class="fa-solid fa-clapperboard"></i>
+                            <strong>اختر مقطع فيديو</strong>
+                            <small>الحد الأقصى 30MB ومدة 90 ثانية</small>
+                        </label>
+                        <input id="student-reel-file-input" type="file" accept="video/*" hidden required>
+                        <video id="student-reel-preview" class="student-reel-preview" controls playsinline preload="metadata"></video>
+                        <textarea id="student-reel-caption" class="student-reel-caption" maxlength="2000" placeholder="اكتب وصف الريلز (اختياري)"></textarea>
+                        <button id="student-reel-submit" class="student-reel-submit" type="submit">نشر الريلز</button>
+                        <div id="student-reel-message" class="student-reel-message" role="status"></div>
+                    </form>
+                </div>
             </div>
         `;
+        document.body.appendChild(overlay);
 
-        document.body.appendChild(
-            overlay
-        );
+        document.getElementById("student-reel-publisher-close")?.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeCreator();
+        });
 
-        document
-            .getElementById(
-                "student-posts-close"
-            )
-            ?.addEventListener(
-                "click",
-                closePosts
-            );
+        document.getElementById("student-reel-file-input")?.addEventListener("change", previewFile);
+        document.getElementById("student-reel-form")?.addEventListener("submit", publishReel);
     }
 
+    function setMessage(message, isError = false) {
+        const element = document.getElementById("student-reel-message");
+        if (!element) return;
+        element.textContent = message || "";
+        element.classList.toggle("error", Boolean(isError));
+    }
 
-    /* =====================================================
-       فتح نافذة الإضافة
-    ===================================================== */
+    function resetForm() {
+        const form = document.getElementById("student-reel-form");
+        const preview = document.getElementById("student-reel-preview");
+        const button = document.getElementById("student-reel-submit");
 
-    function openPostCreator() {
+        form?.reset();
+        setMessage("");
 
+        if (selectedObjectUrl) {
+            URL.revokeObjectURL(selectedObjectUrl);
+            selectedObjectUrl = "";
+        }
+
+        if (preview) {
+            preview.pause();
+            preview.removeAttribute("src");
+            preview.style.display = "none";
+            preview.load();
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = "نشر الريلز";
+        }
+    }
+
+    function openCreator() {
         injectStyles();
         createOverlay();
+        resetForm();
 
-        overlay.classList.add(
-            "show"
-        );
+        overlay.classList.add("show");
+        overlay.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
 
-        showPostTypes();
-    }
-
-
-    function closePosts() {
-
-        if (overlay) {
-            overlay.classList.remove(
-                "show"
-            );
+        if (!creatorHistoryActive) {
+            history.pushState({ studentReelCreator: true }, "", location.href);
+            creatorHistoryActive = true;
         }
+
+        window.dispatchEvent(new CustomEvent("student:reel-creator-opened"));
     }
 
-
-    function setTitle(title) {
-
-        const element =
-            document.getElementById(
-                "student-posts-title"
-            );
-
-        if (element) {
-            element.textContent =
-                title;
-        }
+    function hideCreator() {
+        if (!overlay) return;
+        overlay.classList.remove("show");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        resetForm();
+        window.dispatchEvent(new CustomEvent("student:reel-creator-closed"));
     }
 
-
-    function setBody(html) {
-
-        const body =
-            document.getElementById(
-                "student-posts-body"
-            );
-
-        if (body) {
-            body.innerHTML =
-                html;
-        }
-    }
-
-
-    /* =====================================================
-       القائمة الرئيسية
-       فقط نص + صورة
-    ===================================================== */
-
-    function showPostTypes() {
-
-        setTitle(
-            "إضافة"
-        );
-
-        setBody(`
-
-            <div class="student-post-type-grid">
-
-                <button
-                    id="create-story-item"
-                    class="student-post-type"
-                    type="button"
-                >
-
-                    <div class="student-post-type-icon">
-                        <i class="fa-regular fa-circle-play"></i>
-                    </div>
-
-                    <div>
-
-                        <div class="student-post-type-title">
-                            إضافة ستوري
-                        </div>
-
-                        <div class="student-post-type-desc">
-                            صورة أو فيديو أو نص لمدة 24 ساعة
-                        </div>
-
-                    </div>
-
-                </button>
-
-
-                <button
-                    id="create-reel-item"
-                    class="student-post-type"
-                    type="button"
-                >
-
-                    <div class="student-post-type-icon">
-                        <i class="fa-solid fa-clapperboard"></i>
-                    </div>
-
-                    <div>
-
-                        <div class="student-post-type-title">
-                            نشر ريلز
-                        </div>
-
-                        <div class="student-post-type-desc">
-                            اختر فيديو قصيرًا للنشر
-                        </div>
-
-                    </div>
-
-                </button>
-
-            </div>
-        `);
-
-
-        document
-            .getElementById(
-                "create-story-item"
-            )
-            ?.addEventListener(
-                "click",
-                function() {
-
-                    closePosts();
-
-                    if (
-                        typeof window.openStudentStoryCreator ===
-                        "function"
-                    ) {
-
-                        window.openStudentStoryCreator();
-                        return;
-                    }
-
-                    console.error(
-                        "Story creator is not ready"
-                    );
-                }
-            );
-
-
-        document
-            .getElementById(
-                "create-reel-item"
-            )
-            ?.addEventListener(
-                "click",
-                function() {
-
-                    showReelForm();
-                }
-            );
-    }
-
-
-    /* =====================================================
-       منشور نصي
-    ===================================================== */
-
-    function showTextPostForm() {
-
-        setTitle(
-            "منشور نصي"
-        );
-
-        setBody(`
-
-            <button
-                id="text-post-back"
-                class="student-post-back"
-                type="button"
-            >
-                ←
-            </button>
-
-            <form
-                id="text-post-form"
-                class="student-post-form"
-                style="margin-top:14px;"
-            >
-
-                <textarea
-                    id="text-post-content"
-                    class="student-post-textarea"
-                    maxlength="5000"
-                    placeholder="ماذا تريد أن تقول؟"
-                    required
-                ></textarea>
-
-                <button
-                    id="text-post-submit"
-                    class="student-post-submit"
-                    type="submit"
-                >
-                    نشر
-                </button>
-
-                <div
-                    id="text-post-message"
-                    class="student-post-message"
-                ></div>
-
-            </form>
-        `);
-
-
-        document
-            .getElementById(
-                "text-post-back"
-            )
-            ?.addEventListener(
-                "click",
-                backToTypes
-            );
-
-
-        document
-            .getElementById(
-                "text-post-form"
-            )
-            ?.addEventListener(
-                "submit",
-                submitTextPost
-            );
-    }
-
-
-    async function submitTextPost(
-        event
-    ) {
-
-        event.preventDefault();
-
-
-        const client =
-            getSupabase();
-
-
-        if (!client) {
-
-            showPostMessage(
-                "text-post-message",
-                "الخدمة غير متاحة حاليًا.",
-                true
-            );
-
+    function closeCreator(fromHistory = false) {
+        if (fromHistory) {
+            creatorHistoryActive = false;
+            hideCreator();
             return;
         }
 
-
-        const content =
-            document
-                .getElementById(
-                    "text-post-content"
-                )
-                ?.value
-                .trim();
-
-
-        if (!content) {
-
-            showPostMessage(
-                "text-post-message",
-                "اكتب محتوى المنشور أولًا.",
-                true
-            );
-
+        if (creatorHistoryActive && !closingFromHistory) {
+            closingFromHistory = true;
+            creatorHistoryActive = false;
+            history.back();
+            setTimeout(function () { closingFromHistory = false; }, 0);
             return;
         }
 
-
-        const button =
-            document.getElementById(
-                "text-post-submit"
-            );
-
-
-        button.disabled = true;
-        button.textContent =
-            "جارٍ النشر...";
-
-
-        try {
-
-            const {
-                data:{
-                    user
-                }
-            } =
-                await client.auth.getUser();
-
-
-            if (!user) {
-                throw new Error(
-                    "يجب تسجيل الدخول أولًا."
-                );
-            }
-
-
-            const {
-                error
-            } =
-                await client
-                    .from("posts")
-                    .insert({
-
-                        user_id:
-                            user.id,
-
-                        post_type:
-                            "text",
-
-                        content:
-                            content
-                    });
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            showPostMessage(
-                "text-post-message",
-                "تم نشر المنشور بنجاح.",
-                false
-            );
-
-
-            setTimeout(
-                closePosts,
-                700
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Text post error:",
-                error
-            );
-
-
-            showPostMessage(
-                "text-post-message",
-                error?.message ||
-                "تعذر نشر المنشور.",
-                true
-            );
-
-
-        } finally {
-
-            button.disabled =
-                false;
-
-            button.textContent =
-                "نشر";
-        }
+        hideCreator();
     }
 
-
-    /* =====================================================
-       الصورة
-    ===================================================== */
-
-    function showImagePostForm() {
-
-        setTitle(
-            "نشر صورة"
-        );
-
-        setBody(`
-
-            <button
-                id="image-post-back"
-                class="student-post-back"
-                type="button"
-            >
-                ←
-            </button>
-
-            <form
-                id="image-post-form"
-                class="student-post-form"
-                style="margin-top:14px;"
-            >
-
-                <label
-                    class="student-post-file"
-                    for="image-post-file"
-                >
-
-                    <div class="student-post-file-icon">
-                        <i class="fa-regular fa-image"></i>
-                    </div>
-
-                    <strong>
-                        اختر صورة
-                    </strong>
-
-                    <div style="
-                        margin-top:5px;
-                        font-size:12px;
-                        color:#888;
-                    ">
-                        JPG / PNG / WEBP
-                    </div>
-
-                </label>
-
-
-                <input
-                    id="image-post-file"
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    required
-                />
-
-
-                <img
-                    id="image-post-preview"
-                    class="student-post-preview"
-                    alt=""
-                />
-
-
-                <textarea
-                    id="image-post-caption"
-                    class="student-post-textarea"
-                    maxlength="2000"
-                    placeholder="اكتب وصفًا للصورة (اختياري)"
-                    style="min-height:100px;"
-                ></textarea>
-
-
-                <button
-                    id="image-post-submit"
-                    class="student-post-submit"
-                    type="submit"
-                >
-                    نشر
-                </button>
-
-
-                <div
-                    id="image-post-message"
-                    class="student-post-message"
-                ></div>
-
-            </form>
-        `);
-
-
-        document
-            .getElementById(
-                "image-post-back"
-            )
-            ?.addEventListener(
-                "click",
-                backToTypes
-            );
-
-
-        document
-            .getElementById(
-                "image-post-file"
-            )
-            ?.addEventListener(
-                "change",
-                previewImage
-            );
-
-
-        document
-            .getElementById(
-                "image-post-form"
-            )
-            ?.addEventListener(
-                "submit",
-                submitImagePost
-            );
-    }
-
-
-    function previewImage(
-        event
-    ) {
-
-        const file =
-            event.target.files?.[0];
-
-
-        const preview =
-            document.getElementById(
-                "image-post-preview"
-            );
-
-
-        if (
-            !file ||
-            !preview
-        ) {
-            return;
+    window.addEventListener("popstate", function () {
+        if (creatorHistoryActive && overlay?.classList.contains("show")) {
+            closeCreator(true);
         }
-
-
-        if (
-            !file.type.startsWith(
-                "image/"
-            )
-        ) {
-            return;
-        }
-
-
-        preview.src =
-            URL.createObjectURL(
-                file
-            );
-
-        preview.style.display =
-            "block";
-    }
-
-
-    async function submitImagePost(
-        event
-    ) {
-
-        event.preventDefault();
-
-
-        const client =
-            getSupabase();
-
-
-        if (!client) {
-
-            showPostMessage(
-                "image-post-message",
-                "الخدمة غير متاحة حاليًا.",
-                true
-            );
-
-            return;
-        }
-
-
-        const file =
-            document
-                .getElementById(
-                    "image-post-file"
-                )
-                ?.files?.[0];
-
-
-        const caption =
-            document
-                .getElementById(
-                    "image-post-caption"
-                )
-                ?.value
-                .trim();
-
-
-        const button =
-            document.getElementById(
-                "image-post-submit"
-            );
-
-
-        if (!file) {
-
-            showPostMessage(
-                "image-post-message",
-                "اختر صورة أولًا.",
-                true
-            );
-
-            return;
-        }
-
-
-        button.disabled = true;
-        button.textContent =
-            "جارٍ الرفع...";
-
-
-        try {
-
-            const {
-                data:{
-                    user
-                }
-            } =
-                await client.auth.getUser();
-
-
-            if (!user) {
-                throw new Error(
-                    "يجب تسجيل الدخول أولًا."
-                );
-            }
-
-
-            const extension =
-                getFileExtension(
-                    file.name
-                );
-
-
-            const filePath =
-                `${user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
-
-
-            const {
-                error:uploadError
-            } =
-                await client.storage
-                    .from(
-                        "post-media"
-                    )
-                    .upload(
-                        filePath,
-                        file,
-                        {
-                            cacheControl:
-                                "3600",
-                            upsert:
-                                false,
-                            contentType:
-                                file.type
-                        }
-                    );
-
-
-            if (uploadError) {
-                throw uploadError;
-            }
-
-
-            const {
-                data:publicData
-            } =
-                client.storage
-                    .from(
-                        "post-media"
-                    )
-                    .getPublicUrl(
-                        filePath
-                    );
-
-
-            const mediaURL =
-                publicData?.publicUrl;
-
-
-            if (!mediaURL) {
-
-                throw new Error(
-                    "تعذر الحصول على رابط الصورة."
-                );
-            }
-
-
-            const {
-                error
-            } =
-                await client
-                    .from("posts")
-                    .insert({
-
-                        user_id:
-                            user.id,
-
-                        post_type:
-                            "image",
-
-                        content:
-                            caption ||
-                            null,
-
-                        media_url:
-                            mediaURL
-                    });
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            showPostMessage(
-                "image-post-message",
-                "تم نشر الصورة بنجاح.",
-                false
-            );
-
-
-            setTimeout(
-                closePosts,
-                700
-            );
-
-
-        } catch (error) {
-
-            console.error(
-                "Image post error:",
-                error
-            );
-
-
-            showPostMessage(
-                "image-post-message",
-                error?.message ||
-                "تعذر نشر الصورة.",
-                true
-            );
-
-
-        } finally {
-
-            button.disabled =
-                false;
-
-            button.textContent =
-                "نشر";
-        }
-    }
-
-
-
-    /* =====================================================
-       ضغط Reel للإنترنت المتوسط والضعيف
-       - يحتفظ بالملف الأصلي للجودة العالية
-       - ينشئ نسخة MP4 بعرض أقصى 480px
-       - يعود للملف الأصلي تلقائيًا إذا تعذر الضغط
-    ===================================================== */
-
-    let reelFFmpegLoader = null;
-    let reelFFmpegInstance = null;
-
-    function loadExternalScript(src, id) {
-
-        const existing = document.getElementById(id);
-
-        if (existing) {
-            if (existing.dataset.loaded === "true") {
-                return Promise.resolve();
-            }
-
-            return new Promise(function(resolve, reject) {
-                existing.addEventListener("load", resolve, { once:true });
-                existing.addEventListener("error", reject, { once:true });
-            });
-        }
-
-        return new Promise(function(resolve, reject) {
-            const script = document.createElement("script");
-            script.id = id;
-            script.src = src;
-            script.async = true;
-            script.crossOrigin = "anonymous";
-
-            script.addEventListener("load", function() {
-                script.dataset.loaded = "true";
-                resolve();
-            }, { once:true });
-
-            script.addEventListener("error", function() {
-                reject(new Error("تعذر تحميل أداة ضغط الفيديو."));
-            }, { once:true });
-
-            document.head.appendChild(script);
+    });
+
+    function videoDuration(file) {
+        return new Promise(function (resolve, reject) {
+            const video = document.createElement("video");
+            const url = URL.createObjectURL(file);
+            video.preload = "metadata";
+            video.onloadedmetadata = function () {
+                const duration = Number(video.duration || 0);
+                URL.revokeObjectURL(url);
+                resolve(duration);
+            };
+            video.onerror = function () {
+                URL.revokeObjectURL(url);
+                reject(new Error("تعذر قراءة الفيديو المختار."));
+            };
+            video.src = url;
         });
     }
 
-    async function getReelFFmpeg(onProgress) {
-
-        if (reelFFmpegInstance) {
-            if (typeof reelFFmpegInstance.setProgress === "function") {
-                reelFFmpegInstance.setProgress(function({ ratio }) {
-                    onProgress?.(Math.max(0, Math.min(1, Number(ratio || 0))));
-                });
-            }
-            return reelFFmpegInstance;
+    async function validateFile(file) {
+        if (!file) throw new Error("اختر فيديو أولًا.");
+        if (!String(file.type || "").startsWith("video/")) {
+            throw new Error("الملف المختار ليس فيديو صالحًا.");
+        }
+        if (file.size > MAX_REEL_SIZE) {
+            throw new Error("حجم الفيديو كبير. اختر فيديو أقل من 30MB.");
         }
 
-        if (!reelFFmpegLoader) {
-            reelFFmpegLoader = (async function() {
-                await loadExternalScript(
-                    "https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js",
-                    "student-ffmpeg-script"
-                );
-
-                if (!window.FFmpeg?.createFFmpeg || !window.FFmpeg?.fetchFile) {
-                    throw new Error("أداة ضغط الفيديو غير مدعومة على هذا الجهاز.");
-                }
-
-                const instance = window.FFmpeg.createFFmpeg({
-                    log: false,
-                    corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
-                });
-
-                instance.setProgress(function({ ratio }) {
-                    onProgress?.(Math.max(0, Math.min(1, Number(ratio || 0))));
-                });
-
-                await instance.load();
-                reelFFmpegInstance = instance;
-                return instance;
-            })();
+        const duration = await videoDuration(file);
+        if (!Number.isFinite(duration) || duration <= 0) {
+            throw new Error("تعذر قراءة مدة الفيديو.");
         }
+        if (duration > MAX_REEL_DURATION) {
+            throw new Error("مدة الفيديو طويلة. الحد الأقصى 90 ثانية.");
+        }
+        return duration;
+    }
+
+    async function previewFile(event) {
+        const file = event.target.files?.[0];
+        const preview = document.getElementById("student-reel-preview");
+        if (!file || !preview) return;
 
         try {
-            return await reelFFmpegLoader;
+            await validateFile(file);
+            if (selectedObjectUrl) URL.revokeObjectURL(selectedObjectUrl);
+            selectedObjectUrl = URL.createObjectURL(file);
+            preview.src = selectedObjectUrl;
+            preview.style.display = "block";
+            setMessage("");
         } catch (error) {
-            reelFFmpegLoader = null;
-            throw error;
+            event.target.value = "";
+            preview.style.display = "none";
+            setMessage(error.message || "تعذر استخدام الفيديو.", true);
         }
     }
 
-    async function createMediumReelVersion(file, onProgress) {
-
-        const ffmpeg = await getReelFFmpeg(onProgress);
-        const inputExtension = getFileExtension(file.name) || "mp4";
-        const token = crypto.randomUUID();
-        const inputName = `reel-input-${token}.${inputExtension}`;
-        const outputName = `reel-medium-${token}.mp4`;
-
-        try {
-            ffmpeg.FS("writeFile", inputName, await window.FFmpeg.fetchFile(file));
-
-            await ffmpeg.run(
-                "-i", inputName,
-                "-vf", "scale=if(gt(iw\\,480)\\,480\\,iw):-2",
-                "-c:v", "libx264",
-                "-preset", "ultrafast",
-                "-crf", "30",
-                "-maxrate", "700k",
-                "-bufsize", "1400k",
-                "-pix_fmt", "yuv420p",
-                "-movflags", "+faststart",
-                "-c:a", "aac",
-                "-b:a", "64k",
-                "-ac", "2",
-                outputName
-            );
-
-            const data = ffmpeg.FS("readFile", outputName);
-
-            return new File(
-                [data.buffer],
-                `${Date.now()}-medium.mp4`,
-                { type:"video/mp4" }
-            );
-
-        } finally {
-            try { ffmpeg.FS("unlink", inputName); } catch (_) {}
-            try { ffmpeg.FS("unlink", outputName); } catch (_) {}
-        }
-    }
-
-    async function uploadReelFile(client, bucket, path, file) {
+    async function uploadVideo(client, userId, file) {
+        const extension = fileExtension(file.name);
+        const path = `${userId}/reels/${Date.now()}-${randomId()}.${extension}`;
 
         const { error } = await client.storage
-            .from(bucket)
+            .from("post-media")
             .upload(path, file, {
-                cacheControl:"3600",
-                upsert:false,
-                contentType:file.type || "video/mp4"
+                cacheControl: "31536000",
+                upsert: false,
+                contentType: file.type || "video/mp4"
             });
 
         if (error) throw error;
 
-        const { data } = client.storage
-            .from(bucket)
-            .getPublicUrl(path);
-
+        const { data } = client.storage.from("post-media").getPublicUrl(path);
         if (!data?.publicUrl) {
-            throw new Error("تعذر الحصول على رابط الفيديو.");
+            await client.storage.from("post-media").remove([path]).catch(function () {});
+            throw new Error("تعذر إنشاء رابط الفيديو.");
         }
 
-        return data.publicUrl;
+        return { path, url: data.publicUrl };
     }
 
-    /* =====================================================
-       Reels
-       هذه الدالة لا تظهر في قائمة ➕
-       ويتم استدعاؤها من reels.js
-    ===================================================== */
-
-    function showReelForm() {
-
-        injectStyles();
-        createOverlay();
-
-        overlay.classList.add(
-            "show"
-        );
-
-
-        setTitle(
-            "نشر Reel"
-        );
-
-
-        setBody(`
-
-            <button
-                id="reel-back"
-                class="student-post-back"
-                type="button"
-            >
-                ←
-            </button>
-
-
-            <form
-                id="reel-form"
-                class="student-post-form"
-                style="margin-top:14px;"
-            >
-
-                <label
-                    class="student-post-file"
-                    for="reel-file"
-                >
-
-                    <div class="student-post-file-icon">
-                        🎬
-                    </div>
-
-                    <strong>
-                        اختر فيديو
-                    </strong>
-
-                    <div style="
-                        margin-top:5px;
-                        font-size:12px;
-                        color:#888;
-                    ">
-                        فيديو قصير
-                    </div>
-
-                </label>
-
-
-                <input
-                    id="reel-file"
-                    type="file"
-                    accept="video/*"
-                    hidden
-                    required
-                />
-
-
-                <video
-                    id="reel-preview"
-                    class="student-reels-video-preview"
-                    controls
-                    playsinline
-                ></video>
-
-
-                <textarea
-                    id="reel-caption"
-                    class="student-post-textarea"
-                    maxlength="2000"
-                    placeholder="اكتب وصف الـReel (اختياري)"
-                    style="min-height:100px;"
-                ></textarea>
-
-
-                <button
-                    id="reel-submit"
-                    class="student-post-submit"
-                    type="submit"
-                >
-                    نشر Reel
-                </button>
-
-
-                <div
-                    id="reel-message"
-                    class="student-post-message"
-                ></div>
-
-            </form>
-        `);
-
-
-        document
-            .getElementById(
-                "reel-back"
-            )
-            ?.addEventListener(
-                "click",
-                function() {
-
-                    closePosts();
-
-                    if (
-                        typeof window.openStudentReels ===
-                        "function"
-                    ) {
-
-                        window.openStudentReels(
-                            0
-                        );
-                    }
-                }
-            );
-
-
-        document
-            .getElementById(
-                "reel-file"
-            )
-            ?.addEventListener(
-                "change",
-                previewReel
-            );
-
-
-        document
-            .getElementById(
-                "reel-form"
-            )
-            ?.addEventListener(
-                "submit",
-                submitReel
-            );
-    }
-
-
-    function previewReel(
-        event
-    ) {
-
-        const file =
-            event.target.files?.[0];
-
-
-        const preview =
-            document.getElementById(
-                "reel-preview"
-            );
-
-
-        if (
-            !file ||
-            !preview
-        ) {
-            return;
-        }
-
-
-        if (
-            !file.type.startsWith(
-                "video/"
-            )
-        ) {
-            return;
-        }
-
-
-        preview.src =
-            URL.createObjectURL(
-                file
-            );
-
-        preview.style.display =
-            "block";
-    }
-
-
-    async function submitReel(
-        event
-    ) {
-
+    async function publishReel(event) {
         event.preventDefault();
+        event.stopPropagation();
 
-        const client = getSupabase();
+        const client = db();
+        const file = document.getElementById("student-reel-file-input")?.files?.[0];
+        const caption = document.getElementById("student-reel-caption")?.value?.trim() || null;
+        const button = document.getElementById("student-reel-submit");
 
         if (!client) {
-            showPostMessage(
-                "reel-message",
-                "الخدمة غير متاحة حاليًا.",
-                true
-            );
+            setMessage("الخدمة غير متاحة حاليًا.", true);
             return;
         }
 
-        const file = document
-            .getElementById("reel-file")
-            ?.files?.[0];
+        if (!button || button.disabled) return;
 
-        const caption = document
-            .getElementById("reel-caption")
-            ?.value
-            .trim();
-
-        const button = document.getElementById("reel-submit");
-
-        if (!file) {
-            showPostMessage("reel-message", "اختر فيديو أولًا.", true);
-            return;
-        }
-
-        const MAX_REEL_SIZE = 30 * 1024 * 1024;
-
-        if (!file.type.startsWith("video/")) {
-            showPostMessage("reel-message", "الملف المختار ليس فيديو صالحًا.", true);
-            return;
-        }
-
-        if (file.size > MAX_REEL_SIZE) {
-            showPostMessage(
-                "reel-message",
-                "حجم الفيديو كبير. اختر فيديو أقل من 30MB لتشغيل أسرع.",
-                true
-            );
-            return;
-        }
-
+        let uploadedPath = "";
         button.disabled = true;
 
-        let uploadedPaths = [];
-
         try {
-            const { data:{ user } } = await client.auth.getUser();
+            await validateFile(file);
 
-            if (!user) {
-                throw new Error("يجب تسجيل الدخول أولًا.");
-            }
+            const { data: { user }, error: userError } = await client.auth.getUser();
+            if (userError) throw userError;
+            if (!user) throw new Error("يجب تسجيل الدخول أولًا.");
 
-            let mediumFile = null;
+            button.textContent = "جارٍ رفع الفيديو...";
+            setMessage("لا تغلق الصفحة حتى يكتمل النشر.");
 
-            try {
-                button.textContent = "جارٍ تجهيز جودة سريعة 0%";
+            const uploaded = await uploadVideo(client, user.id, file);
+            uploadedPath = uploaded.path;
 
-                mediumFile = await createMediumReelVersion(
-                    file,
-                    function(ratio) {
-                        const percent = Math.round(ratio * 100);
-                        button.textContent = `جارٍ تجهيز جودة سريعة ${percent}%`;
-                        showPostMessage(
-                            "reel-message",
-                            "يتم إنشاء نسخة أخف للإنترنت المتوسط والضعيف. لا تغلق الصفحة.",
-                            false
-                        );
-                    }
-                );
-            } catch (compressionError) {
-                console.warn("Reel compression fallback:", compressionError);
-                mediumFile = null;
-                showPostMessage(
-                    "reel-message",
-                    "تعذر الضغط على هذا الجهاز؛ سيُنشر الفيديو بالجودة الأصلية.",
-                    false
-                );
-            }
+            button.textContent = "جارٍ حفظ الريلز...";
 
-            const bucket = "post-media";
-            const stamp = Date.now();
-            const id = crypto.randomUUID();
-            const originalExtension = getFileExtension(file.name) || "mp4";
-            const highPath = `${user.id}/reels/${stamp}-${id}-high.${originalExtension}`;
-
-            button.textContent = "جارٍ رفع الجودة العالية...";
-            const highURL = await uploadReelFile(client, bucket, highPath, file);
-            uploadedPaths.push(highPath);
-
-            let mediumURL = highURL;
-
-            if (mediumFile && mediumFile.size > 0) {
-                const mediumPath = `${user.id}/reels/${stamp}-${id}-medium.mp4`;
-                button.textContent = "جارٍ رفع الجودة السريعة...";
-                mediumURL = await uploadReelFile(client, bucket, mediumPath, mediumFile);
-                uploadedPaths.push(mediumPath);
-            }
-
-            button.textContent = "جارٍ حفظ الـReel...";
-
-            const { error } = await client
-                .from("reels")
-                .insert({
-                    user_id:user.id,
-                    video_url:mediumURL,
-                    video_url_low:mediumURL,
-                    video_url_medium:mediumURL,
-                    video_url_high:highURL,
-                    caption:caption || null
-                });
+            const { error } = await client.from("reels").insert({
+                user_id: user.id,
+                video_url: uploaded.url,
+                video_url_low: uploaded.url,
+                video_url_medium: uploaded.url,
+                video_url_high: uploaded.url,
+                caption
+            });
 
             if (error) throw error;
 
-            showPostMessage(
-                "reel-message",
-                mediumFile
-                    ? "تم نشر الـReel بجودتين ويتغير التشغيل حسب سرعة الإنترنت."
-                    : "تم نشر الـReel بنجاح.",
-                false
-            );
+            setMessage("تم نشر الريلز بنجاح.");
+            window.dispatchEvent(new CustomEvent("student:reel-published"));
 
-            setTimeout(async function() {
-                closePosts();
-
-                if (typeof window.openStudentReels === "function") {
-                    await window.openStudentReels(0);
-                }
-            }, 700);
-
+            setTimeout(function () {
+                closeCreator();
+            }, 450);
         } catch (error) {
-            console.error("Reel error:", error);
+            console.error("Student reel publish:", error);
 
-            if (uploadedPaths.length) {
+            if (uploadedPath) {
                 try {
-                    await client.storage
-                        .from("post-media")
-                        .remove(uploadedPaths);
+                    await client.storage.from("post-media").remove([uploadedPath]);
                 } catch (_) {}
             }
 
-            showPostMessage(
-                "reel-message",
-                error?.message || "تعذر نشر الـReel.",
-                true
-            );
-
+            setMessage(error?.message || "تعذر نشر الريلز.", true);
         } finally {
             button.disabled = false;
-            button.textContent = "نشر Reel";
+            button.textContent = "نشر الريلز";
         }
     }
 
-
-    /* =====================================================
-       رسائل
-    ===================================================== */
-
-    function showPostMessage(
-        elementId,
-        message,
-        isError
-    ) {
-
-        const element =
-            document.getElementById(
-                elementId
-            );
-
-
-        if (!element) {
-            return;
-        }
-
-
-        element.style.color =
-            isError
-                ? "#d93025"
-                : "#16803c";
-
-        element.textContent =
-            message;
-    }
-
-
-    /* =====================================================
-       امتداد الملف
-    ===================================================== */
-
-    function getFileExtension(
-        filename
-    ) {
-
-        const parts =
-            String(
-                filename || ""
-            ).split(".");
-
-
-        return (
-            parts.length > 1
-                ? parts.pop()
-                : "bin"
-        )
-            .toLowerCase()
-            .replace(
-                /[^a-z0-9]/g,
-                ""
-            ) || "bin";
-    }
-
-
-    /* =====================================================
-       زر ➕
-    ===================================================== */
-
-    function bindAddButton() {
-
-        const nav =
-            document.querySelector(
-                "nav"
-            );
-
-
-        if (!nav) {
-            return;
-        }
-
-
-        if (
-            nav.dataset.studentPostsBound ===
-            "true"
-        ) {
-            return;
-        }
-
-
-        nav.dataset.studentPostsBound =
-            "true";
-
-
-        nav.addEventListener(
-            "click",
-            function(event) {
-
-                const link =
-                    event.target.closest(
-                        "a"
-                    );
-
-
-                if (!link) {
-                    return;
-                }
-
-
-                const links =
-                    Array.from(
-                        nav.querySelectorAll(
-                            "a"
-                        )
-                    );
-
-
-                const index =
-                    links.indexOf(
-                        link
-                    );
-
-
-                if (
-                    index !== 2
-                ) {
-                    return;
-                }
-
-
-                event.preventDefault();
-                event.stopImmediatePropagation();
-
-
-                openPostCreator();
-
-            },
-            true
-        );
-    }
-
-
-    /* =====================================================
-       API
-    ===================================================== */
-
-    window.openStudentPostCreator =
-        openPostCreator;
-
-    window.openStudentReelCreator =
-        showReelForm;
-
-    window.closeStudentPostCreator =
-        closePosts;
-
-
-    /* =====================================================
-       تشغيل
-    ===================================================== */
-
-    injectStyles();
-
-
-    if (
-        document.readyState ===
-        "loading"
-    ) {
-
-        document.addEventListener(
-            "DOMContentLoaded",
-            bindAddButton
-        );
-
-    } else {
-
-        bindAddButton();
-    }
-
-
-})();
-(function () {
-
-    if (
-        document.querySelector(
-            'script[data-student-reels="true"]'
-        )
-    ) {
-        return;
-    }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        "reels.js";
-
-    script.async =
-        true;
-
-    script.dataset.studentReels =
-        "true";
-
-
-    script.onload =
-        function() {
-
-            console.log(
-                "Student Reels loaded."
-            );
-        };
-
-
-    script.onerror =
-        function() {
-
-            console.error(
-                "تعذر تحميل reels.js"
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
-
+    window.openStudentReelCreator = openCreator;
+    window.closeStudentPostCreator = closeCreator;
+
+    /* توافق مؤقت مع أي زر قديم: يفتح ناشر الريلز فقط. */
+    window.openStudentPostCreator = openCreator;
 })();
