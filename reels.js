@@ -210,44 +210,57 @@
             right:0;
             left:0;
             z-index:10;
-            padding:15px;
+            min-height:72px;
+            padding:12px 15px;
             display:flex;
             align-items:center;
-            gap:10px;
+            justify-content:center;
             background:linear-gradient(
                 to bottom,
-                rgba(0,0,0,.7),
+                rgba(0,0,0,.72),
                 transparent
             );
+            pointer-events:none;
         }
 
         .student-reel-title {
             color:#fff;
             font-size:18px;
             font-weight:800;
+            pointer-events:none;
         }
 
         .student-reel-publish {
-            margin-right:auto;
+            position:absolute;
+            left:15px;
+            top:14px;
+            min-height:42px;
             border:0;
             background:#0095f6;
             color:#fff;
             padding:9px 14px;
             border-radius:12px;
             font-size:13px;
-            font-weight:700;
+            font-weight:800;
             cursor:pointer;
+            pointer-events:auto;
+            touch-action:manipulation;
         }
 
         .student-reel-close {
+            position:absolute;
+            right:15px;
+            top:14px;
             width:42px;
             height:42px;
             border:0;
             border-radius:50%;
-            background:rgba(0,0,0,.5);
+            background:rgba(0,0,0,.55);
             color:#fff;
             font-size:22px;
             cursor:pointer;
+            pointer-events:auto;
+            touch-action:manipulation;
         }
 
         .student-reel-user {
@@ -1515,6 +1528,44 @@
         }
     });
 
+    window.addEventListener("student:reel-creator-opened", function () {
+        overlay
+            ?.querySelectorAll("video")
+            .forEach(function (video) {
+                video.pause();
+            });
+    });
+
+    window.addEventListener("student:reel-creator-closed", function () {
+        if (!overlay?.classList.contains("show")) return;
+
+        const container = document.getElementById("student-reels-scroll");
+        if (container && window.StudentReelsCore?.setActive) {
+            window.StudentReelsCore.setActive(container, currentIndex);
+        }
+    });
+
+    window.addEventListener("student:reel-published", async function () {
+        reels = [];
+        profiles = {};
+        reelsCacheAt = 0;
+
+        if (!overlay?.classList.contains("show")) return;
+
+        await loadReels();
+
+        if (!reels.length) {
+            showEmpty();
+            return;
+        }
+
+        currentIndex = 0;
+        renderReels();
+        setTimeout(function () {
+            scrollToReel(0, false);
+        }, 80);
+    });
+
     /* =====================================================
        Load Reels
     ===================================================== */
@@ -1562,6 +1613,9 @@
                         id,
                         user_id,
                         video_url,
+                        video_url_low,
+                        video_url_medium,
+                        video_url_high,
                         caption,
                         thumbnail_url,
                         visibility,
@@ -1615,6 +1669,9 @@
                             id,
                             user_id,
                             video_url,
+                            video_url_low,
+                            video_url_medium,
+                            video_url_high,
                             caption,
                             thumbnail_url,
                             created_at,
@@ -1816,38 +1873,17 @@
             typeof window.openStudentReelCreator !==
             "function"
         ) {
-
-            toast(
-                "نظام نشر الـReel غير جاهز."
-            );
+            toast("نظام نشر الـReel غير جاهز.");
             return;
         }
 
-        const openCreator = function () {
-            window.openStudentReelCreator();
-        };
+        overlay
+            ?.querySelectorAll("video")
+            .forEach(function (video) {
+                video.pause();
+            });
 
-        /*
-         * إغلاق شاشة الريلز ينفذ history.back().
-         * فتح نافذة النشر قبل اكتمال popstate يجعل مدير التنقل
-         * يغلقها فورًا ويعيد المستخدم إلى الرئيسية.
-         * لذلك ننتظر اكتمال الرجوع ثم نفتح ناشر الريلز.
-         */
-        if (reelsHistoryActive) {
-            window.addEventListener(
-                "popstate",
-                function () {
-                    setTimeout(openCreator, 0);
-                },
-                { once: true }
-            );
-
-            closeReels();
-            return;
-        }
-
-        closeReels(true);
-        openCreator();
+        window.openStudentReelCreator();
     }
 
     /* =====================================================
@@ -1927,7 +1963,7 @@
                                 class="student-reel-publish"
                                 data-publish
                             >
-                                🎬 نشر Reel
+                                🎬 نشر ريلز
                             </button>
 
 
@@ -3880,8 +3916,11 @@
             .forEach(
                 button => {
 
-                    button.onclick =
-                        openPublishReel;
+                    button.onclick = function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openPublishReel();
+                    };
                 }
             );
 
@@ -3894,8 +3933,11 @@
             .forEach(
                 button => {
 
-                    button.onclick =
-                        closeReels;
+                    button.onclick = function (event) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        closeReels();
+                    };
                 }
             );
 
