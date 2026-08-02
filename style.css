@@ -1,151 +1,255 @@
-/* =========================================================
-   Student — Clean Unified Interface
-   replaces the old floating-layout stylesheet completely
-========================================================= */
-:root{
-  --student-blue:#0095f6;
-  --student-red:#ed1c24;
-  --student-bg:#f7f8fa;
-  --student-surface:#fff;
-  --student-text:#202124;
-  --student-muted:#6f7782;
-  --student-border:#e5e8ec;
-  --student-bottom-nav:66px;
-  --student-header:58px;
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
-*{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif}
-html,body{width:100%;min-height:100%;background:var(--student-bg);color:var(--student-text)}
-body{padding-bottom:var(--student-bottom-nav);overflow-x:hidden}
-button,input,textarea,select{font:inherit}
-button,a{-webkit-tap-highlight-color:transparent}
-button{touch-action:manipulation}
-img,video{max-width:100%}
-.hidden,[hidden]{display:none!important}
 
-/* Header */
-body>header,#main-screen>header,.student-app-header{position:sticky;top:0;z-index:300;min-height:var(--student-header);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid var(--student-border)}
-.logo{color:var(--student-blue);font-family:cursive;font-size:24px;font-style:italic;font-weight:800}
-.header-icons{display:flex;align-items:center;gap:14px;position:relative}
-.header-icons i{margin:0;color:var(--student-text);font-size:21px;cursor:pointer}
-.badge{position:absolute;top:-7px;right:-8px;min-width:17px;height:17px;padding:0 4px;border-radius:20px;background:var(--student-red);color:#fff;font-size:10px;line-height:17px;text-align:center}
-
-/* Home */
-.main-content{width:min(100%,680px);margin:0 auto;padding:14px 16px 24px}
-.cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.card{min-height:138px;padding:22px 12px;border:1px solid var(--student-border);border-radius:18px;background:#fff;box-shadow:0 4px 15px rgba(25,35,45,.05);text-align:center;cursor:pointer}
-.card:active{transform:scale(.985)}
-.card-icon{display:flex;width:60px;height:60px;align-items:center;justify-content:center;margin:0 auto 12px;border-radius:50%;background:var(--student-blue);color:#fff;font-size:25px}
-.card-title{font-size:16px;font-weight:800}
-
-/* Stories strip */
-.student-home-stories{width:100%;overflow:hidden;background:#fff;border-bottom:1px solid var(--student-border)}
-.student-home-stories .stories-container{display:flex!important;visibility:visible!important;width:100%;min-height:104px;align-items:flex-start;gap:12px;padding:10px 14px 8px;overflow-x:auto;overflow-y:hidden;direction:rtl;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.student-home-stories .stories-container::-webkit-scrollbar{display:none}
-.student-home-stories .stories-container>*{flex:0 0 auto;visibility:visible!important;scroll-snap-align:start}
-.story{display:flex;min-width:66px;flex-direction:column;align-items:center;cursor:pointer}
-.story-ring{display:flex;width:64px;height:64px;align-items:center;justify-content:center;padding:3px;border:3px solid var(--student-red);border-radius:50%;background:#fff}
-.story-ring img,.story-ring-inner{width:100%;height:100%;border-radius:50%;object-fit:cover}
-.story-name{max-width:68px;margin-top:5px;overflow:hidden;color:var(--student-text);font-size:11px;text-align:center;text-overflow:ellipsis;white-space:nowrap}
-.student-home-stories .stories-add-new .story-ring{border-color:var(--student-blue)!important;background:var(--student-blue)}
-.student-home-stories .stories-add-new .story-ring-inner{display:flex;align-items:center;justify-content:center;background:#fff!important}
-.student-home-stories .stories-add-new i,.student-home-stories .stories-add-new .fa-plus{color:var(--student-red)!important;font-size:23px!important}
-.student-home-stories .stories-add-new .story-name{font-weight:800}
-
-/* Bottom navigation */
-nav,.bottom-nav{position:fixed;right:0;bottom:0;left:0;z-index:500;display:flex;min-height:var(--student-bottom-nav);align-items:center;justify-content:space-around;padding:7px 4px calc(7px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--student-border)}
-nav a,.bottom-nav .nav-item{display:flex;min-width:50px;min-height:46px;align-items:center;justify-content:center;color:var(--student-text);font-size:21px;text-decoration:none;border:0;background:transparent}
-nav a.active,.bottom-nav .nav-item.active{color:var(--student-blue)}
-
-/* Full-screen internal pages: no floating cards */
-.student-internal-page,
-#student-store-overlay,
-#student-reels-overlay,
-#student-reel-publisher,
-#studentStoryViewer,
-#student-story-form-modal,
-#studentStoryViewersModal,
-#student-education-overlay,
-.student-page-overlay,
-.student-fullscreen-page{
-  position:fixed!important;
-  inset:0!important;
-  z-index:10000!important;
-  width:100%!important;
-  height:100dvh!important;
-  max-width:none!important;
-  max-height:none!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  border-radius:0!important;
-  background:#fff!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
+body {
+    background: #fff;
+    color: #262626;
+    padding-bottom: 70px;
 }
-#student-store-overlay.show,#student-store-overlay.active,
-#student-reels-overlay.show,#student-reels-overlay.active,
-#student-reel-publisher.show,#student-reel-publisher.active,
-#studentStoryViewer.show,#studentStoryViewer.active,
-#student-story-form-modal.show,#student-story-form-modal.active,
-#studentStoryViewersModal.show,#studentStoryViewersModal.active,
-#student-education-overlay.show,#student-education-overlay.active{display:flex!important;flex-direction:column!important}
 
-.student-internal-header,.student-store-header,.student-reel-publisher-header,.student-menu-header,.student-page-header{min-height:var(--student-header);display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:8px 12px;background:#fff;border-bottom:1px solid var(--student-border)}
-.student-internal-body,.student-store-body,.student-reel-publisher-body,.student-page-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--student-bg);padding:14px}
-.student-internal-back,.student-store-close,.student-reel-publisher-close,.student-page-back{display:flex;width:42px;height:42px;align-items:center;justify-content:center;flex:0 0 42px;border:0;border-radius:50%;background:#f0f2f5;color:var(--student-text);font-size:18px;cursor:pointer}
-.student-internal-title,.student-store-title,.student-reel-publisher-title,.student-page-title{flex:1;font-size:18px;font-weight:800}
+/* الهيدر */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dbdbdb;
+    background: #fff;
+}
 
-/* Reels */
-#student-reels-overlay{background:#000!important}
-#student-reels-overlay .student-reel-close{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:20;display:flex;width:42px;height:42px;align-items:center;justify-content:center;border:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:20px}
-#student-reels-scroll{width:100%;height:100%;overflow-y:auto;scroll-snap-type:y mandatory;background:#000}
-.student-reel{position:relative;width:100%;height:100dvh;scroll-snap-align:start;background:#000;overflow:hidden}
-.student-reel video{width:100%;height:100%;object-fit:contain;background:#000}
-#student-reel-publisher{background:#fff!important}
-.student-reel-publisher-window{display:flex!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;flex-direction:column!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}
-.student-reel-publisher-spacer{display:none!important}
-.student-reel-submit,.student-reel-publish{min-height:48px;border:0;border-radius:14px;background:var(--student-blue);color:#fff;font-weight:800}
+.logo {
+    color: #0095f6;
+    font-family: cursive;
+    font-size: 24px;
+    font-style: italic;
+    font-weight: 800;
+}
 
-/* Store */
-#student-store-overlay{direction:rtl}
-.student-store-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.student-store-card{overflow:hidden;border:1px solid var(--student-border);border-radius:16px;background:#fff;box-shadow:0 3px 12px rgba(20,30,40,.05)}
-.student-store-image{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef1f4}
-.student-store-card-body{padding:12px}
-.student-store-modal{position:fixed!important;inset:0!important;z-index:11000!important;display:flex!important;align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:#fff!important}
-.student-store-modal-card{display:flex!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;flex-direction:column!important;border:0!important;border-radius:0!important;box-shadow:none!important}
-.student-store-form{flex:1;overflow-y:auto;padding:14px}
-.student-store-input,.student-store-textarea,.student-store-field input,.student-store-field textarea,.student-store-field select{width:100%;padding:12px;border:1px solid var(--student-border);border-radius:12px;background:#fff;outline:none}
-.student-store-input:focus,.student-store-textarea:focus{border-color:var(--student-blue)}
+.header-icons {
+    position: relative;
+}
 
-/* Story viewer/creator */
-#studentStoryViewer{background:#000!important;color:#fff!important}
-#studentStoryViewer .student-story-content{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#studentStoryViewer img,#studentStoryViewer video{max-width:100%;max-height:100%;object-fit:contain}
-#student-story-form-modal{direction:rtl;background:#fff!important}
-.student-story-form{width:100%!important;max-width:none!important;height:100%!important;max-height:none!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow-y:auto!important}
+.header-icons i {
+    position: relative;
+    margin-left: 15px;
+    color: #262626;
+    font-size: 22px;
+    cursor: pointer;
+}
 
-/* Menu remains a drawer; its inner views fill the drawer */
-#student-main-menu{position:fixed;inset:0;z-index:12000;pointer-events:none}
-#student-main-menu.is-open{pointer-events:auto}
-#student-main-menu-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.42)}
-#student-main-menu-sheet{position:absolute;top:0;right:0;bottom:0;width:min(88vw,390px);display:flex;flex-direction:column;background:#fff;box-shadow:-8px 0 28px rgba(0,0,0,.18)}
-.student-menu-content{flex:1;min-height:0;overflow-y:auto}
+.badge {
+    position: absolute;
+    top: -5px;
+    right: -8px;
+    padding: 2px 5px;
+    border-radius: 50%;
+    background: #0095f6;
+    color: #fff;
+    font-size: 10px;
+}
 
-/* Small confirmations only may stay floating */
-.student-confirm-overlay,.student-action-sheet,.student-exit-confirm,.student-story-confirm-card{position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.48)}
-.student-confirm-card,.student-action-sheet-card,.student-exit-card{width:min(100%,380px);padding:20px;border-radius:20px;background:#fff;box-shadow:0 18px 55px rgba(0,0,0,.28)}
+/* شريط الستوري في أعلى الرئيسية */
+.student-home-stories {
+    width: 100%;
+    overflow: hidden;
+    border-bottom: 1px solid #eceff2;
+    background: #fff;
+}
 
-/* Session splash */
-body:not(.student-session-resolved) #auth-screen,body:not(.student-session-resolved) #main-screen{display:none!important}
-body:not(.student-session-resolved)::before{content:"Student";position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;background:#fff;color:var(--student-blue);font-size:34px;font-style:italic;font-weight:800}
+.student-home-stories .stories-container {
+    display: flex !important;
+    visibility: visible !important;
+    width: 100%;
+    min-height: 104px;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    direction: rtl;
+    border: 0;
+    background: #fff;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    contain: layout paint;
+}
 
-/* Old posts are not part of Home */
-.student-feed-container,.student-feed-loading,.student-feed-empty,#student-feed-container{display:none!important}
+.student-home-stories .stories-container::-webkit-scrollbar {
+    display: none;
+}
 
-@media (max-width:420px){
-  .main-content{padding-inline:12px}
-  .cards-grid{gap:10px}
-  .card{min-height:126px;padding:18px 8px}
-  .student-store-grid{grid-template-columns:1fr 1fr;gap:9px}
+.student-home-stories .stories-container > * {
+    visibility: visible !important;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+}
+
+.story {
+    display: flex;
+    min-width: 65px;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.story-ring {
+    display: flex;
+    width: 64px;
+    height: 64px;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border: 2px solid #ed1c24;
+    border-radius: 50%;
+}
+
+.story-name {
+    max-width: 65px;
+    margin-top: 4px;
+    overflow: hidden;
+    color: #262626;
+    font-size: 11px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.student-home-stories .stories-add-new .story-ring {
+    position: relative;
+    padding: 3px;
+    border: 3px solid #0095f6 !important;
+    background: #0095f6;
+}
+
+.student-home-stories .stories-add-new .story-ring-inner {
+    background: #fff !important;
+}
+
+.student-home-stories .stories-add-new i,
+.student-home-stories .stories-add-new .fa-plus {
+    color: #ed1c24 !important;
+    font-size: 23px !important;
+}
+
+.student-home-stories .stories-add-new .story-name {
+    font-weight: 800;
+}
+
+/* المراحل */
+.main-content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 14px 16px 20px;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.card {
+    padding: 25px 15px;
+    border: 1px solid #dbdbdb;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .04);
+    text-align: center;
+    cursor: pointer;
+    transition: transform .2s;
+}
+
+.card:active {
+    transform: scale(.98);
+}
+
+.card-icon {
+    display: flex;
+    width: 60px;
+    height: 60px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: #0095f6;
+    color: #fff;
+    font-size: 26px;
+}
+
+.card-title {
+    color: #262626;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+/* التنقل السفلي */
+nav {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    border-top: 1px solid #dbdbdb;
+    background: #fff;
+}
+
+nav a {
+    color: #262626;
+    font-size: 22px;
+    text-decoration: none;
+    touch-action: manipulation;
+}
+
+nav a.active {
+    color: #0095f6;
+}
+
+/* ثبات بدء التطبيق ومنع الوميض */
+body:not(.student-session-resolved) #auth-screen,
+body:not(.student-session-resolved) #main-screen {
+    display: none !important;
+}
+
+body:not(.student-session-resolved)::before {
+    content: "Student";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: #0095f6;
+    font-size: 34px;
+    font-style: italic;
+    font-weight: 800;
+}
+
+/* المنشورات القديمة غير موجودة في الرئيسية */
+.student-feed-container,
+.student-feed-loading,
+.student-feed-empty,
+#student-feed-container {
+    display: none !important;
+}
+
+.student-post-owner-menu {
+    margin-inline-start: auto;
+    padding: 8px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    font-size: 18px;
+    cursor: pointer;
 }
