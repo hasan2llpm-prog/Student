@@ -559,10 +559,7 @@
         document.body.style.overflow = "hidden";
         if (typeof closeFloatingPanel === "function") closeFloatingPanel();
 
-        if (!state.historyActive) {
-            history.pushState({ studentStore: true }, "", location.href);
-            state.historyActive = true;
-        }
+        state.historyActive = true;
         refresh();
     }
 
@@ -577,25 +574,10 @@
         });
     }
 
-    function close(fromHistory = false) {
-        if (fromHistory) {
-            state.historyActive = false;
-            hide();
-            return;
-        }
-        if (state.historyActive && !state.closingFromHistory) {
-            state.closingFromHistory = true;
-            state.historyActive = false;
-            history.back();
-            setTimeout(function () { state.closingFromHistory = false; }, 0);
-            return;
-        }
+    function close() {
+        state.historyActive = false;
         hide();
     }
-
-    window.addEventListener("popstate", function () {
-        if (state.historyActive && overlay?.classList.contains("show")) close(true);
-    });
 
     function selectedProduct(id) {
         return state.products.find(function (product) { return product.id === id; }) || null;
