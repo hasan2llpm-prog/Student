@@ -3902,6 +3902,8 @@
         ) {
 
             await loadStories();
+        } else {
+            document.body.classList.add("student-stories-ready");
         }
     }
 
