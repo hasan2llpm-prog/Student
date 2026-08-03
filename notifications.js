@@ -361,25 +361,77 @@
             button.textContent = "جارٍ النشر...";
             const form = new FormData(event.currentTarget);
             const client = sb();
-            const { data, error } = await client.rpc("admin_broadcast_notification", {
-                p_title: String(form.get("title") || "").trim(),
-                p_body: String(form.get("body") || "").trim(),
-                p_link: String(form.get("link") || "").trim() || null
+            const title = String(form.get("title") || "").trim();
+            const body = String(form.get("body") || "").trim();
+            const link = String(form.get("link") || "").trim() || null;
+
+            let notificationId = null;
+            let publishError = null;
+
+            // المسار الأساسي: دالة Supabase الآمنة.
+            const rpcResult = await client.rpc("admin_broadcast_notification", {
+                p_title: title,
+                p_body: body,
+                p_link: link
             });
-            if (error) {
-                console.error(error);
+
+            if (!rpcResult.error) {
+                notificationId = rpcResult.data;
+            } else {
+                publishError = rpcResult.error;
+                console.error("Broadcast RPC error:", rpcResult.error);
+
+                // مسار احتياطي للنسخ القديمة التي لم تتحدث فيها دالة RPC بعد.
+                const directResult = await client
+                    .from("notifications")
+                    .insert({
+                        user_id: null,
+                        actor_id: state.user?.id || null,
+                        title,
+                        body,
+                        icon: "📢",
+                        kind: "admin_broadcast",
+                        link,
+                        audience: "all",
+                        is_broadcast: true,
+                        is_read: false,
+                        metadata: { published_by: state.user?.id || null }
+                    })
+                    .select("id")
+                    .single();
+
+                if (!directResult.error) {
+                    notificationId = directResult.data?.id || null;
+                    publishError = null;
+                } else {
+                    console.error("Broadcast direct insert error:", directResult.error);
+                    publishError = directResult.error;
+                }
+            }
+
+            if (publishError) {
                 button.disabled = false;
                 button.textContent = "نشر الآن";
-                toast("تعذر نشر الإشعار.");
+                const details = publishError.message || publishError.details || publishError.code || "خطأ غير معروف";
+                toast(`فشل النشر: ${details}`);
                 return;
             }
-            try {
-                await client.functions.invoke("send-push", { body: { notification_id: data, broadcast: true } });
-            } catch (error2) {
-                console.warn("External push invoke failed:", error2);
+
+            // الإشعار الداخلي تم نشره. فشل Push الخارجي لا يلغي نجاح النشر الداخلي.
+            if (notificationId) {
+                try {
+                    const pushResult = await client.functions.invoke("send-push", {
+                        body: { notification_id: notificationId, broadcast: true }
+                    });
+                    if (pushResult?.error) console.warn("External push invoke failed:", pushResult.error);
+                } catch (error2) {
+                    console.warn("External push invoke failed:", error2);
+                }
             }
+
             modal.remove();
-            toast("تم نشر الإشعار للجميع.");
+            await load();
+            toast("تم نشر الإشعار للجميع داخل التطبيق.");
         };
     }
 
