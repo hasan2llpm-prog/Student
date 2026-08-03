@@ -8,7 +8,7 @@
     if (window.StudentNotifications) return;
 
     const VAPID_PUBLIC_KEY = "BDzANVHrkwSN1O6cIyREd5yYgjo7pxiGiizwdOGw2nHIxciXm5Fs5jxmCGh9NjOMX3Xo0t2sd949fLrRfJwTCQI";
-    const SW_URL = "./sw.js?v=1.0.0";
+    const SW_URL = "./sw.js?v=1.0.1";
 
     const state = {
         user: null,
@@ -308,17 +308,38 @@
     }
 
     function showFirstLoginPrompt() {
-        if (!state.user || !("Notification" in window) || Notification.permission !== "default") return;
-        const key = `student-push-asked:${state.user.id}`;
-        if (localStorage.getItem(key)) return;
-        localStorage.setItem(key, "shown");
+        if (!state.user || !("Notification" in window)) return;
+
+        const permission = Notification.permission;
+        if (permission === "granted") return;
+
+        const key = `student-push-reminder:${state.user.id}`;
+        const lastShown = Number(localStorage.getItem(key) || 0);
+        const remindAfter = 24 * 60 * 60 * 1000;
+
+        if (Date.now() - lastShown < remindAfter) return;
+
         setTimeout(() => {
+            if (document.querySelector(".sn-modal[data-push-reminder]")) return;
+
             const modal = document.createElement("div");
             modal.className = "sn-modal";
-            modal.innerHTML = `<div class="sn-sheet"><h3>تفعيل الإشعارات</h3><p style="line-height:1.8;color:#566171">فعّل الإشعارات لتصلك تنبيهات Student في لوحة إشعارات الهاتف. هذا الخيار يظهر للحسابات القديمة والجديدة عند أول دخول بعد التحديث.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">لاحقًا</button><button class="sn-btn" data-enable type="button">تفعيل الآن</button></div></div>`;
+            modal.dataset.pushReminder = "1";
+
+            if (permission === "denied") {
+                modal.innerHTML = `<div class="sn-sheet"><h3>الإشعارات متوقفة</h3><p style="line-height:1.8;color:#566171">سبق أن تم رفض إذن الإشعارات. افتح إعدادات هذا الموقع في Chrome، ثم غيّر الإشعارات إلى سماح، وبعدها أعد فتح التطبيق.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">حسنًا</button></div></div>`;
+            } else {
+                modal.innerHTML = `<div class="sn-sheet"><h3>تفعيل الإشعارات</h3><p style="line-height:1.8;color:#566171">فعّل الإشعارات لتصلك تنبيهات Student في لوحة إشعارات الهاتف.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">لاحقًا</button><button class="sn-btn" data-enable type="button">تفعيل الآن</button></div></div>`;
+            }
+
             document.body.appendChild(modal);
+            localStorage.setItem(key, String(Date.now()));
+
             modal.querySelector("[data-close]").onclick = () => modal.remove();
-            modal.querySelector("[data-enable]").onclick = async () => { modal.remove(); await enablePush(); };
+            modal.querySelector("[data-enable]")?.addEventListener("click", async () => {
+                modal.remove();
+                await enablePush();
+            });
         }, 1200);
     }
 
