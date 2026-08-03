@@ -366,56 +366,30 @@
             const link = String(form.get("link") || "").trim() || null;
 
             let notificationId = null;
-            let publishError = null;
 
-            // المسار الأساسي: دالة Supabase الآمنة.
-            const rpcResult = await client.rpc("admin_broadcast_notification", {
+            // مسار واحد ثابت: دالة V2 الآمنة في Supabase.
+            // لا نستخدم الإدخال المباشر لأنه يخضع لسياسات RLS وقد يفشل حتى للأدمن.
+            const rpcResult = await client.rpc("student_admin_broadcast_v2", {
                 p_title: title,
                 p_body: body,
                 p_link: link
             });
 
-            if (!rpcResult.error) {
-                notificationId = rpcResult.data;
-            } else {
-                publishError = rpcResult.error;
-                console.error("Broadcast RPC error:", rpcResult.error);
-
-                // مسار احتياطي للنسخ القديمة التي لم تتحدث فيها دالة RPC بعد.
-                const directResult = await client
-                    .from("notifications")
-                    .insert({
-                        user_id: null,
-                        actor_id: state.user?.id || null,
-                        title,
-                        body,
-                        icon: "📢",
-                        kind: "admin_broadcast",
-                        link,
-                        audience: "all",
-                        is_broadcast: true,
-                        is_read: false,
-                        metadata: { published_by: state.user?.id || null }
-                    })
-                    .select("id")
-                    .single();
-
-                if (!directResult.error) {
-                    notificationId = directResult.data?.id || null;
-                    publishError = null;
-                } else {
-                    console.error("Broadcast direct insert error:", directResult.error);
-                    publishError = directResult.error;
-                }
-            }
-
-            if (publishError) {
+            if (rpcResult.error) {
+                console.error("Broadcast V2 RPC error:", rpcResult.error);
                 button.disabled = false;
                 button.textContent = "نشر الآن";
-                const details = publishError.message || publishError.details || publishError.code || "خطأ غير معروف";
+                const details = [
+                    rpcResult.error.message,
+                    rpcResult.error.details,
+                    rpcResult.error.hint,
+                    rpcResult.error.code
+                ].filter(Boolean).join(" | ") || "خطأ غير معروف";
                 toast(`فشل النشر: ${details}`);
                 return;
             }
+
+            notificationId = rpcResult.data || null;
 
             // الإشعار الداخلي تم نشره. فشل Push الخارجي لا يلغي نجاح النشر الداخلي.
             if (notificationId) {
