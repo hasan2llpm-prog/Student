@@ -2534,9 +2534,9 @@ function loadAdminSystem() {
 function loadMenuSystem() {
 
     loadExternalScript(
-        "menu.js?v=2.2.0",
-        "student-menu",
-        "Student Menu"
+        "settings.js?v=3.0.0",
+        "student-settings-bundle",
+        "Student Menu + Settings + Saved"
     );
 }
 
@@ -2546,12 +2546,8 @@ function loadMenuSystem() {
 ========================================================= */
 
 function loadSettingsSystem() {
-
-    loadExternalScript(
-        "settings.js",
-        "student-settings",
-        "Student Settings"
-    );
+    // الإعدادات والمحفوظات مدمجة مع القائمة داخل settings.js
+    loadMenuSystem();
 }
 
 
