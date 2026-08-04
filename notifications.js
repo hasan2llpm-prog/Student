@@ -51,7 +51,7 @@
             .sn-btn{background:#087cff;color:#fff;border-radius:12px;padding:11px 15px;font-weight:750}.sn-btn.secondary{background:#eef2f7;color:#223047}.sn-btn.danger{background:#e93d4f}
             .sn-list{display:grid;gap:10px}.sn-item{border:1px solid #e8ebf0;border-radius:16px;padding:13px;background:#fff;display:flex;gap:11px;align-items:flex-start}
             .sn-item.unread{background:#f4f8ff;border-color:#cfe0ff}.sn-icon{width:42px;height:42px;border-radius:50%;background:#eef4ff;display:grid;place-items:center;flex:0 0 42px;font-size:19px}
-            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:800;margin-bottom:4px}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:12px;color:#8a94a3;margin-top:7px}
+            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:800;margin-bottom:4px}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:12px;color:#8a94a3;margin-top:7px}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
             .sn-empty{text-align:center;padding:60px 20px;color:#788393}.sn-empty .bell{font-size:48px;margin-bottom:12px}
             .sn-modal{position:fixed;inset:0;z-index:10070;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}
             .sn-sheet{width:min(620px,100%);background:#fff;border-radius:22px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
@@ -157,17 +157,30 @@
             list.innerHTML = `<div class="sn-empty"><div class="bell">🔔</div><div>لا توجد إشعارات حتى الآن.</div></div>`;
             return;
         }
-        list.innerHTML = state.items.map(item => `
+        list.innerHTML = state.items.map(item => {
+            const canManage = state.isAdmin && item.is_broadcast === true && item.kind === "admin_broadcast";
+            return `
             <article class="sn-item ${item.is_read ? "" : "unread"}" data-id="${escapeHtml(item.id)}">
                 <div class="sn-icon">${escapeHtml(item.icon || "🔔")}</div>
                 <div class="sn-content">
                     <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
                     <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
                     <div class="sn-meta">${escapeHtml(dateText(item.created_at))}</div>
+                    ${canManage ? `<div class="sn-item-admin"><button class="sn-mini" data-edit-broadcast type="button">تعديل</button><button class="sn-mini danger" data-delete-broadcast type="button">حذف</button></div>` : ""}
                 </div>
-            </article>`).join("");
+            </article>`;
+        }).join("");
         list.querySelectorAll(".sn-item.unread").forEach(el => {
-            el.addEventListener("click", () => markRead(el.dataset.id));
+            el.addEventListener("click", event => {
+                if (event.target.closest("button")) return;
+                markRead(el.dataset.id);
+            });
+        });
+        list.querySelectorAll("[data-edit-broadcast]").forEach(btn => {
+            btn.addEventListener("click", () => openEditBroadcast(btn.closest(".sn-item").dataset.id));
+        });
+        list.querySelectorAll("[data-delete-broadcast]").forEach(btn => {
+            btn.addEventListener("click", () => confirmDeleteBroadcast(btn.closest(".sn-item").dataset.id));
         });
         updateBadge();
     }
@@ -179,7 +192,7 @@
         render();
         const { data, error } = await client
             .from("notifications")
-            .select("id,title,body,icon,kind,link,is_read,created_at,actor_id,metadata")
+            .select("id,title,body,icon,kind,link,is_read,created_at,actor_id,metadata,is_broadcast,audience,user_id")
             .or(`user_id.eq.${state.user.id},and(user_id.is.null,is_broadcast.eq.true)`)
             .order("created_at", { ascending: false })
             .limit(150);
@@ -191,7 +204,21 @@
             toast("تعذر تحميل الإشعارات. شغّل كود SQL أولًا.");
             return;
         }
-        state.items = data || [];
+        const rows = data || [];
+        const broadcastIds = rows.filter(x => x.is_broadcast === true).map(x => x.id);
+        let readBroadcasts = new Set();
+        if (broadcastIds.length) {
+            const { data: reads } = await client
+                .from("notification_reads")
+                .select("notification_id")
+                .eq("user_id", state.user.id)
+                .in("notification_id", broadcastIds);
+            readBroadcasts = new Set((reads || []).map(x => String(x.notification_id)));
+        }
+        state.items = rows.map(item => ({
+            ...item,
+            is_read: item.is_broadcast === true ? readBroadcasts.has(String(item.id)) : item.is_read === true
+        }));
         render();
         await markAllDelivered();
     }
@@ -200,9 +227,45 @@
         const client = sb();
         if (!client || !id) return;
         const item = state.items.find(x => String(x.id) === String(id));
-        if (item) item.is_read = true;
+        if (!item) return;
+        item.is_read = true;
         render();
-        await client.from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("id", id).eq("user_id", state.user.id);
+        if (item.is_broadcast === true) {
+            await client.from("notification_reads").upsert({
+                notification_id: id,
+                user_id: state.user.id,
+                read_at: new Date().toISOString()
+            }, { onConflict: "notification_id,user_id" });
+        } else {
+            await client.from("notifications")
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .eq("id", id)
+                .eq("user_id", state.user.id);
+        }
+    }
+
+    async function markAllRead() {
+        const client = sb();
+        if (!client || !state.user) return;
+        const unread = state.items.filter(x => !x.is_read);
+        if (!unread.length) return;
+        const personalIds = unread.filter(x => x.is_broadcast !== true).map(x => x.id);
+        const broadcastRows = unread.filter(x => x.is_broadcast === true).map(x => ({
+            notification_id: x.id,
+            user_id: state.user.id,
+            read_at: new Date().toISOString()
+        }));
+        state.items.forEach(x => { x.is_read = true; });
+        render();
+        if (personalIds.length) {
+            await client.from("notifications")
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .in("id", personalIds)
+                .eq("user_id", state.user.id);
+        }
+        if (broadcastRows.length) {
+            await client.from("notification_reads").upsert(broadcastRows, { onConflict: "notification_id,user_id" });
+        }
     }
 
     async function markAllDelivered() {
@@ -236,9 +299,19 @@
                 const item = payload.new;
                 const belongs = item.user_id === state.user.id || item.is_broadcast === true || (state.isAdmin && item.audience === "admin");
                 if (!belongs) return;
-                state.items.unshift(item);
+                state.items.unshift({ ...item, is_read: false });
                 render();
                 showForeground(item);
+            })
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, payload => {
+                const index = state.items.findIndex(x => String(x.id) === String(payload.new.id));
+                if (index < 0) return;
+                state.items[index] = { ...state.items[index], ...payload.new };
+                render();
+            })
+            .on("postgres_changes", { event: "DELETE", schema: "public", table: "notifications" }, payload => {
+                state.items = state.items.filter(x => String(x.id) !== String(payload.old.id));
+                render();
             })
             .subscribe();
     }
@@ -343,6 +416,62 @@
         }, 1200);
     }
 
+    function openEditBroadcast(id) {
+        const item = state.items.find(x => String(x.id) === String(id));
+        if (!state.isAdmin || !item) return;
+        const modal = document.createElement("div");
+        modal.className = "sn-modal";
+        modal.innerHTML = `<form class="sn-sheet"><h3>تعديل الإشعار</h3>
+            <div class="sn-field"><label>العنوان</label><input name="title" maxlength="100" required value="${escapeHtml(item.title || "")}"></div>
+            <div class="sn-field"><label>النص</label><textarea name="body" maxlength="500" required>${escapeHtml(item.body || "")}</textarea></div>
+            <div class="sn-field"><label>الرابط (اختياري)</label><input name="link" maxlength="300" value="${escapeHtml(item.link || "")}"></div>
+            <div class="sn-actions"><button class="sn-btn secondary" data-close type="button">إلغاء</button><button class="sn-btn" type="submit">حفظ</button></div></form>`;
+        document.body.appendChild(modal);
+        modal.querySelector("[data-close]").onclick = () => modal.remove();
+        modal.querySelector("form").onsubmit = async event => {
+            event.preventDefault();
+            const button = event.submitter;
+            button.disabled = true;
+            const form = new FormData(event.currentTarget);
+            const { error } = await sb().rpc("student_admin_update_broadcast", {
+                p_notification_id: id,
+                p_title: String(form.get("title") || "").trim(),
+                p_body: String(form.get("body") || "").trim(),
+                p_link: String(form.get("link") || "").trim() || null
+            });
+            if (error) {
+                button.disabled = false;
+                toast(`تعذر التعديل: ${error.message}`);
+                return;
+            }
+            modal.remove();
+            await load();
+            toast("تم تعديل الإشعار.");
+        };
+    }
+
+    function confirmDeleteBroadcast(id) {
+        if (!state.isAdmin) return;
+        const modal = document.createElement("div");
+        modal.className = "sn-modal";
+        modal.innerHTML = `<div class="sn-sheet"><h3>حذف الإشعار؟</h3><p style="line-height:1.8;color:#566171">سيُحذف هذا الإشعار من جميع الحسابات نهائيًا.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">إلغاء</button><button class="sn-btn danger" data-delete type="button">حذف</button></div></div>`;
+        document.body.appendChild(modal);
+        modal.querySelector("[data-close]").onclick = () => modal.remove();
+        modal.querySelector("[data-delete]").onclick = async event => {
+            event.currentTarget.disabled = true;
+            const { error } = await sb().rpc("student_admin_delete_broadcast", { p_notification_id: id });
+            if (error) {
+                event.currentTarget.disabled = false;
+                toast(`تعذر الحذف: ${error.message}`);
+                return;
+            }
+            modal.remove();
+            state.items = state.items.filter(x => String(x.id) !== String(id));
+            render();
+            toast("تم حذف الإشعار.");
+        };
+    }
+
     function openBroadcast() {
         if (!state.isAdmin) return;
         const modal = document.createElement("div");
@@ -430,6 +559,7 @@
         page.classList.add("is-open");
         document.body.style.overflow = "hidden";
         await load();
+        await markAllRead();
     }
 
     function close() {
