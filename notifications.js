@@ -170,10 +170,13 @@
                 </div>
             </article>`;
         }).join("");
-        list.querySelectorAll(".sn-item.unread").forEach(el => {
-            el.addEventListener("click", event => {
+        list.querySelectorAll(".sn-item").forEach(el => {
+            el.addEventListener("click", async event => {
                 if (event.target.closest("button")) return;
-                markRead(el.dataset.id);
+                const item = state.items.find(x => String(x.id) === String(el.dataset.id));
+                if (!item) return;
+                if (!item.is_read) await markRead(item.id);
+                await openNotificationTarget(item);
             });
         });
         list.querySelectorAll("[data-edit-broadcast]").forEach(btn => {
@@ -183,6 +186,46 @@
             btn.addEventListener("click", () => confirmDeleteBroadcast(btn.closest(".sn-item").dataset.id));
         });
         updateBadge();
+    }
+
+    async function openNotificationTarget(item) {
+        const meta = item?.metadata || {};
+        const kind = String(item?.kind || item?.type || "");
+        const link = String(item?.link || "");
+
+        close();
+
+        if (kind.startsWith("reel_") || link === "reels" || meta.reel_id) {
+            if (typeof window.openStudentReels === "function") {
+                await window.openStudentReels(0);
+                return;
+            }
+        }
+
+        if (kind.startsWith("story_") || link === "stories" || meta.story_id) {
+            if (typeof window.openStoriesSection === "function") {
+                window.openStoriesSection();
+                return;
+            }
+        }
+
+        if (kind.startsWith("store_") || link === "store" || meta.order_id) {
+            if (typeof window.openStudentStoreSection === "function") {
+                window.openStudentStoreSection();
+                return;
+            }
+        }
+
+        if (kind === "follow" || link === "profile") {
+            if (typeof window.openStudentProfile === "function") {
+                window.openStudentProfile(item.actor_id || meta.actor_id || null);
+                return;
+            }
+        }
+
+        if (link && /^(https?:\/\/|\.\/|\/)/i.test(link)) {
+            location.href = link;
+        }
     }
 
     async function load() {
