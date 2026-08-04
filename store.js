@@ -26,7 +26,17 @@
         historyActive: false,
         closingFromHistory: false,
         loading: false,
-        saving: false
+        saving: false,
+        diamondPackages: [],
+        agents: [],
+        agencyStatus: null,
+        diamondRequests: [],
+        agencyApplications: [],
+        agentStockRequests: [],
+        agentSales: [],
+        walletTransactions: [],
+        walletSummary: null,
+        savedAddresses: []
     };
 
     let overlay = null;
@@ -102,7 +112,7 @@
             }
             .student-store-diamond { color:#00a6ff; }
             .student-store-tabs {
-                display:grid; grid-template-columns:1fr 1fr; gap:8px;
+                display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px;
                 padding:10px 14px; background:#fff; border-bottom:1px solid #eceef1;
                 flex-shrink:0;
             }
@@ -117,45 +127,45 @@
             }
             .student-store-grid {
                 width:100%; max-width:920px; margin:0 auto; display:grid;
-                grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:14px;
+                grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
             }
             .student-store-card {
-                overflow:hidden; border:1px solid #e2e5e9; border-radius:18px;
+                min-width:0; overflow:hidden; border:1px solid #e2e5e9; border-radius:13px;
                 background:#fff; box-shadow:0 4px 16px rgba(15,23,42,.04);
             }
             .student-store-card.inactive { opacity:.72; }
             .student-store-image {
-                width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:#edf2f7;
+                width:100%; aspect-ratio:1/1; object-fit:cover; display:block; background:#edf2f7;
             }
             .student-store-image-placeholder {
-                width:100%; aspect-ratio:4/3; display:flex; align-items:center;
+                width:100%; aspect-ratio:1/1; display:flex; align-items:center;
                 justify-content:center; background:linear-gradient(135deg,#edf6ff,#f6f8fb);
                 color:#0095f6; font-size:42px;
             }
-            .student-store-card-body { padding:14px; }
+            .student-store-card-body { padding:8px; }
             .student-store-card-top { display:flex; align-items:flex-start; gap:8px; }
             .student-store-product-name {
-                flex:1; font-size:17px; font-weight:900; line-height:1.5; color:#17202a;
+                flex:1; font-size:12px; font-weight:900; line-height:1.5; color:#17202a;
             }
             .student-store-status {
                 padding:5px 8px; border-radius:999px; background:#fff2dc;
                 color:#98610b; font-size:11px; font-weight:900; white-space:nowrap;
             }
             .student-store-description {
-                margin-top:7px; min-height:42px; color:#697386; font-size:13px;
+                margin-top:4px; min-height:30px; color:#697386; font-size:10px;
                 line-height:1.7; display:-webkit-box; -webkit-line-clamp:2;
                 -webkit-box-orient:vertical; overflow:hidden;
             }
             .student-store-prices { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
             .student-store-price {
-                display:inline-flex; align-items:center; gap:6px; padding:8px 10px;
+                display:inline-flex; align-items:center; gap:6px; padding:5px 6px;
                 border-radius:12px; background:#f6f7f9; color:#263238;
-                font-size:13px; font-weight:800;
+                font-size:10px; font-weight:800;
             }
             .student-store-price.diamonds { background:#eef8ff; color:#096aa8; }
             .student-store-stock { margin-top:8px; font-size:12px; color:#7b8491; }
             .student-store-buy {
-                width:100%; min-height:45px; margin-top:13px; border:0;
+                width:100%; min-height:34px; margin-top:7px; border:0;
                 border-radius:13px; background:#0095f6; color:#fff;
                 font-size:14px; font-weight:900; cursor:pointer;
             }
@@ -178,22 +188,22 @@
                 margin-top:16px; min-height:43px; padding:0 18px; border:0;
                 border-radius:12px; background:#1473e6; color:#fff; font-weight:900; cursor:pointer;
             }
-            .student-store-task-list { width:100%; max-width:720px; margin:0 auto; display:grid; gap:12px; }
+            .student-store-task-list { width:100%; max-width:920px; margin:0 auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
             .student-store-task {
-                display:grid; grid-template-columns:54px 1fr auto; align-items:center;
-                gap:12px; padding:14px; border:1px solid #e2e5e9;
-                border-radius:17px; background:#fff;
+                min-width:0; display:flex; flex-direction:column; align-items:stretch;
+                gap:7px; padding:9px; border:1px solid #e2e5e9;
+                border-radius:13px; background:#fff;
             }
             .student-store-task-icon {
-                width:52px; height:52px; display:flex; align-items:center;
+                width:38px; height:38px; display:flex; align-items:center;
                 justify-content:center; border-radius:16px; background:#eef8ff;
-                color:#0095f6; font-size:23px;
+                color:#0095f6; font-size:17px;
             }
             .student-store-task-title { font-weight:900; color:#1f2937; }
             .student-store-task-description { margin-top:4px; color:#77808f; font-size:12px; line-height:1.6; }
             .student-store-task-reward { margin-top:6px; color:#0878bd; font-size:13px; font-weight:900; }
             .student-store-claim {
-                min-width:82px; min-height:40px; border:0; border-radius:12px;
+                width:100%; min-width:0; min-height:34px; border:0; border-radius:12px;
                 background:#e9f6ff; color:#0878bd; font-weight:900; cursor:pointer;
             }
             .student-store-modal {
@@ -279,6 +289,20 @@
                 border-radius:13px; background:#20242a; color:#fff; text-align:center;
                 font-size:13px; box-shadow:0 10px 28px rgba(0,0,0,.25);
             }
+
+            .student-store-guide{max-width:920px;margin:0 auto 14px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#eaf5ff,#fff);border:1px solid #d9eaff}
+            .student-store-guide h3{margin:0 0 8px;color:#0f5fae;font-size:18px}.student-store-guide p{margin:5px 0;line-height:1.8;color:#536273;font-size:13px}
+            .student-store-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
+            .student-store-info-box{padding:13px;border-radius:15px;background:#fff;border:1px solid #e1e8f0}.student-store-info-box strong{display:block;color:#102a43;margin-bottom:5px}
+            .student-store-section{max-width:920px;margin:0 auto 18px}.student-store-section-title{font-size:17px;font-weight:900;margin:0 0 10px;color:#17202a}
+            .student-store-package{padding:14px;border:1px solid #dfe5ec;border-radius:16px;background:#fff;display:grid;gap:8px}
+            .student-store-package strong{font-size:16px}.student-store-package-row{display:flex;justify-content:space-between;gap:10px;color:#596273;font-size:13px}
+            .student-store-primary{min-height:43px;border:0;border-radius:12px;background:#0095f6;color:#fff;font-weight:900;cursor:pointer}
+            .student-store-secondary{min-height:43px;border:1px solid #ccd7e2;border-radius:12px;background:#fff;color:#24455f;font-weight:900;cursor:pointer}
+            .student-store-agent-card{padding:14px;border:1px solid #dfe5ec;border-radius:16px;background:#fff}.student-store-agent-card h4{margin:0 0 7px}.student-store-agent-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+            .student-store-agent-actions a,.student-store-agent-actions button{padding:9px 12px;border:0;border-radius:11px;background:#edf6ff;color:#096aa8;text-decoration:none;font-weight:900}
+            .student-store-form-lite{display:grid;gap:10px}.student-store-form-lite input,.student-store-form-lite textarea,.student-store-form-lite select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d7dee7;border-radius:12px;font:inherit}.student-store-form-lite textarea{min-height:80px;resize:vertical}
+            .student-store-badge{display:inline-flex;padding:5px 9px;border-radius:999px;background:#eef5ff;color:#1757b8;font-size:12px;font-weight:900}
             @media (max-width:560px) {
                 .student-store-header { grid-template-columns:42px minmax(60px,1fr) auto auto; padding-inline:8px; gap:5px; }
                 .student-store-title { font-size:17px; }
@@ -289,7 +313,29 @@
                 .student-store-claim { grid-column:1/-1; width:100%; }
                 .student-store-form-row { grid-template-columns:1fr; }
             }
+
+            .student-store-wallet-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+            .student-store-wallet-box{background:#fff;border:1px solid #e2e5e9;border-radius:14px;padding:12px;text-align:center}
+            .student-store-wallet-box strong{display:block;font-size:18px;color:#0878bd}
+            .student-store-wallet-box span{font-size:11px;color:#6b7280}
+            .student-store-ledger{display:grid;gap:8px}
+            .student-store-ledger-row{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:11px;display:grid;grid-template-columns:1fr auto;gap:8px}
+            .student-store-ledger-row .plus{color:#14803c;font-weight:900}
+            .student-store-ledger-row .minus{color:#c62828;font-weight:900}
+            .student-store-cod-form{display:grid;gap:9px}
+            .student-store-cod-form input,.student-store-cod-form textarea{width:100%;box-sizing:border-box;border:1px solid #dfe4ea;border-radius:11px;padding:11px;font:inherit}
+            @media(max-width:420px){
+              .student-store-body{padding:8px}
+              .student-store-grid,.student-store-task-list{gap:6px}
+              .student-store-card-body{padding:6px}
+              .student-store-product-name{font-size:11px}
+              .student-store-tabs{overflow-x:auto;display:flex}
+              .student-store-tab{min-width:76px;padding:0 8px}
+              .student-store-wallet-summary{grid-template-columns:1fr}
+            }
+
         `;
+
         document.head.appendChild(style);
     }
 
@@ -311,9 +357,11 @@
                     <span id="student-store-balance-value">0</span>
                 </div>
             </header>
-            <div class="student-store-tabs" role="tablist" style="grid-template-columns:repeat(3,1fr)">
+            <div class="student-store-tabs" role="tablist">
                 <button class="student-store-tab active" type="button" data-store-tab="products">المنتجات</button>
-                <button class="student-store-tab" type="button" data-store-tab="tasks">مهام الألماس</button>
+                <button class="student-store-tab" type="button" data-store-tab="diamonds">الألماس</button>
+                <button class="student-store-tab" type="button" data-store-tab="wallet">المحفظة</button>
+                <button class="student-store-tab" type="button" data-store-tab="tasks">المهام</button>
                 <button class="student-store-tab" type="button" data-store-tab="orders">${state.isAdmin ? "الطلبات" : "طلباتي"}</button>
             </div>
             <main id="student-store-body" class="student-store-body"></main>
@@ -342,8 +390,10 @@
         });
 
         document.getElementById("student-store-body")?.addEventListener("click", handleBodyClick);
+        document.getElementById("student-store-body")?.addEventListener("submit", handleBodySubmit);
         document.getElementById("student-store-modal")?.addEventListener("click", handleModalClick);
         document.getElementById("student-store-modal")?.addEventListener("change", handleModalChange);
+        document.getElementById("student-store-modal")?.addEventListener("submit", function(event){ const form=event.target.closest("#student-store-cod-form"); if(form){ event.preventDefault(); const b=form.querySelector("[data-store-submit-cod]"); if(b) submitCodOrder(form,b); }});
     }
 
     function toast(message) {
@@ -365,7 +415,7 @@
         const button = document.getElementById("student-store-admin-add");
         button?.classList.toggle("show", state.isAdmin);
         const label = document.getElementById("student-store-admin-add-label");
-        if (button) button.style.visibility = state.activeTab === "orders" ? "hidden" : "visible";
+        if (button) button.style.visibility = ["orders","diamonds"].includes(state.activeTab) ? "hidden" : "visible";
         if (label) label.textContent = state.activeTab === "tasks" ? "مهمة" : "منتج";
     }
 
@@ -416,7 +466,7 @@
                                 <div class="student-store-description">${esc(product.description || "لا يوجد وصف للمنتج.")}</div>
                                 <div class="student-store-prices">
                                     ${product.allow_money ? `<span class="student-store-price"><i class="fa-solid fa-money-bill-wave"></i>${money(product.price_money, product.currency)}</span>` : ""}
-                                    ${product.allow_diamonds ? `<span class="student-store-price diamonds"><i class="fa-solid fa-gem"></i>${Number(product.price_diamonds || 0)} ألماسة</span>` : ""}
+                                    ${product.allow_diamonds ? `<span class="student-store-price diamonds"><i class="fa-solid fa-gem"></i>${Number(product.price_diamonds || 0)} ألماسة</span>` : ""}${product.allow_cod ? `<span class="student-store-price"><i class="fa-solid fa-truck"></i>عند الاستلام</span>` : ""}${product.product_type === "verification" ? `<span class="student-store-price diamonds"><i class="fa-solid fa-circle-check"></i>توثيق الحساب</span>` : ""}
                                 </div>
                                 <div class="student-store-stock">${soldOut ? "نفد المخزون" : product.stock === null ? "متوفر" : `المتوفر: ${Number(product.stock)}`}</div>
                                 ${inactive ? "" : `<button class="student-store-buy" type="button" data-store-product="${esc(product.id)}" ${soldOut ? "disabled" : ""}>${soldOut ? "غير متوفر" : "شراء"}</button>`}
@@ -471,11 +521,102 @@
         body.innerHTML=`<div class="student-store-order-list">${state.orders.map(o=>`<article class="student-store-order"><div class="student-store-order-head"><strong>${esc(o.product_name)}</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status)}</span></div><div class="student-store-description">رقم الطلب: ${esc(o.id)}</div><div class="student-store-prices"><span class="student-store-price">${o.payment_method==='diamonds'?`${Number(o.diamond_amount||0)} ألماسة`:money(o.money_amount,o.currency)}</span></div><div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div>${state.isAdmin&&o.status==='pending'?`<div class="student-store-order-actions"><button class="ok" data-store-order-status="confirmed" data-order-id="${esc(o.id)}">قبول</button><button class="no" data-store-order-status="cancelled" data-order-id="${esc(o.id)}">رفض</button></div>`:''}${state.isAdmin&&o.status==='confirmed'?`<div class="student-store-order-actions"><button class="done" data-store-order-status="completed" data-order-id="${esc(o.id)}">تم التسليم</button></div>`:''}</article>`).join('')}</div>`;
     }
 
+    function renderDiamonds() {
+        const body = document.getElementById("student-store-body");
+        if (!body) return;
+        const status = state.agencyStatus || {};
+        const isAgent = Boolean(status.is_agent);
+        const agent = status.agent || {};
+        const application = status.application || null;
+        const packages = state.diamondPackages || [];
+        const agents = state.agents || [];
+        const adminArea = state.isAdmin ? renderDiamondAdminArea() : "";
+        body.innerHTML = `
+            <section class="student-store-guide">
+                <h3><i class="fa-solid fa-gem"></i> نظام الألماس والوكالة</h3>
+                <p><strong>سعر المستخدم:</strong> كل 1,000 دينار = 5,000 ألماسة حسب الباقات المعروضة.</p>
+                <p><strong>فائدة الوكالة:</strong> الوكيل يشتري الألماس من خزنة التطبيق بسعر أقل، ثم يبيعه للمستخدم بالسعر الرسمي ويكون فرق السعر ربحه.</p>
+                <p><strong>نظام العمل:</strong> المستخدم يشتري من التطبيق أو من وكيل معتمد. الوكيل لا يستطيع شراء منتجات المتجر، وخزنته منفصلة عن رصيده الشخصي.</p>
+                <div class="student-store-info-grid">
+                    <div class="student-store-info-box"><strong>شراء آمن</strong><span>لا يضاف الألماس إلا بعد موافقة الأدمن أو تحويل الوكيل المعتمد.</span></div>
+                    <div class="student-store-info-box"><strong>وكيل معتمد</strong><span>كل وكيل يظهر باسمه ومحافظته وطرق التواصل الرسمية.</span></div>
+                    <div class="student-store-info-box"><strong>سجل كامل</strong><span>كل عملية شراء أو بيع أو شحن خزنة تبقى محفوظة.</span></div>
+                </div>
+            </section>
+            ${isAgent ? renderAgentDashboard(agent, packages) : renderUserDiamondArea(packages, agents, application)}
+            ${adminArea}
+        `;
+    }
+
+    function renderUserDiamondArea(packages, agents, application) {
+        const applicationBox = application?.status === "pending"
+            ? `<div class="student-store-guide"><h3>طلب الوكالة قيد المراجعة</h3><p>سيظهر حسابك كوكيل بعد قبول الأدمن.</p></div>`
+            : application?.status === "rejected"
+                ? `<div class="student-store-guide"><h3>تم رفض الطلب السابق</h3><p>${esc(application.admin_note || "يمكنك تقديم طلب جديد بعد مراجعة البيانات.")}</p><button class="student-store-primary" data-store-open-agency-form>تقديم طلب جديد</button></div>`
+                : `<div class="student-store-guide"><h3>هل تريد العمل كوكيل؟</h3><p>اشترِ الألماس من الخزنة بسعر الوكلاء وبعه للمستخدمين بالسعر الرسمي. أرباحك هي فرق السعر.</p><button class="student-store-primary" data-store-open-agency-form>تقديم على وكالة</button></div>`;
+        return `
+            <section class="student-store-section"><h3 class="student-store-section-title">شراء الألماس من التطبيق</h3><div class="student-store-grid">${packages.map(p=>`<article class="student-store-package"><strong>${esc(p.title)}</strong><div class="student-store-package-row"><span>${Number(p.diamonds).toLocaleString('ar-IQ')} ألماسة</span><b>${Number(p.user_price_iqd).toLocaleString('ar-IQ')} د.ع</b></div><button class="student-store-primary" data-store-buy-diamond="${esc(p.id)}">شراء الباقة</button></article>`).join('') || '<div class="student-store-empty">لا توجد باقات حاليًا.</div>'}</div></section>
+            <section class="student-store-section"><h3 class="student-store-section-title">اشترِ الألماس من وكيل</h3><div class="student-store-grid">${agents.map(a=>`<article class="student-store-agent-card"><h4><i class="fa-solid fa-user-shield"></i> ${esc(a.display_name)}</h4><div class="student-store-description">${esc(a.province)} · وكيل معتمد</div><div class="student-store-agent-actions">${a.whatsapp?`<a href="https://wa.me/${esc(String(a.whatsapp).replace(/\D/g,''))}" target="_blank">واتساب</a>`:''}${a.telegram?`<a href="https://t.me/${esc(String(a.telegram).replace(/^@/,''))}" target="_blank">تيليغرام</a>`:''}${a.phone?`<a href="tel:${esc(a.phone)}">اتصال</a>`:''}</div></article>`).join('') || '<div class="student-store-empty">لا يوجد وكلاء متاحون حاليًا.</div>'}</div></section>
+            ${applicationBox}`;
+    }
+
+    function renderAgentDashboard(agent, packages) {
+        return `<section class="student-store-section"><h3 class="student-store-section-title">لوحة الوكيل</h3><div class="student-store-guide"><p><strong>${esc(agent.display_name || 'الوكيل')}</strong> — ${esc(agent.province || '')}</p><div class="student-store-info-grid"><div class="student-store-info-box"><strong>رصيد الخزنة</strong><span>${Number(agent.vault_balance||0).toLocaleString('ar-IQ')} ألماسة</span></div><div class="student-store-info-box"><strong>إجمالي المبيعات</strong><span>${Number(agent.total_sold||0).toLocaleString('ar-IQ')} ألماسة</span></div><div class="student-store-info-box"><strong>حالة الوكالة</strong><span>فعّالة</span></div></div></div>
+        <div class="student-store-grid">${packages.map(p=>`<article class="student-store-package"><strong>${esc(p.title)}</strong><div class="student-store-package-row"><span>سعر الوكيل</span><b>${Number(p.agent_price_iqd).toLocaleString('ar-IQ')} د.ع</b></div><div class="student-store-package-row"><span>سعر البيع الرسمي</span><b>${Number(p.user_price_iqd).toLocaleString('ar-IQ')} د.ع</b></div><div class="student-store-package-row"><span>الربح المتوقع</span><b>${Number(p.user_price_iqd-p.agent_price_iqd).toLocaleString('ar-IQ')} د.ع</b></div><button class="student-store-secondary" data-store-agent-stock="${esc(p.id)}">طلب من الخزنة</button></article>`).join('')}</div>
+        <div class="student-store-guide"><h3>بيع ألماس لمستخدم</h3><form id="student-store-agent-sale-form" class="student-store-form-lite"><input id="student-store-sale-username" placeholder="يوزر المستخدم بدون @" required><input id="student-store-sale-diamonds" type="number" min="1" placeholder="كمية الألماس" required><input id="student-store-sale-amount" type="number" min="0" placeholder="المبلغ المستلم بالدينار" required><button class="student-store-primary" type="submit">تحويل الألماس</button></form></div></section>`;
+    }
+
+    function renderDiamondAdminArea() {
+        const dr = state.diamondRequests || [], aa = state.agencyApplications || [], sr = state.agentStockRequests || [];
+        const row=(title,items,type)=>`<section class="student-store-section"><h3 class="student-store-section-title">${title}</h3><div class="student-store-task-list">${items.map(x=>`<article class="student-store-agent-card"><strong>${type==='agency'?esc(x.full_name):Number(x.diamonds||0).toLocaleString('ar-IQ')+' ألماسة'}</strong><div class="student-store-description">${type==='agency'?esc(x.province+' · '+x.phone):Number(x.amount_iqd||0).toLocaleString('ar-IQ')+' د.ع'}</div><div class="student-store-agent-actions"><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="1">قبول</button><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="0">رفض</button></div></article>`).join('')||'<div class="student-store-empty">لا توجد طلبات معلقة.</div>'}</div></section>`;
+        return row('طلبات شراء الألماس',dr,'diamond')+row('طلبات الوكالة',aa,'agency')+row('طلبات شحن خزنة الوكيل',sr,'stock');
+    }
+
+
+    function renderWallet() {
+        const body = document.getElementById("student-store-body");
+        if (!body) return;
+        const s = state.walletSummary || {};
+        const tx = state.walletTransactions || [];
+        body.innerHTML = `
+          <section class="student-store-section">
+            <h3 class="student-store-section-title">محفظتي</h3>
+            <div class="student-store-wallet-summary">
+              <div class="student-store-wallet-box"><strong>${Number(s.available_balance ?? state.balance ?? 0).toLocaleString("ar-IQ")}</strong><span>متاح</span></div>
+              <div class="student-store-wallet-box"><strong>${Number(s.held_balance ?? 0).toLocaleString("ar-IQ")}</strong><span>محجوز</span></div>
+              <div class="student-store-wallet-box"><strong>${Number(s.total_spent ?? 0).toLocaleString("ar-IQ")}</strong><span>إجمالي المصروف</span></div>
+            </div>
+            <div class="student-store-ledger">
+              ${tx.map(t => {
+                const amount = Number(t.amount || 0);
+                return `<article class="student-store-ledger-row">
+                  <div><strong>${esc(t.description || t.transaction_type || "حركة محفظة")}</strong><div class="student-store-stock">${new Date(t.created_at).toLocaleString("ar-IQ")}</div></div>
+                  <div class="${amount >= 0 ? "plus" : "minus"}">${amount >= 0 ? "+" : ""}${amount.toLocaleString("ar-IQ")} ألماسة</div>
+                </article>`;
+              }).join("") || `<div class="student-store-empty">لا توجد حركات في المحفظة بعد.</div>`}
+            </div>
+          </section>`;
+    }
+
+    async function loadWallet(client) {
+        if (!client || !state.user) return;
+        try {
+            const [summary, ledger] = await Promise.all([
+                client.rpc("store_get_wallet_summary"),
+                client.from("store_wallet_transactions").select("id,amount,transaction_type,description,created_at").eq("user_id", state.user.id).order("created_at",{ascending:false}).limit(100)
+            ]);
+            if (!summary.error) state.walletSummary = Array.isArray(summary.data) ? summary.data[0] : summary.data;
+            if (!ledger.error) state.walletTransactions = ledger.data || [];
+        } catch (e) { console.warn("Store wallet:", e); }
+    }
+
     function render() {
         updateBalance();
         updateAdminUI();
         if (state.loading) return renderLoading();
-        if (state.activeTab === "tasks") renderTasks();
+        if (state.activeTab === "diamonds") renderDiamonds();
+        else if (state.activeTab === "wallet") renderWallet();
+        else if (state.activeTab === "tasks") renderTasks();
         else if (state.activeTab === "orders") renderOrders();
         else renderProducts();
     }
@@ -500,13 +641,13 @@
     }
 
     async function loadProducts(client) {
-        const fields = "id,name,description,image_url,image_path,price_money,currency,price_diamonds,allow_money,allow_diamonds,stock,sort_order,is_active,created_at";
+        const fields = "id,name,description,image_url,image_path,price_money,currency,price_diamonds,allow_money,allow_diamonds,allow_cod,product_type,delivery_fee,stock,sort_order,is_active,created_at";
         let query = client.from("store_products").select(fields);
         if (!state.isAdmin) query = query.eq("is_active", true);
         let result = await query.order("sort_order", { ascending: true }).order("created_at", { ascending: false });
 
         if (result.error && isMissingColumn(result.error, "image_path")) {
-            let fallback = client.from("store_products").select(fields.replace(",image_path", ""));
+            let fallback = client.from("store_products").select(fields.replace(",image_path", "").replace(",allow_cod,product_type,delivery_fee", ""));
             if (!state.isAdmin) fallback = fallback.eq("is_active", true);
             result = await fallback.order("sort_order", { ascending: true }).order("created_at", { ascending: false });
             if (result.data) result.data = result.data.map(function (item) { return { ...item, image_path: null }; });
@@ -564,6 +705,26 @@
         return data || [];
     }
 
+    async function loadDiamondSystem(client) {
+        if (!state.user) return;
+        const [packs, agents, agency] = await Promise.all([
+            client.from("store_diamond_packages").select("*").eq("is_active",true).order("sort_order"),
+            client.from("store_agents").select("user_id,display_name,province,phone,whatsapp,telegram,is_active,vault_balance,total_sold").eq("is_active",true).order("display_name"),
+            client.rpc("store_get_my_agency_status")
+        ]);
+        state.diamondPackages = packs.data || [];
+        state.agents = agents.data || [];
+        state.agencyStatus = agency.data || null;
+        if (state.isAdmin) {
+            const [d,a,st] = await Promise.all([
+                client.from("store_diamond_purchase_requests").select("*").eq("status","pending").order("created_at",{ascending:false}),
+                client.from("store_agency_applications").select("*").eq("status","pending").order("created_at",{ascending:false}),
+                client.from("store_agent_stock_requests").select("*").eq("status","pending").order("created_at",{ascending:false})
+            ]);
+            state.diamondRequests=d.data||[]; state.agencyApplications=a.data||[]; state.agentStockRequests=st.data||[];
+        }
+    }
+
     async function refresh() {
         if (state.loading) return;
         const client = db();
@@ -591,6 +752,8 @@
             state.products = products;
             state.tasks = tasks;
             state.balance = balance;
+            await loadWallet(client);
+            await loadDiamondSystem(client);
         } catch (error) {
             console.error("Student Store:", error);
             toast("تعذر تحميل المتجر حاليًا.");
@@ -655,6 +818,7 @@
 
     function openPaymentModal(product) {
         if (!product) return;
+        if (state.agencyStatus?.is_agent) return toast("حساب الوكيل مخصص لبيع الألماس ولا يمكنه شراء المنتجات.");
         showModal(`
             <div class="student-store-modal-card" role="dialog" aria-modal="true">
                 <div class="student-store-modal-head">
@@ -663,7 +827,7 @@
                 </div>
                 <div class="student-store-payment-options">
                     ${product.allow_money ? `<button class="student-store-payment" type="button" data-store-pay="money" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-money-bill-wave"></i> الدفع المالي</span><strong>${money(product.price_money, product.currency)}</strong></button>` : ""}
-                    ${product.allow_diamonds ? `<button class="student-store-payment" type="button" data-store-pay="diamonds" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-gem student-store-diamond"></i> الدفع بالألماس</span><strong>${Number(product.price_diamonds || 0)} ألماسة</strong></button>` : ""}
+                    ${product.allow_diamonds ? `<button class="student-store-payment" type="button" data-store-pay="diamonds" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-gem student-store-diamond"></i> الدفع بالألماس</span><strong>${Number(product.price_diamonds || 0)} ألماسة</strong></button>` : ""}${product.allow_cod ? `<button class="student-store-payment" type="button" data-store-pay="cod" data-product-id="${esc(product.id)}"><span><i class="fa-solid fa-truck"></i> الدفع عند الاستلام</span><strong>${money(Number(product.price_money||0)+Number(product.delivery_fee||0), product.currency)}</strong></button>` : ""}
                 </div>
                 ${product.allow_money ? `<div class="student-store-note">حوّل المبلغ إلى رقم الماستر، ثم أنشئ الطلب وأرسل صورة بطاقة الدفع عبر تواصل معنا.</div>` : ""}
             </div>
@@ -701,6 +865,9 @@
                     <div class="student-store-form-row">
                         <label class="student-store-check"><input id="student-store-allow-money" type="checkbox" ${allowMoney ? "checked" : ""}> الدفع بالمال</label>
                         <label class="student-store-check"><input id="student-store-allow-diamonds" type="checkbox" ${allowDiamonds ? "checked" : ""}> الدفع بالألماس</label>
+                        <label class="student-store-check"><input id="student-store-allow-cod" type="checkbox" ${product?.allow_cod ? "checked" : ""}> الدفع عند الاستلام</label>
+                        <div class="student-store-field"><label>نوع المنتج</label><select id="student-store-product-type" class="student-store-input"><option value="physical" ${product?.product_type === "physical" ? "selected" : ""}>منتج حقيقي</option><option value="digital" ${product?.product_type === "digital" ? "selected" : ""}>منتج رقمي</option><option value="verification" ${product?.product_type === "verification" ? "selected" : ""}>علامة توثيق</option></select></div>
+                        <div class="student-store-field"><label>أجور التوصيل</label><input id="student-store-delivery-fee" class="student-store-input" type="number" min="0" value="${Number(product?.delivery_fee || 0)}"></div>
                     </div>
                     <div class="student-store-form-row">
                         <div class="student-store-field">
@@ -827,13 +994,18 @@
         const description = productFormValue("student-store-product-description")?.value?.trim() || "";
         const allowMoney = Boolean(productFormValue("student-store-allow-money")?.checked);
         const allowDiamonds = Boolean(productFormValue("student-store-allow-diamonds")?.checked);
+        const allowCod = Boolean(productFormValue("student-store-allow-cod")?.checked);
         const moneyRaw = productFormValue("student-store-price-money")?.value ?? "";
         const diamondRaw = productFormValue("student-store-price-diamonds")?.value ?? "";
         const stockRaw = productFormValue("student-store-product-stock")?.value ?? "";
         const sortRaw = productFormValue("student-store-product-sort")?.value ?? "0";
 
         if (!name) throw new Error("اكتب اسم المنتج.");
-        if (!allowMoney && !allowDiamonds) throw new Error("اختر طريقة دفع واحدة على الأقل.");
+        if (!allowMoney && !allowDiamonds && !allowCod) throw new Error("اختر طريقة دفع واحدة على الأقل.");
+        const productType = productFormValue("student-store-product-type")?.value || "physical";
+        if ((productType === "digital" || productType === "verification") && allowCod) {
+            throw new Error("الدفع عند الاستلام متاح للمنتجات الحقيقية فقط.");
+        }
 
         const priceMoney = allowMoney ? Number(moneyRaw) : null;
         const priceDiamonds = allowDiamonds ? Number(diamondRaw) : null;
@@ -854,6 +1026,9 @@
             price_diamonds: priceDiamonds,
             allow_money: allowMoney,
             allow_diamonds: allowDiamonds,
+            allow_cod: allowCod,
+            product_type: productType,
+            delivery_fee: Number(productFormValue("student-store-delivery-fee")?.value || 0),
             stock,
             sort_order: sortOrder,
             is_active: Boolean(productFormValue("student-store-product-active")?.checked)
@@ -1054,7 +1229,26 @@
         catch(error){console.error(error);toast(error?.message||"تعذر تحديث الطلب.");button.disabled=false;}
     }
 
+    function openAgencyForm() {
+        showModal(`<div class="student-store-modal-card"><div class="student-store-modal-head"><div class="student-store-modal-title">التقديم على وكالة</div><button class="student-store-modal-close" data-store-modal-close>×</button></div><div class="student-store-note">الوكيل يشتري الألماس من الخزنة بسعر مخفض، ويبيعه بالسعر الرسمي. لا يستطيع الوكيل شراء منتجات المتجر.</div><form id="student-store-agency-form" class="student-store-form-lite"><input id="agency-name" placeholder="الاسم الكامل" required><input id="agency-province" placeholder="المحافظة والمنطقة" required><input id="agency-phone" placeholder="رقم الهاتف" required><input id="agency-whatsapp" placeholder="رقم واتساب"><input id="agency-telegram" placeholder="معرف تيليغرام"><textarea id="agency-experience" placeholder="خبرتك وطريقة عملك المقترحة"></textarea><button class="student-store-primary" type="submit">إرسال الطلب</button></form></div>`);
+        document.getElementById("student-store-agency-form")?.addEventListener("submit", submitAgencyApplication);
+    }
+
+    async function requestDiamondPackage(id, button) { const client=db(); if(!client)return; button.disabled=true; try{const {error}=await client.rpc("store_request_diamonds",{p_package_id:id,p_payment_reference:null});if(error)throw error;toast("تم إنشاء طلب شراء الألماس. حوّل المبلغ ثم تواصل مع الإدارة.");await refresh();}catch(e){toast(e.message||"تعذر إنشاء الطلب.");}finally{button.disabled=false;} }
+    async function submitAgencyApplication(e){e.preventDefault();const client=db();const b=e.submitter;b.disabled=true;try{const {error}=await client.rpc("store_apply_for_agency",{p_full_name:document.getElementById('agency-name').value,p_province:document.getElementById('agency-province').value,p_phone:document.getElementById('agency-phone').value,p_whatsapp:document.getElementById('agency-whatsapp').value,p_telegram:document.getElementById('agency-telegram').value,p_experience:document.getElementById('agency-experience').value});if(error)throw error;closeModal();toast("تم إرسال طلب الوكالة.");await refresh();}catch(x){toast(x.message||"تعذر إرسال الطلب.");b.disabled=false;}}
+    async function requestAgentStock(id,button){const client=db();button.disabled=true;try{const {error}=await client.rpc("store_agent_request_stock",{p_package_id:id});if(error)throw error;toast("تم إرسال طلب شحن الخزنة.");await refresh();}catch(e){toast(e.message||"تعذر إرسال الطلب.");}finally{button.disabled=false;}}
+    async function reviewStoreRequest(type,id,approve,button){const client=db();button.disabled=true;const rpc=type==='diamond'?'admin_review_diamond_request':type==='agency'?'admin_review_agency_application':'admin_review_agent_stock';const args=type==='diamond'?{p_request_id:id,p_approve:approve}:type==='agency'?{p_application_id:id,p_approve:approve,p_note:null}:{p_request_id:id,p_approve:approve};try{const {error}=await client.rpc(rpc,args);if(error)throw error;toast("تم تحديث الطلب.");await refresh();}catch(e){toast(e.message||"تعذر تحديث الطلب.");button.disabled=false;}}
+    async function handleBodySubmit(event){if(event.target.id!=="student-store-agent-sale-form")return;event.preventDefault();const client=db();const b=event.submitter;b.disabled=true;try{const {data,error}=await client.rpc("store_agent_sell_diamonds",{p_customer_username:document.getElementById('student-store-sale-username').value,p_diamonds:Number(document.getElementById('student-store-sale-diamonds').value),p_sale_amount_iqd:Number(document.getElementById('student-store-sale-amount').value)});if(error)throw error;toast("تم تحويل الألماس للمستخدم.");event.target.reset();await refresh();}catch(e){toast(e.message||"تعذر تنفيذ البيع.");b.disabled=false;}}
+
     function handleBodyClick(event) {
+        const buyDiamond = event.target.closest("[data-store-buy-diamond]");
+        if (buyDiamond) { event.preventDefault(); requestDiamondPackage(buyDiamond.dataset.storeBuyDiamond, buyDiamond); return; }
+        const agencyForm = event.target.closest("[data-store-open-agency-form]");
+        if (agencyForm) { event.preventDefault(); openAgencyForm(); return; }
+        const stock = event.target.closest("[data-store-agent-stock]");
+        if (stock) { event.preventDefault(); requestAgentStock(stock.dataset.storeAgentStock, stock); return; }
+        const review = event.target.closest("[data-store-admin-review]");
+        if (review) { event.preventDefault(); reviewStoreRequest(review.dataset.storeAdminReview, review.dataset.id, review.dataset.approve === "1", review); return; }
         const addTask = event.target.closest("[data-store-add-task]");
         if (addTask) { event.preventDefault(); openTaskForm(null); return; }
         const editTask = event.target.closest("[data-store-edit-task]");
@@ -1098,11 +1292,60 @@
         }
     }
 
+
+    function openCodForm(product) {
+        if (!product) return;
+        if (product.product_type === "digital" || product.product_type === "verification") return toast("هذا المنتج لا يدعم الدفع عند الاستلام.");
+        showModal(`<div class="student-store-modal-card">
+          <div class="student-store-modal-head"><div class="student-store-modal-title">بيانات التوصيل</div><button class="student-store-modal-close" data-store-modal-close>×</button></div>
+          <form id="student-store-cod-form" class="student-store-cod-form">
+            <input id="store-cod-name" placeholder="الاسم الكامل" required>
+            <input id="store-cod-phone" placeholder="رقم الهاتف" required>
+            <input id="store-cod-province" placeholder="المحافظة" required>
+            <input id="store-cod-area" placeholder="المنطقة" required>
+            <textarea id="store-cod-address" placeholder="العنوان الكامل وأقرب نقطة دالة" required></textarea>
+            <textarea id="store-cod-note" placeholder="ملاحظات إضافية"></textarea>
+            <div class="student-store-note">السعر: ${money(product.price_money, product.currency)} — التوصيل: ${money(product.delivery_fee || 0, product.currency)}</div>
+            <button class="student-store-save" type="submit" data-store-submit-cod="${esc(product.id)}">تأكيد الطلب</button>
+          </form>
+        </div>`);
+    }
+
+    async function submitCodOrder(form, button) {
+        const client = db();
+        const productId = button.dataset.storeSubmitCod;
+        button.disabled = true;
+        try {
+            const { data, error } = await client.rpc("store_create_cod_order", {
+                p_product_id: productId,
+                p_full_name: document.getElementById("store-cod-name").value,
+                p_phone: document.getElementById("store-cod-phone").value,
+                p_province: document.getElementById("store-cod-province").value,
+                p_area: document.getElementById("store-cod-area").value,
+                p_address_text: document.getElementById("store-cod-address").value,
+                p_notes: document.getElementById("store-cod-note").value
+            });
+            if (error) throw error;
+            closeModal();
+            toast("تم إنشاء طلب الدفع عند الاستلام.");
+            await refresh();
+        } catch (e) {
+            toast(e.message || "تعذر إنشاء الطلب.");
+            button.disabled = false;
+        }
+    }
+
     function handleModalClick(event) {
         if (event.target.id === "student-store-modal" || event.target.closest("[data-store-modal-close]")) {
             event.preventDefault();
             closeModal();
             return;
+        }
+
+        const codForm = event.target.closest("#student-store-cod-form");
+        if (codForm && event.type === "click") {
+            const submit = event.target.closest("[data-store-submit-cod]");
+            if (submit) { event.preventDefault(); submitCodOrder(codForm, submit); return; }
         }
 
         const saveButton = event.target.closest("#student-store-product-save");
@@ -1135,6 +1378,7 @@
             const method = paymentButton.dataset.storePay;
             const product = selectedProduct(paymentButton.dataset.productId);
             if (method === "money") openMoneyInstructions(product);
+            else if (method === "cod") openCodForm(product);
             else createOrder(paymentButton.dataset.productId, method, paymentButton);
         }
     }
@@ -1168,7 +1412,7 @@
     }
 
     window.StudentStore = {
-        version: "1.2.0",
+        version: "2.1.0",
         open,
         close,
         refresh
