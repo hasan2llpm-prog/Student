@@ -1289,7 +1289,7 @@
 
 
                 script.src =
-                    "saved.js";
+                    "settings.js?v=3.0.0";
 
 
                 script.async =
