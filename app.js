@@ -2313,17 +2313,33 @@ function openBottomSection(section) {
             return;
         }
 
-        loadExternalScript(
-            "messages.js?v=1.0.0",
-            "student-messages",
-            "Student Messages"
+        const existingMessagesScript = document.querySelector(
+            'script[data-student-messages="true"]'
         );
 
-        setTimeout(function () {
-            if (typeof window.openStudentMessages === "function") {
-                window.openStudentMessages();
-            }
-        }, 250);
+        if (existingMessagesScript) {
+            existingMessagesScript.addEventListener(
+                "load",
+                function () {
+                    window.openStudentMessages?.();
+                },
+                { once: true }
+            );
+            return;
+        }
+
+        const messagesScript = document.createElement("script");
+        messagesScript.src = "messages.js?v=1.0.2";
+        messagesScript.async = true;
+        messagesScript.charset = "utf-8";
+        messagesScript.setAttribute("data-student-messages", "true");
+        messagesScript.onload = function () {
+            window.openStudentMessages?.();
+        };
+        messagesScript.onerror = function () {
+            console.error("تعذر تحميل messages.js");
+        };
+        document.body.appendChild(messagesScript);
         return;
     }
 
