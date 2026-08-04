@@ -2859,3 +2859,150 @@ document.addEventListener(
 
     }
 );
+
+/* =========================================================
+   Student - Home Ads Slider
+========================================================= */
+(function () {
+    "use strict";
+
+    let ads = [];
+    let currentIndex = 0;
+    let timer = null;
+    let startX = 0;
+
+    function getClient() {
+        return typeof supabaseClient !== "undefined" ? supabaseClient : null;
+    }
+
+    function getElements() {
+        return {
+            section: document.getElementById("student-home-ads"),
+            track: document.getElementById("student-home-ads-track"),
+            dots: document.getElementById("student-home-ads-dots")
+        };
+    }
+
+    function normalizeUrl(url) {
+        if (!url) return "";
+        try {
+            const parsed = new URL(url, window.location.origin);
+            if (!["http:", "https:"].includes(parsed.protocol)) return "";
+            return parsed.href;
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function goTo(index) {
+        const { track, dots } = getElements();
+        if (!track || !ads.length) return;
+        currentIndex = (index + ads.length) % ads.length;
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+        if (dots) {
+            [...dots.children].forEach((dot, i) => {
+                dot.classList.toggle("active", i === currentIndex);
+            });
+        }
+    }
+
+    function startAutoPlay() {
+        clearInterval(timer);
+        if (ads.length < 2) return;
+        timer = setInterval(() => goTo(currentIndex + 1), 4500);
+    }
+
+    function render() {
+        const { section, track, dots } = getElements();
+        if (!section || !track || !dots) return;
+
+        track.innerHTML = "";
+        dots.innerHTML = "";
+
+        if (!ads.length) {
+            section.classList.remove("show");
+            return;
+        }
+
+        ads.forEach((ad, index) => {
+            const slide = document.createElement("article");
+            slide.className = "student-home-ad-slide";
+            slide.setAttribute("role", ad.link_url ? "link" : "img");
+            slide.innerHTML = `
+                <img src="${String(ad.image_url || "").replace(/"/g, "&quot;")}" alt="${String(ad.title || "إعلان").replace(/"/g, "&quot;")}" loading="lazy">
+                ${ad.title ? `<div class="student-home-ad-caption">${String(ad.title).replace(/[&<>]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]))}</div>` : ""}
+            `;
+            const target = normalizeUrl(ad.link_url);
+            if (target) {
+                slide.addEventListener("click", () => window.open(target, "_blank", "noopener"));
+            }
+            track.appendChild(slide);
+
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = "student-home-ads-dot";
+            dot.setAttribute("aria-label", `الإعلان ${index + 1}`);
+            dot.addEventListener("click", () => {
+                goTo(index);
+                startAutoPlay();
+            });
+            dots.appendChild(dot);
+        });
+
+        section.classList.add("show");
+        currentIndex = 0;
+        goTo(0);
+        startAutoPlay();
+
+        const viewport = section.querySelector(".student-home-ads-viewport");
+        if (viewport && !viewport.dataset.studentSwipeReady) {
+            viewport.dataset.studentSwipeReady = "1";
+            viewport.addEventListener("touchstart", e => {
+                startX = e.changedTouches[0].clientX;
+                clearInterval(timer);
+            }, { passive: true });
+            viewport.addEventListener("touchend", e => {
+                const diff = e.changedTouches[0].clientX - startX;
+                if (Math.abs(diff) > 45) goTo(currentIndex + (diff < 0 ? 1 : -1));
+                startAutoPlay();
+            }, { passive: true });
+        }
+    }
+
+    async function loadAds() {
+        const client = getClient();
+        if (!client) return false;
+        const now = new Date().toISOString();
+        const { data, error } = await client
+            .from("home_ads")
+            .select("id,title,image_url,link_url,sort_order")
+            .eq("is_active", true)
+            .or(`starts_at.is.null,starts_at.lte.${now}`)
+            .or(`ends_at.is.null,ends_at.gte.${now}`)
+            .order("sort_order", { ascending: true })
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.warn("Home ads load error:", error.message);
+            return false;
+        }
+        ads = data || [];
+        render();
+        return true;
+    }
+
+    function waitForClient(attempt = 0) {
+        if (getClient()) {
+            loadAds();
+            return;
+        }
+        if (attempt < 40) setTimeout(() => waitForClient(attempt + 1), 250);
+    }
+
+    window.StudentHomeAds = { reload: loadAds };
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => waitForClient());
+    } else {
+        waitForClient();
+    }
+})();
