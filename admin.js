@@ -1116,3 +1116,290 @@
     }
 
 })();
+
+/* =========================================================
+   Student Admin - Home Ads Management
+========================================================= */
+(function () {
+    "use strict";
+
+    let client = null;
+    let currentAdmin = null;
+    let editingId = null;
+    let editingImagePath = null;
+
+    function escapeHtml(value) {
+        return String(value ?? "").replace(/[&<>'"]/g, ch => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+        }[ch]));
+    }
+
+    function ensureStyles() {
+        if (document.getElementById("student-ads-admin-style")) return;
+        const style = document.createElement("style");
+        style.id = "student-ads-admin-style";
+        style.textContent = `
+            .student-ads-admin-page{position:fixed;inset:0;z-index:10080;background:#fff;display:none;flex-direction:column;direction:rtl}
+            .student-ads-admin-page.show{display:flex}
+            .student-ads-admin-head{height:68px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e7eb;background:#fff}
+            .student-ads-admin-head h2{margin:0;font-size:21px;color:#171717}
+            .student-ads-admin-back,.student-ads-primary,.student-ads-secondary,.student-ads-danger{border:0;border-radius:12px;padding:11px 15px;font-size:15px;cursor:pointer}
+            .student-ads-admin-back,.student-ads-secondary{background:#f0f2f5;color:#222}
+            .student-ads-primary{background:#0095f6;color:#fff}
+            .student-ads-danger{background:#fff0f0;color:#d93025}
+            .student-ads-admin-body{flex:1;overflow:auto;padding:16px;max-width:900px;width:100%;margin:auto}
+            .student-ads-form{display:grid;gap:12px;padding:15px;border:1px solid #e4e7eb;border-radius:16px;margin-bottom:18px;background:#fafbfc}
+            .student-ads-form label{display:grid;gap:7px;font-weight:700;color:#333}
+            .student-ads-form input{width:100%;padding:12px;border:1px solid #d9dde3;border-radius:11px;font-size:15px;background:#fff}
+            .student-ads-form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+            .student-ads-form-actions{display:flex;gap:9px;flex-wrap:wrap}
+            .student-ads-list{display:grid;gap:12px}
+            .student-ad-admin-card{display:grid;grid-template-columns:145px 1fr;gap:13px;padding:12px;border:1px solid #e1e4e8;border-radius:16px;background:#fff}
+            .student-ad-admin-card img{width:145px;height:88px;object-fit:cover;border-radius:12px;background:#eee}
+            .student-ad-admin-info{min-width:0}.student-ad-admin-title{font-size:17px;font-weight:800;margin-bottom:5px}.student-ad-admin-meta{font-size:13px;color:#6b7280;word-break:break-word}
+            .student-ad-admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+            .student-ads-empty{text-align:center;color:#777;padding:38px 10px}
+            .student-ads-status{min-height:22px;color:#555;font-size:14px}.student-ads-status.error{color:#c62828}.student-ads-status.success{color:#12833b}
+            @media(max-width:600px){.student-ads-form-row{grid-template-columns:1fr}.student-ad-admin-card{grid-template-columns:105px 1fr}.student-ad-admin-card img{width:105px;height:82px}}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function buildPage() {
+        if (document.getElementById("student-ads-admin-page")) return;
+        const page = document.createElement("section");
+        page.id = "student-ads-admin-page";
+        page.className = "student-ads-admin-page";
+        page.innerHTML = `
+            <header class="student-ads-admin-head">
+                <button type="button" class="student-ads-admin-back" id="student-ads-admin-back"><i class="fa-solid fa-arrow-right"></i></button>
+                <h2>إدارة إعلانات الرئيسية</h2>
+                <span></span>
+            </header>
+            <div class="student-ads-admin-body">
+                <form class="student-ads-form" id="student-ads-form">
+                    <label>صورة الإعلان
+                        <input type="file" id="student-ad-image" accept="image/jpeg,image/png,image/webp">
+                    </label>
+                    <label>العنوان (اختياري)
+                        <input type="text" id="student-ad-title" maxlength="100" placeholder="عنوان قصير">
+                    </label>
+                    <label>الرابط (اختياري)
+                        <input type="url" id="student-ad-link" maxlength="500" placeholder="https://example.com">
+                    </label>
+                    <div class="student-ads-form-row">
+                        <label>الترتيب
+                            <input type="number" id="student-ad-order" value="0" min="0" max="9999">
+                        </label>
+                        <label>الحالة
+                            <select id="student-ad-active" style="padding:12px;border:1px solid #d9dde3;border-radius:11px;background:#fff;font-size:15px">
+                                <option value="true">ظاهر</option><option value="false">مخفي</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="student-ads-form-row">
+                        <label>يبدأ في (اختياري)<input type="datetime-local" id="student-ad-start"></label>
+                        <label>ينتهي في (اختياري)<input type="datetime-local" id="student-ad-end"></label>
+                    </div>
+                    <div class="student-ads-form-actions">
+                        <button type="submit" class="student-ads-primary" id="student-ad-save">إضافة الإعلان</button>
+                        <button type="button" class="student-ads-secondary" id="student-ad-cancel" style="display:none">إلغاء التعديل</button>
+                    </div>
+                    <div class="student-ads-status" id="student-ads-status"></div>
+                </form>
+                <div class="student-ads-list" id="student-ads-list"></div>
+            </div>`;
+        document.body.appendChild(page);
+
+        document.getElementById("student-ads-admin-back").addEventListener("click", closePage);
+        document.getElementById("student-ad-cancel").addEventListener("click", resetForm);
+        document.getElementById("student-ads-form").addEventListener("submit", saveAd);
+    }
+
+    function setStatus(text, type = "") {
+        const el = document.getElementById("student-ads-status");
+        if (!el) return;
+        el.textContent = text || "";
+        el.className = `student-ads-status ${type}`.trim();
+    }
+
+    function closePage() {
+        document.getElementById("student-ads-admin-page")?.classList.remove("show");
+        resetForm();
+    }
+
+    async function openPage() {
+        buildPage();
+        document.getElementById("student-ads-admin-page").classList.add("show");
+        await loadAds();
+    }
+
+    function resetForm() {
+        editingId = null;
+        editingImagePath = null;
+        document.getElementById("student-ads-form")?.reset();
+        const order = document.getElementById("student-ad-order");
+        if (order) order.value = "0";
+        const save = document.getElementById("student-ad-save");
+        if (save) save.textContent = "إضافة الإعلان";
+        const cancel = document.getElementById("student-ad-cancel");
+        if (cancel) cancel.style.display = "none";
+        setStatus("");
+    }
+
+    async function loadAds() {
+        const list = document.getElementById("student-ads-list");
+        if (!list || !client) return;
+        list.innerHTML = '<div class="student-ads-empty">جاري التحميل...</div>';
+        const { data, error } = await client.from("home_ads").select("*").order("sort_order", {ascending:true}).order("created_at", {ascending:false});
+        if (error) {
+            list.innerHTML = `<div class="student-ads-empty">${escapeHtml(error.message)}</div>`;
+            return;
+        }
+        if (!data?.length) {
+            list.innerHTML = '<div class="student-ads-empty">لا توجد إعلانات بعد.</div>';
+            return;
+        }
+        list.innerHTML = data.map(ad => `
+            <article class="student-ad-admin-card" data-id="${ad.id}">
+                <img src="${escapeHtml(ad.image_url)}" alt="إعلان">
+                <div class="student-ad-admin-info">
+                    <div class="student-ad-admin-title">${escapeHtml(ad.title || "إعلان بدون عنوان")}</div>
+                    <div class="student-ad-admin-meta">${ad.is_active ? "ظاهر" : "مخفي"} • ترتيب ${ad.sort_order || 0}</div>
+                    ${ad.link_url ? `<div class="student-ad-admin-meta">${escapeHtml(ad.link_url)}</div>` : ""}
+                    <div class="student-ad-admin-actions">
+                        <button class="student-ads-secondary" data-action="edit" type="button">تعديل</button>
+                        <button class="student-ads-danger" data-action="delete" type="button">حذف</button>
+                    </div>
+                </div>
+            </article>`).join("");
+        list.querySelectorAll("[data-action=edit]").forEach((btn, i) => btn.addEventListener("click", () => editAd(data[i])));
+        list.querySelectorAll("[data-action=delete]").forEach((btn, i) => btn.addEventListener("click", () => deleteAd(data[i])));
+    }
+
+    function localDateValue(value) {
+        if (!value) return "";
+        const d = new Date(value);
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().slice(0,16);
+    }
+
+    function editAd(ad) {
+        editingId = ad.id;
+        editingImagePath = ad.image_path || null;
+        document.getElementById("student-ad-title").value = ad.title || "";
+        document.getElementById("student-ad-link").value = ad.link_url || "";
+        document.getElementById("student-ad-order").value = ad.sort_order || 0;
+        document.getElementById("student-ad-active").value = String(Boolean(ad.is_active));
+        document.getElementById("student-ad-start").value = localDateValue(ad.starts_at);
+        document.getElementById("student-ad-end").value = localDateValue(ad.ends_at);
+        document.getElementById("student-ad-save").textContent = "حفظ التعديل";
+        document.getElementById("student-ad-cancel").style.display = "inline-block";
+        window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    async function uploadImage(file) {
+        if (!file) return null;
+        if (file.size > 5 * 1024 * 1024) throw new Error("حجم الصورة يجب ألا يتجاوز 5MB.");
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${currentAdmin.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+        const { error } = await client.storage.from("home-ads").upload(path, file, {cacheControl:"3600", upsert:false});
+        if (error) throw error;
+        const { data } = client.storage.from("home-ads").getPublicUrl(path);
+        return { path, url: data.publicUrl };
+    }
+
+    async function saveAd(event) {
+        event.preventDefault();
+        const saveButton = document.getElementById("student-ad-save");
+        saveButton.disabled = true;
+        setStatus("جاري الحفظ...");
+        try {
+            const file = document.getElementById("student-ad-image").files[0];
+            if (!editingId && !file) throw new Error("اختر صورة الإعلان.");
+            const uploaded = file ? await uploadImage(file) : null;
+            const payload = {
+                title: document.getElementById("student-ad-title").value.trim() || null,
+                link_url: document.getElementById("student-ad-link").value.trim() || null,
+                sort_order: Number(document.getElementById("student-ad-order").value || 0),
+                is_active: document.getElementById("student-ad-active").value === "true",
+                starts_at: document.getElementById("student-ad-start").value ? new Date(document.getElementById("student-ad-start").value).toISOString() : null,
+                ends_at: document.getElementById("student-ad-end").value ? new Date(document.getElementById("student-ad-end").value).toISOString() : null,
+                updated_at: new Date().toISOString()
+            };
+            if (uploaded) {
+                payload.image_path = uploaded.path;
+                payload.image_url = uploaded.url;
+            }
+            let result;
+            if (editingId) result = await client.from("home_ads").update(payload).eq("id", editingId);
+            else result = await client.from("home_ads").insert({...payload, created_by: currentAdmin.id});
+            if (result.error) {
+                if (uploaded) await client.storage.from("home-ads").remove([uploaded.path]);
+                throw result.error;
+            }
+            if (uploaded && editingImagePath) await client.storage.from("home-ads").remove([editingImagePath]);
+            setStatus("تم الحفظ بنجاح.", "success");
+            resetForm();
+            await loadAds();
+            window.StudentHomeAds?.reload?.();
+        } catch (error) {
+            setStatus(error.message || "تعذر حفظ الإعلان.", "error");
+        } finally {
+            saveButton.disabled = false;
+        }
+    }
+
+    async function deleteAd(ad) {
+        const card = document.querySelector(`.student-ad-admin-card[data-id="${ad.id}"]`);
+        const button = card?.querySelector('[data-action="delete"]');
+        if (button && button.dataset.confirmDelete !== "1") {
+            button.dataset.confirmDelete = "1";
+            button.textContent = "اضغط مرة ثانية للتأكيد";
+            setTimeout(() => {
+                if (button.isConnected) {
+                    button.dataset.confirmDelete = "0";
+                    button.textContent = "حذف";
+                }
+            }, 5000);
+            return;
+        }
+        if (button) button.disabled = true;
+        const { error } = await client.from("home_ads").delete().eq("id", ad.id);
+        if (error) {
+            setStatus(error.message, "error");
+            return;
+        }
+        if (ad.image_path) await client.storage.from("home-ads").remove([ad.image_path]);
+        await loadAds();
+        window.StudentHomeAds?.reload?.();
+    }
+
+    async function initialize(attempt = 0) {
+        client = typeof supabaseClient !== "undefined" ? supabaseClient : null;
+        if (!client) {
+            if (attempt < 40) setTimeout(() => initialize(attempt + 1), 250);
+            return;
+        }
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) return;
+        const { data } = await client.from("profiles").select("role").eq("id", user.id).maybeSingle();
+        if (String(data?.role || "").toLowerCase() !== "admin") return;
+        currentAdmin = user;
+        ensureStyles();
+        buildPage();
+        const tools = document.querySelector(".student-admin-tools");
+        if (tools && !document.getElementById("student-open-ads-management")) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.id = "student-open-ads-management";
+            button.className = "student-admin-tool-button";
+            button.innerHTML = '<i class="fa-solid fa-images"></i> إدارة الإعلانات';
+            button.addEventListener("click", openPage);
+            tools.appendChild(button);
+        }
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => initialize());
+    else initialize();
+})();
