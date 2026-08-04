@@ -2312,6 +2312,19 @@ function openBottomSection(section) {
             window.openStudentMessages();
             return;
         }
+
+        loadExternalScript(
+            "messages.js?v=1.0.0",
+            "student-messages",
+            "Student Messages"
+        );
+
+        setTimeout(function () {
+            if (typeof window.openStudentMessages === "function") {
+                window.openStudentMessages();
+            }
+        }, 250);
+        return;
     }
 
     const sections = {
@@ -2534,9 +2547,9 @@ function loadAdminSystem() {
 function loadMenuSystem() {
 
     loadExternalScript(
-        "settings.js?v=3.0.0",
-        "student-settings-bundle",
-        "Student Menu + Settings + Saved"
+        "menu.js?v=2.2.0",
+        "student-menu",
+        "Student Menu"
     );
 }
 
@@ -2546,8 +2559,12 @@ function loadMenuSystem() {
 ========================================================= */
 
 function loadSettingsSystem() {
-    // الإعدادات والمحفوظات مدمجة مع القائمة داخل settings.js
-    loadMenuSystem();
+
+    loadExternalScript(
+        "settings.js",
+        "student-settings",
+        "Student Settings"
+    );
 }
 
 
