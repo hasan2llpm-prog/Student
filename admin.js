@@ -157,25 +157,23 @@
             justify-content: center;
         }
 
-        .student-admin-page {
+        .student-admin-overlay {
             position: fixed;
             inset: 0;
+            background: #fff;
             z-index: 99991;
             display: none;
-            flex-direction: column;
-            background: #fff;
+            padding: 0;
             direction: rtl;
-            overflow: hidden;
         }
 
-        .student-admin-page.show {
-            display: flex;
-        }
+        .student-admin-overlay.show { display: block; }
 
         .student-admin-panel {
             width: 100%;
             height: 100%;
-            min-height: 0;
+            max-width: none;
+            max-height: none;
             overflow: hidden;
             background: #fff;
             border-radius: 0;
@@ -186,10 +184,10 @@
         }
 
         .student-admin-header {
-            flex: 0 0 auto;
+            position: sticky;
+            top: 0;
             background: #fff;
-            min-height: 68px;
-            padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+            padding: 18px;
             border-bottom: 1px solid #eee;
             display: flex;
             align-items: center;
@@ -221,20 +219,10 @@
         }
 
         .student-admin-content {
-            flex: 1 1 auto;
-            min-height: 0;
+            padding: 15px;
             overflow-y: auto;
-            overscroll-behavior: contain;
+            flex: 1;
             -webkit-overflow-scrolling: touch;
-            padding: 15px 15px calc(24px + env(safe-area-inset-bottom));
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-            box-sizing: border-box;
-        }
-
-        body.student-admin-page-open {
-            overflow: hidden !important;
         }
 
         .student-admin-status {
@@ -450,7 +438,7 @@
         document.createElement("div");
 
     overlay.className =
-        "student-admin-page";
+        "student-admin-overlay student-fullscreen-page";
 
     overlay.innerHTML = `
         <div class="student-admin-panel">
@@ -470,10 +458,8 @@
                 <button
                     class="student-admin-close"
                     id="student-admin-close"
-                    type="button"
-                    aria-label="رجوع"
                 >
-                    <i class="fa-solid fa-arrow-right"></i>
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
 
             </div>
@@ -946,8 +932,11 @@
                 throw new Error("ملف إدارة التعليم غير صالح");
             }
 
-            closeAdminPanel();
+            overlay.classList.remove("show");
             await window.StudentEducationManagement.open(client);
+            if (window.StudentNavigation?.registerReturn) {
+                window.StudentNavigation.registerReturn("education-management", function(){ overlay.classList.add("show"); });
+            }
 
         } catch (error) {
             console.error("Education management error:", error);
@@ -1014,8 +1003,9 @@
                 throw new Error("ملف إدارة المدرسين غير صالح");
             }
 
-            closeAdminPanel();
-            await window.StudentTeachersEducation.openAdmin(client);
+            await window.StudentTeachersEducation.openAdmin(client, {
+                onClose: function () { overlay.classList.add("show"); }
+            });
 
         } catch (error) {
             console.error("Teachers management error:", error);
@@ -1034,10 +1024,9 @@
     ===================================================== */
 
     async function openAdminPanel() {
-
         overlay.classList.add("show");
         document.body.classList.add("student-admin-page-open");
-
+        try { history.pushState({ studentPage: "admin" }, "", location.href); } catch (_) {}
         await loadFeatures();
     }
 
@@ -1047,9 +1036,9 @@
     ===================================================== */
 
     function closeAdminPanel() {
-
         overlay.classList.remove("show");
         document.body.classList.remove("student-admin-page-open");
+        return true;
     }
 
     window.closeStudentAdminPanel = closeAdminPanel;
@@ -1067,6 +1056,17 @@
     );
 
 
+    overlay.addEventListener(
+        "click",
+        function (event) {
+
+            if (
+                event.target === overlay
+            ) {
+                closeAdminPanel();
+            }
+        }
+    );
 
 
     /* =====================================================
@@ -1137,6 +1137,9 @@
     let currentAdmin = null;
     let editingId = null;
     let editingImagePath = null;
+    let adsCache = null;
+    let adsCacheAt = 0;
+    let adsLoadingPromise = null;
 
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>'"]/g, ch => ({
@@ -1236,13 +1239,21 @@
     function closePage() {
         document.getElementById("student-ads-admin-page")?.classList.remove("show");
         resetForm();
+        document.querySelector(".student-admin-overlay")?.classList.add("show");
+        return true;
     }
 
     async function openPage() {
         buildPage();
-        document.getElementById("student-ads-admin-page").classList.add("show");
-        await loadAds();
+        document.querySelector(".student-admin-overlay")?.classList.remove("show");
+        const page = document.getElementById("student-ads-admin-page");
+        page.classList.add("show");
+        try { history.pushState({ studentPage: "ads-admin" }, "", location.href); } catch (_) {}
+        if (adsCache && Date.now() - adsCacheAt < 60000) renderAdsRows(adsCache);
+        loadAds();
     }
+
+    window.closeStudentAdsAdmin = closePage;
 
     function resetForm() {
         editingId = null;
@@ -1257,19 +1268,10 @@
         setStatus("");
     }
 
-    async function loadAds() {
+    function renderAdsRows(data) {
         const list = document.getElementById("student-ads-list");
-        if (!list || !client) return;
-        list.innerHTML = '<div class="student-ads-empty">جاري التحميل...</div>';
-        const { data, error } = await client.from("home_ads").select("*").order("sort_order", {ascending:true}).order("created_at", {ascending:false});
-        if (error) {
-            list.innerHTML = `<div class="student-ads-empty">${escapeHtml(error.message)}</div>`;
-            return;
-        }
-        if (!data?.length) {
-            list.innerHTML = '<div class="student-ads-empty">لا توجد إعلانات بعد.</div>';
-            return;
-        }
+        if (!list) return;
+        if (!data?.length) { list.innerHTML = '<div class="student-ads-empty">لا توجد إعلانات بعد.</div>'; return; }
         list.innerHTML = data.map(ad => `
             <article class="student-ad-admin-card" data-id="${ad.id}">
                 <img src="${escapeHtml(ad.image_url)}" alt="إعلان">
@@ -1285,6 +1287,30 @@
             </article>`).join("");
         list.querySelectorAll("[data-action=edit]").forEach((btn, i) => btn.addEventListener("click", () => editAd(data[i])));
         list.querySelectorAll("[data-action=delete]").forEach((btn, i) => btn.addEventListener("click", () => deleteAd(data[i])));
+    }
+
+    async function loadAds(force = false) {
+        const list = document.getElementById("student-ads-list");
+        if (!list || !client) return;
+        if (!force && adsCache && Date.now() - adsCacheAt < 60000) {
+            renderAdsRows(adsCache);
+            return;
+        }
+        if (adsLoadingPromise) return adsLoadingPromise;
+        if (!adsCache) list.innerHTML = '<div class="student-ads-empty">جاري التحميل...</div>';
+        adsLoadingPromise = (async function () {
+            const { data, error } = await client.from("home_ads").select("*")
+                .order("sort_order", {ascending:true})
+                .order("created_at", {ascending:false});
+            if (error) {
+                if (!adsCache) list.innerHTML = `<div class="student-ads-empty">${escapeHtml(error.message)}</div>`;
+                return;
+            }
+            adsCache = data || [];
+            adsCacheAt = Date.now();
+            renderAdsRows(adsCache);
+        })().finally(() => { adsLoadingPromise = null; });
+        return adsLoadingPromise;
     }
 
     function localDateValue(value) {
@@ -1351,7 +1377,7 @@
             if (uploaded && editingImagePath) await client.storage.from("home-ads").remove([editingImagePath]);
             setStatus("تم الحفظ بنجاح.", "success");
             resetForm();
-            await loadAds();
+            await loadAds(true);
             window.StudentHomeAds?.reload?.();
         } catch (error) {
             setStatus(error.message || "تعذر حفظ الإعلان.", "error");
@@ -1381,7 +1407,7 @@
             return;
         }
         if (ad.image_path) await client.storage.from("home-ads").remove([ad.image_path]);
-        await loadAds();
+        await loadAds(true);
         window.StudentHomeAds?.reload?.();
     }
 
