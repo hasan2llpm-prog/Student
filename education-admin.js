@@ -261,29 +261,10 @@
     }
 
     function loadTeachersEducation() {
-        return new Promise(function (resolve, reject) {
-            if (window.StudentTeachersEducation) return resolve();
-
-            const existing = document.querySelector(
-                'script[data-student-teachers-education="true"]'
-            );
-
-            if (existing) {
-                existing.addEventListener("load", resolve, { once: true });
-                existing.addEventListener("error", reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement("script");
-            script.src = "education-admin.js?v=1.0.0";
-            script.async = true;
-            script.dataset.studentTeachersEducation = "true";
-            script.onload = resolve;
-            script.onerror = function () {
-                reject(new Error("تعذر تحميل teachers-education.js"));
-            };
-            document.body.appendChild(script);
-        });
+        // الوحدة موجودة داخل هذا الملف نفسه؛ منع إعادة تحميل education-admin.js.
+        return window.StudentTeachersEducation
+            ? Promise.resolve()
+            : Promise.reject(new Error("واجهة المدرسين غير جاهزة"));
     }
 
     function renderSubjects(title, subjects, context) {
@@ -2192,34 +2173,10 @@
     ===================================================== */
 
     function loadEducationManagement() {
-        return new Promise(function (resolve, reject) {
-
-            if (window.StudentEducationManagement) {
-                resolve();
-                return;
-            }
-
-            const existing = document.querySelector(
-                'script[data-student-education-management="true"]'
-            );
-
-            if (existing) {
-                existing.addEventListener("load", resolve, { once: true });
-                existing.addEventListener("error", reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement("script");
-            script.src = "education-admin.js?v=1.0.0";
-            script.async = true;
-            script.dataset.studentEducationManagement = "true";
-            script.onload = resolve;
-            script.onerror = function () {
-                reject(new Error("تعذر تحميل education-management.js"));
-            };
-
-            document.body.appendChild(script);
-        });
+        // إدارة التعليم مدمجة داخل education-admin.js؛ لا تعِد تحميل الملف.
+        return window.StudentEducationManagement
+            ? Promise.resolve()
+            : Promise.reject(new Error("واجهة إدارة التعليم غير جاهزة"));
     }
 
     async function openEducationManagement() {
@@ -2265,33 +2222,10 @@
     ===================================================== */
 
     function loadTeachersEducation() {
-        return new Promise(function (resolve, reject) {
-            if (window.StudentTeachersEducation) {
-                resolve();
-                return;
-            }
-
-            const existing = document.querySelector(
-                'script[data-student-teachers-education="true"]'
-            );
-
-            if (existing) {
-                existing.addEventListener("load", resolve, { once: true });
-                existing.addEventListener("error", reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement("script");
-            script.src = "education-admin.js?v=1.0.0";
-            script.async = true;
-            script.dataset.studentTeachersEducation = "true";
-            script.onload = resolve;
-            script.onerror = function () {
-                reject(new Error("تعذر تحميل teachers-education.js"));
-            };
-
-            document.body.appendChild(script);
-        });
+        // الوحدة موجودة داخل هذا الملف نفسه؛ منع إعادة تحميل education-admin.js.
+        return window.StudentTeachersEducation
+            ? Promise.resolve()
+            : Promise.reject(new Error("واجهة المدرسين غير جاهزة"));
     }
 
     async function openTeachersManagement() {
