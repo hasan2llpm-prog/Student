@@ -6879,59 +6879,750 @@ window.openStudentSearch=open; window.closeStudentSearch=close;
 
 /* ===== MERGED MODULE: messages.js ===== */
 /* =========================================================
-   Student Messages - Full page chat, groups and channels
+   Student Messages 2.0 - Telegram-inspired full page
+   Single mount, delegated events, cleanup, cache, pagination
 ========================================================= */
-(function(){
-'use strict';
-if(window.StudentMessages) return;
-const S={user:null,page:null,view:'list',conversations:[],current:null,messages:[],members:[],profiles:{},channel:null,typing:null,reply:null,editing:null,loading:false,historyOpen:false};
-const sb=()=>typeof supabaseClient!=='undefined'?supabaseClient:null;
-const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-const fmt=v=>{try{return new Intl.DateTimeFormat('ar-IQ',{dateStyle:'short',timeStyle:'short'}).format(new Date(v))}catch{return''}};
-function css(){if(document.getElementById('student-messages-style'))return;let s=document.createElement('style');s.id='student-messages-style';s.textContent=`
-#student-messages-page{position:fixed;inset:0;z-index:10040;background:#f7f9fc;display:none;direction:rtl;color:#172033}.sm-open{display:flex!important;flex-direction:column}.sm-head{height:64px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid #e7ebf1;flex:0 0 auto}.sm-back,.sm-icon,.sm-send,.sm-fab,.sm-mini{border:0;cursor:pointer;font:inherit}.sm-back,.sm-icon{width:42px;height:42px;border-radius:50%;background:#eef2f7;display:grid;place-items:center;font-size:20px}.sm-title{font-size:19px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-sub{font-size:12px;color:#7b8695}.sm-search{padding:12px 14px;background:#fff;border-bottom:1px solid #edf0f4}.sm-searchbox{display:flex;align-items:center;gap:9px;background:#f0f3f7;border-radius:14px;padding:0 12px}.sm-searchbox input{width:100%;border:0;background:transparent;outline:0;padding:12px 0;font:inherit}.sm-body{flex:1;overflow:auto;max-width:900px;width:100%;margin:0 auto}.sm-list{padding:10px}.sm-row{display:flex;gap:12px;align-items:center;background:#fff;padding:12px;border-radius:16px;margin-bottom:8px;border:1px solid #e8ecf2;cursor:pointer}.sm-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#e8eef7;display:grid;place-items:center;font-weight:800;flex:0 0 48px}.sm-main{min-width:0;flex:1}.sm-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-preview{font-size:13px;color:#737f8f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}.sm-time{font-size:11px;color:#919baa}.sm-count{min-width:21px;height:21px;border-radius:11px;background:#ef3340;color:#fff;font-size:11px;display:grid;place-items:center;padding:0 6px;margin-top:5px}.sm-fab{position:fixed;left:20px;bottom:86px;width:58px;height:58px;border-radius:50%;background:#087cff;color:#fff;font-size:25px;box-shadow:0 8px 24px rgba(8,124,255,.3)}.sm-empty{text-align:center;color:#788495;padding:70px 20px}.sm-chat{display:flex;flex-direction:column;height:100%}.sm-msgs{flex:1;overflow:auto;padding:16px 12px 100px;background:#eef3f8}.sm-day{text-align:center;font-size:12px;color:#7f8b99;margin:14px}.sm-msg{max-width:78%;margin:5px 0;padding:9px 11px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative}.sm-msg.mine{margin-right:auto;background:#dff0ff}.sm-msg.system{margin:10px auto;background:#dfe7ef;color:#526171;text-align:center;max-width:90%}.sm-author{font-size:12px;font-weight:800;color:#087cff;margin-bottom:4px}.sm-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.sm-reply{border-right:3px solid #087cff;background:rgba(8,124,255,.08);padding:6px 8px;border-radius:8px;margin-bottom:6px;font-size:12px}.sm-media{max-width:100%;max-height:320px;border-radius:12px;margin-top:6px}.sm-file{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.05);padding:9px;border-radius:10px;margin-top:6px}.sm-meta{font-size:10px;color:#8994a2;text-align:left;margin-top:4px}.sm-actions{display:none;position:absolute;top:-36px;left:0;background:#172033;color:#fff;border-radius:10px;padding:4px;gap:2px;z-index:2}.sm-msg:focus-within .sm-actions,.sm-msg:hover .sm-actions{display:flex}.sm-mini{background:transparent;color:inherit;padding:6px;border-radius:7px}.sm-compose{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dfe5ec;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:8px;z-index:2}.sm-compose textarea{flex:1;max-height:120px;min-height:44px;border:1px solid #dbe2ea;border-radius:18px;padding:11px 13px;font:inherit;resize:none;outline:0}.sm-send{width:46px;height:46px;border-radius:50%;background:#087cff;color:#fff;font-size:19px}.sm-replybar{position:fixed;bottom:63px;left:10px;right:10px;background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:8px 12px;display:none;z-index:3}.sm-replybar.show{display:flex}.sm-sheet{position:fixed;inset:0;background:rgba(8,17,30,.52);z-index:10080;display:flex;align-items:flex-end;justify-content:center;padding:12px}.sm-card{background:#fff;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:22px;padding:18px}.sm-card h3{margin:0 0 14px}.sm-field{margin-bottom:12px}.sm-field label{display:block;font-weight:700;margin-bottom:6px}.sm-field input,.sm-field textarea,.sm-field select{width:100%;border:1px solid #d9e0e8;border-radius:12px;padding:11px;font:inherit}.sm-actions-row{display:flex;gap:8px;justify-content:flex-end}.sm-btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;background:#087cff;color:#fff}.sm-btn.secondary{background:#eef2f6;color:#243247}.sm-btn.danger{background:#e83d50}.sm-user-results{display:grid;gap:8px;max-height:360px;overflow:auto}.sm-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
-`;document.head.appendChild(s)}
-function page(){css();let p=document.getElementById('student-messages-page');if(p)return p;p=document.createElement('section');p.id='student-messages-page';document.body.appendChild(p);S.page=p;return p}
-function toast(t){let e=document.createElement('div');e.style='position:fixed;z-index:10100;left:50%;bottom:90px;transform:translateX(-50%);background:#172033;color:#fff;padding:11px 16px;border-radius:12px;max-width:88%';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-async function user(){let c=sb();if(!c)return null;let{data}=await c.auth.getUser();return data?.user||null}
-async function init(){S.user=await user();if(!S.user){toast('\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0623\u0648\u0644\u064B\u0627');return false}return true}
-function avatar(p){return p?.avatar_url?`<img class="sm-avatar" src="${esc(p.avatar_url)}">`:`<div class="sm-avatar">${esc((p?.full_name||p?.username||'?').slice(0,1))}</div>`}
-async function open(){if(!await init())return;let p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){history.pushState({studentMessages:'list'},'',location.href);S.historyOpen=true}renderList();await loadConversations();subscribeGlobal()}
-function close(){if(S.view==='chat'){history.back();return}if(S.historyOpen){history.back();return}hidePage()}
-function hidePage(){S.page?.classList.remove('sm-open');document.body.style.overflow='';unsubscribeChat();S.historyOpen=false;S.view='list';S.current=null}
-function showList(){S.view='list';S.current=null;S.messages=[];unsubscribeChat();renderList()}
-async function loadConversations(){let c=sb();S.loading=true;renderList();let{data,error}=await c.rpc('student_get_conversations');S.loading=false;if(error){console.error(error);S.conversations=[];renderList();toast(error.message||'\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0627\u062A');return}S.conversations=data||[];renderList();updateBadge()}
-function renderList(){let p=page();p.innerHTML=`<header class="sm-head"><button class="sm-back">\u2039</button><div class="sm-title">\u0627\u0644\u0631\u0633\u0627\u0626\u0644</div><button class="sm-icon" id="sm-create" title="\u0625\u0646\u0634\u0627\u0621">\uFF0B</button></header><div class="sm-search"><div class="sm-searchbox">\uD83D\uDD0E<input id="sm-search-users" placeholder="\u0627\u0628\u062D\u062B \u0628\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div></div><main class="sm-body"><div id="sm-user-search"></div><div class="sm-list" id="sm-conversations"></div></main><button class="sm-fab" id="sm-new">\u270E</button>`;p.querySelector('.sm-back').onclick=close;p.querySelector('#sm-create').onclick=openCreate;p.querySelector('#sm-new').onclick=()=>openUserSearch('direct');let input=p.querySelector('#sm-search-users');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchUsers(input.value),300)};let list=p.querySelector('#sm-conversations');if(S.loading){list.innerHTML='<div class="sm-empty">\u062C\u0627\u0631\u064D \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</div>';return}if(!S.conversations.length){list.innerHTML='<div class="sm-empty">\u0644\u0627 \u062A\u0648\u062C\u062F \u0645\u062D\u0627\u062F\u062B\u0627\u062A \u0628\u0639\u062F.<br>\u0627\u0628\u062D\u062B \u0639\u0646 \u0634\u062E\u0635 \u0648\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u0631\u0627\u0633\u0644\u0629.</div>';return}list.innerHTML=S.conversations.map(x=>`<article class="sm-row" data-id="${esc(x.conversation_id)}">${x.avatar_url?`<img class="sm-avatar" src="${esc(x.avatar_url)}">`:`<div class="sm-avatar">${esc((x.title||'?').slice(0,1))}</div>`}<div class="sm-main"><div class="sm-name">${esc(x.title||'\u0645\u062D\u0627\u062F\u062B\u0629')}</div><div class="sm-preview">${esc(x.last_message||'\u0644\u0627 \u062A\u0648\u062C\u062F \u0631\u0633\u0627\u0626\u0644')}</div></div><div><div class="sm-time">${esc(fmt(x.last_message_at))}</div>${Number(x.unread_count)>0?`<div class="sm-count">${x.unread_count}</div>`:''}</div></article>`).join('');list.querySelectorAll('.sm-row').forEach(e=>e.onclick=()=>openChat(e.dataset.id))}
-async function searchUsers(q){let box=document.getElementById('sm-user-search');if(!box)return;q=q.trim();if(q.length<2){box.innerHTML='';return}let c=sb();let{data}=await c.from('profiles').select('id,full_name,username,avatar_url').neq('id',S.user.id).or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(25);box.innerHTML=`<div class="sm-list">${(data||[]).map(p=>`<article class="sm-row" data-user="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div><button class="sm-icon">\u2709</button></article>`).join('')}</div>`;box.querySelectorAll('[data-user]').forEach(e=>e.onclick=()=>startDirect(e.dataset.user))}
-async function startDirect(uid){let c=sb();let{data,error}=await c.rpc('student_start_direct_chat',{p_other_user:uid});if(error){toast(error.message);return}await openChat(data)}
-async function openChat(id){let c=sb();let{data:conv,error}=await c.rpc('student_get_conversation',{p_conversation:id});if(error){toast(error.message);return}S.current=conv;S.view='chat';history.pushState({studentMessages:'chat'},'',location.href);let{data:msgs}=await c.rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:100});S.messages=(msgs||[]).reverse();let{data:members}=await c.rpc('student_get_conversation_members',{p_conversation:id});S.members=members||[];renderChat();await markRead();subscribeChat(id)}
-function canPost(){return S.current?.kind!=='channel'||S.current?.my_role==='owner'||S.current?.my_role==='admin'}
-function renderChat(){let p=page();let title=S.current?.title||'\u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629';p.innerHTML=`<div class="sm-chat"><header class="sm-head"><button class="sm-back">\u2039</button>${S.current?.avatar_url?`<img class="sm-avatar" src="${esc(S.current.avatar_url)}">`:`<div class="sm-avatar">${esc(title.slice(0,1))}</div>`}<div style="min-width:0;flex:1"><div class="sm-title">${esc(title)}</div><div class="sm-sub">${esc(S.current?.kind==='channel'?'\u0642\u0646\u0627\u0629':S.current?.kind==='group'?`${S.members.length} \u0623\u0639\u0636\u0627\u0621`:'\u0645\u062D\u0627\u062F\u062B\u0629 \u062E\u0627\u0635\u0629')}</div></div><button class="sm-icon" id="sm-info">\u22EE</button></header><div class="sm-msgs" id="sm-msgs"></div><div class="sm-replybar" id="sm-replybar"></div>${canPost()?`<div class="sm-compose"><button class="sm-icon" id="sm-attach">\uFF0B</button><textarea id="sm-input" placeholder="\u0627\u0643\u062A\u0628 \u0631\u0633\u0627\u0644\u0629..."></textarea><button class="sm-send" id="sm-send">\u27A4</button><input type="file" id="sm-file" hidden></div>`:`<div class="sm-compose" style="justify-content:center;color:#758091">\u0627\u0644\u0646\u0634\u0631 \u0644\u0644\u0645\u0634\u0631\u0641\u064A\u0646 \u0641\u0642\u0637</div>`}</div>`;p.querySelector('.sm-back').onclick=()=>history.back();p.querySelector('#sm-info').onclick=openInfo;let box=p.querySelector('#sm-msgs');box.innerHTML=S.messages.map(messageHtml).join('')||'<div class="sm-empty">\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629 \u0627\u0644\u0622\u0646</div>';box.scrollTop=box.scrollHeight;box.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>messageAction(b.dataset.action,b.dataset.id));if(canPost()){p.querySelector('#sm-send').onclick=send;p.querySelector('#sm-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};p.querySelector('#sm-attach').onclick=()=>p.querySelector('#sm-file').click();p.querySelector('#sm-file').onchange=e=>upload(e.target.files[0])}}
-function messageHtml(m){if(m.message_type==='system')return`<div class="sm-msg system">${esc(m.body)}</div>`;let mine=m.sender_id===S.user.id;let media='';if(m.media_url){if(m.message_type==='image')media=`<img class="sm-media" src="${esc(m.media_url)}">`;else if(m.message_type==='video')media=`<video class="sm-media" controls src="${esc(m.media_url)}"></video>`;else if(m.message_type==='audio')media=`<audio controls src="${esc(m.media_url)}"></audio>`;else media=`<a class="sm-file" href="${esc(m.media_url)}" target="_blank">\uD83D\uDCCE ${esc(m.file_name||'\u0645\u0644\u0641')}</a>`}return`<article class="sm-msg ${mine?'mine':''}" tabindex="0">${S.current?.kind!=='direct'&&!mine?`<div class="sm-author">${esc(m.sender_name||m.sender_username||'\u0645\u0633\u062A\u062E\u062F\u0645')}</div>`:''}${m.reply_body?`<div class="sm-reply">${esc(m.reply_body)}</div>`:''}<div class="sm-text">${esc(m.deleted_at?'\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629':m.body||'')}</div>${media}<div class="sm-meta">${esc(fmt(m.created_at))}${m.edited_at?' \u00B7 \u0645\u0639\u062F\u0644\u0629':''}${mine?m.read_count>0?' \u00B7 \u2713\u2713':' \u00B7 \u2713':''}</div>${!m.deleted_at?`<div class="sm-actions"><button class="sm-mini" data-action="reply" data-id="${m.id}">\u21A9</button>${mine?`<button class="sm-mini" data-action="edit" data-id="${m.id}">\u270E</button><button class="sm-mini" data-action="delete" data-id="${m.id}">\uD83D\uDDD1</button>`:''}${S.current?.my_role==='owner'||S.current?.my_role==='admin'?`<button class="sm-mini" data-action="pin" data-id="${m.id}">\uD83D\uDCCC</button>`:''}</div>`:''}</article>`}
-function messageAction(a,id){let m=S.messages.find(x=>String(x.id)===String(id));if(!m)return;if(a==='reply'){S.reply=m;showReply('\u0631\u062F \u0639\u0644\u0649: '+(m.body||m.file_name||'\u0631\u0633\u0627\u0644\u0629'))}if(a==='edit'){S.editing=m;let i=document.getElementById('sm-input');i.value=m.body||'';i.focus();showReply('\u062A\u0639\u062F\u064A\u0644 \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}if(a==='delete')removeMessage(id);if(a==='pin')pinMessage(id)}
-function showReply(t){let b=document.getElementById('sm-replybar');if(!b)return;b.classList.add('show');b.innerHTML=`<div style="flex:1">${esc(t)}</div><button class="sm-mini" id="sm-cancel-reply">\u2715</button>`;b.querySelector('#sm-cancel-reply').onclick=()=>{S.reply=null;S.editing=null;b.classList.remove('show')}}
-async function send(){let i=document.getElementById('sm-input'),body=i?.value.trim();if(!body)return;let c=sb();if(S.editing){let{error}=await c.rpc('student_edit_message',{p_message:S.editing.id,p_body:body});if(error){toast(error.message);return}S.editing=null}else{let{error}=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:body,p_reply_to:S.reply?.id||null,p_message_type:'text',p_media_url:null,p_file_name:null,p_file_size:null});if(error){toast(error.message);return}}i.value='';S.reply=null;document.getElementById('sm-replybar')?.classList.remove('show')}
-async function upload(file){if(!file)return;if(file.size>20*1024*1024){toast('\u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 20MB');return}let c=sb(),ext=file.name.split('.').pop(),path=`${S.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;toast('\u062C\u0627\u0631\u064D \u0627\u0644\u0631\u0641\u0639...');let{error}=await c.storage.from('chat-media').upload(path,file);if(error){toast(error.message);return}let{data}=c.storage.from('chat-media').getPublicUrl(path);let type=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';let r=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:'',p_reply_to:S.reply?.id||null,p_message_type:type,p_media_url:data.publicUrl,p_file_name:file.name,p_file_size:file.size});if(r.error)toast(r.error.message);S.reply=null}
-async function removeMessage(id){if(!confirm('\u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629\u061F'))return;let{error}=await sb().rpc('student_delete_message',{p_message:id});if(error)toast(error.message)}
-async function pinMessage(id){let{error}=await sb().rpc('student_pin_message',{p_conversation:S.current.id,p_message:id});if(error)toast(error.message);else toast('\u062A\u0645 \u062A\u062B\u0628\u064A\u062A \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}
-async function markRead(){await sb().rpc('student_mark_conversation_read',{p_conversation:S.current.id});updateBadge()}
-function subscribeChat(id){unsubscribeChat();S.channel=sb().channel('student-chat-'+id).on('postgres_changes',{event:'*',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},async()=>{let{data}=await sb().rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:100});S.messages=(data||[]).reverse();renderChat();await markRead()}).subscribe()}
-function unsubscribeChat(){if(S.channel){sb()?.removeChannel(S.channel);S.channel=null}}
-function subscribeGlobal(){if(window.__studentMessagesGlobal)return;window.__studentMessagesGlobal=sb().channel('student-messages-global').on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>{if(S.view==='list')loadConversations();else updateBadge()}).subscribe()}
-async function updateBadge(){if(!S.user)S.user=await user();if(!S.user)return;let{data}=await sb().rpc('student_unread_messages_count');let n=Number(data||0);document.querySelectorAll('[data-section="messages"]').forEach(a=>{a.style.position='relative';a.querySelector('.sm-badge')?.remove();if(n>0){let b=document.createElement('span');b.className='sm-badge';b.textContent=n>99?'99+':n;a.appendChild(b)}})}
-function openCreate(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0646\u0634\u0627\u0621 \u062C\u062F\u064A\u062F</h3><div class="sm-actions-row" style="justify-content:stretch"><button class="sm-btn" id="sm-direct" style="flex:1">\u0645\u062D\u0627\u062F\u062B\u0629</button><button class="sm-btn" id="sm-group" style="flex:1">\u0645\u062C\u0645\u0648\u0639\u0629</button><button class="sm-btn" id="sm-channel" style="flex:1">\u0642\u0646\u0627\u0629</button></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close">\u0625\u0644\u063A\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close').onclick=()=>sh.remove();sh.querySelector('#sm-direct').onclick=()=>{sh.remove();openUserSearch('direct')};sh.querySelector('#sm-group').onclick=()=>{sh.remove();createCommunity('group')};sh.querySelector('#sm-channel').onclick=()=>{sh.remove();createCommunity('channel')}}
-function openUserSearch(){let i=document.getElementById('sm-search-users');i?.focus()}
-function createCommunity(kind){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>${kind==='group'?'\u0625\u0646\u0634\u0627\u0621 \u0645\u062C\u0645\u0648\u0639\u0629':'\u0625\u0646\u0634\u0627\u0621 \u0642\u0646\u0627\u0629'}</h3><div class="sm-field"><label>\u0627\u0644\u0627\u0633\u0645</label><input id="sm-name"></div><div class="sm-field"><label>\u0627\u0644\u0648\u0635\u0641</label><textarea id="sm-desc"></textarea></div><div class="sm-field"><label>\u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629</label><select id="sm-public"><option value="false">\u062E\u0627\u0635\u0629</option><option value="true">\u0639\u0627\u0645\u0629</option></select></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-cancel">\u0625\u0644\u063A\u0627\u0621</button><button class="sm-btn" id="sm-save">\u0625\u0646\u0634\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-cancel').onclick=()=>sh.remove();sh.querySelector('#sm-save').onclick=async()=>{let name=sh.querySelector('#sm-name').value.trim();if(!name)return toast('\u0627\u0643\u062A\u0628 \u0627\u0644\u0627\u0633\u0645');let{data,error}=await sb().rpc('student_create_community',{p_kind:kind,p_title:name,p_description:sh.querySelector('#sm-desc').value.trim(),p_is_public:sh.querySelector('#sm-public').value==='true'});if(error)return toast(error.message);sh.remove();openChat(data)}}
-function openInfo(){let sh=document.createElement('div');sh.className='sm-sheet';let admin=S.current?.my_role==='owner'||S.current?.my_role==='admin';sh.innerHTML=`<div class="sm-card"><h3>${esc(S.current.title)}</h3><p>${esc(S.current.description||'')}</p>${S.current.kind!=='direct'?`<h4>\u0627\u0644\u0623\u0639\u0636\u0627\u0621 (${S.members.length})</h4><div class="sm-user-results">${S.members.map(m=>`<div class="sm-row">${avatar(m)}<div class="sm-main"><div class="sm-name">${esc(m.full_name||m.username)}</div><div class="sm-preview">${esc(m.role)}</div></div>${admin&&m.user_id!==S.user.id?`<button class="sm-mini" data-remove="${m.user_id}">\u062D\u0630\u0641</button>`:''}</div>`).join('')}</div>${admin?`<button class="sm-btn" id="sm-add-member">\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</button>`:''}<button class="sm-btn danger" id="sm-leave">\u0645\u063A\u0627\u062F\u0631\u0629</button>`:''}<div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close-info">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close-info').onclick=()=>sh.remove();sh.querySelector('#sm-leave')&&(sh.querySelector('#sm-leave').onclick=async()=>{let{error}=await sb().rpc('student_leave_conversation',{p_conversation:S.current.id});if(error)return toast(error.message);sh.remove();showList();loadConversations()});sh.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_remove_member',{p_conversation:S.current.id,p_user:b.dataset.remove});if(error)toast(error.message);else{sh.remove();openChat(S.current.id)}});sh.querySelector('#sm-add-member')&&(sh.querySelector('#sm-add-member').onclick=()=>{sh.remove();addMemberSheet()})}
-function addMemberSheet(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</h3><div class="sm-field"><input id="sm-member-search" placeholder="\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div><div id="sm-member-results"></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-member-close">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-member-close').onclick=()=>sh.remove();let t;sh.querySelector('#sm-member-search').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{let q=e.target.value.trim();if(q.length<2)return;let{data}=await sb().from('profiles').select('id,full_name,username,avatar_url').or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);let box=sh.querySelector('#sm-member-results');box.innerHTML=(data||[]).map(p=>`<div class="sm-row" data-add="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div></div>`).join('');box.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_add_member',{p_conversation:S.current.id,p_user:b.dataset.add});if(error)toast(error.message);else{toast('\u062A\u0645\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629');sh.remove();openChat(S.current.id)}});},300);};}
+(function () {
+    "use strict";
 
-window.addEventListener('popstate',()=>{
-    if(!S.historyOpen)return;
-    if(S.view==='chat'){
-        showList();
-        return;
+    if (window.StudentMessages?.version === "2.0.0") return;
+
+    const state = {
+        user: null,
+        page: null,
+        view: "list",
+        filter: "all",
+        conversations: [],
+        current: null,
+        messages: [],
+        members: [],
+        reply: null,
+        editing: null,
+        chatChannel: null,
+        globalChannel: null,
+        controller: null,
+        searchTimer: null,
+        reloadTimer: null,
+        cacheAt: 0,
+        before: null,
+        hasMore: true,
+        loading: false,
+        recording: null,
+        recorder: null,
+        chunks: [],
+        historyOpen: false,
+        objectUrls: new Set()
+    };
+
+    const sb = () => (typeof supabaseClient !== "undefined" ? supabaseClient : null);
+    const esc = (value) => String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    function formatTime(value) {
+        if (!value) return "";
+        try {
+            const date = new Date(value);
+            const today = new Date();
+            if (date.toDateString() === today.toDateString()) {
+                return new Intl.DateTimeFormat("ar-IQ", { hour: "2-digit", minute: "2-digit" }).format(date);
+            }
+            return new Intl.DateTimeFormat("ar-IQ", { month: "short", day: "numeric" }).format(date);
+        } catch {
+            return "";
+        }
     }
-    hidePage();
-});
-window.StudentMessages={open,close,updateBadge};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
+
+    function injectCss() {
+        if (document.getElementById("student-messages-v2-style")) return;
+        const style = document.createElement("style");
+        style.id = "student-messages-v2-style";
+        style.textContent = `
+        #student-messages-page{position:fixed;inset:0;z-index:2147482500;background:#fff;display:none;direction:rtl;color:#17212b;font-family:inherit}
+        #student-messages-page.sm-open{display:flex;flex-direction:column}
+        #student-messages-page *{box-sizing:border-box}
+        .tg-head{height:58px;padding:0 10px;display:flex;align-items:center;gap:8px;background:#fff;border-bottom:1px solid #e5e9ee;flex:0 0 auto}
+        .tg-btn{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;display:grid;place-items:center}
+        .tg-round{width:42px;height:42px;border-radius:50%;font-size:20px}
+        .tg-round:active{background:#edf3f7}
+        .tg-title{min-width:0;flex:1}
+        .tg-title strong{display:block;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .tg-title small{display:block;color:#74808b;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .tg-tabs{height:43px;display:flex;background:#fff;border-bottom:1px solid #e5e9ee;padding:0 8px;flex:0 0 auto}
+        .tg-tab{flex:1;border:0;background:transparent;font:inherit;font-weight:700;color:#6d7882;position:relative;cursor:pointer}
+        .tg-tab.active{color:#168acd}.tg-tab.active:after{content:"";position:absolute;right:15%;left:15%;bottom:0;height:3px;border-radius:3px;background:#168acd}
+        .tg-search-wrap{padding:8px 10px;background:#fff;flex:0 0 auto}
+        .tg-search{height:42px;border-radius:22px;background:#f1f3f5;display:flex;align-items:center;gap:8px;padding:0 14px}
+        .tg-search input{width:100%;border:0;outline:0;background:transparent;font:inherit;color:#17212b}
+        .tg-body{flex:1;min-height:0;overflow:auto;background:#fff;overscroll-behavior:contain}
+        .tg-list{max-width:760px;margin:auto}
+        .tg-row{height:72px;padding:8px 12px;display:flex;align-items:center;gap:11px;cursor:pointer;border-bottom:1px solid #eef1f3;background:#fff}
+        .tg-row:active{background:#f3f6f8}
+        .tg-avatar{width:54px;height:54px;flex:0 0 54px;border-radius:50%;object-fit:cover;background:linear-gradient(145deg,#42a5e8,#168acd);color:#fff;display:grid;place-items:center;font-size:20px;font-weight:800}
+        .tg-row-main{min-width:0;flex:1}.tg-row-line{display:flex;gap:8px;align-items:center}.tg-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.tg-time{font-size:11px;color:#8a949d}
+        .tg-preview{font-size:13px;color:#75808a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px;display:flex;align-items:center;gap:5px}.tg-unread{min-width:22px;height:22px;padding:0 6px;border-radius:12px;background:#37aee2;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;margin-inline-start:auto}
+        .tg-empty{text-align:center;color:#77838e;padding:70px 20px}.tg-empty i{font-size:52px;display:block;margin-bottom:12px;color:#a8c8da}
+        .tg-fab{position:absolute;left:18px;bottom:22px;width:58px;height:58px;border-radius:50%;border:0;background:#168acd;color:#fff;font-size:24px;box-shadow:0 8px 22px rgba(22,138,205,.32);cursor:pointer}
+        .tg-chat{height:100%;display:flex;flex-direction:column;background:#dfe7eb}
+        .tg-msgs{flex:1;min-height:0;overflow:auto;padding:12px 9px 16px;background-color:#dfe7eb;background-image:radial-gradient(rgba(255,255,255,.45) 1px,transparent 1px);background-size:18px 18px;overscroll-behavior:contain}
+        .tg-load-old{display:block;margin:4px auto 12px;border:0;border-radius:18px;background:rgba(255,255,255,.9);padding:7px 15px;font:inherit;color:#168acd;cursor:pointer}
+        .tg-msg{max-width:min(78%,560px);width:max-content;min-width:82px;margin:4px auto 4px 0;padding:7px 9px 5px;border-radius:13px 13px 4px 13px;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.12);position:relative}
+        .tg-msg.mine{margin-left:0;margin-right:auto;background:#e5f7d8;border-radius:13px 13px 13px 4px}.tg-msg.system{margin:9px auto;background:rgba(67,86,100,.72);color:#fff;text-align:center;border-radius:15px;max-width:90%}
+        .tg-author{font-size:12px;font-weight:800;color:#168acd;margin-bottom:3px}.tg-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}.tg-reply{border-right:3px solid #168acd;background:rgba(22,138,205,.08);padding:5px 7px;border-radius:7px;margin-bottom:5px;font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+        .tg-media{display:block;max-width:100%;max-height:340px;border-radius:10px;margin:2px 0 5px}.tg-audio{width:250px;max-width:100%}.tg-file{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.045);padding:9px;border-radius:10px}.tg-file-icon{width:38px;height:38px;border-radius:50%;background:#37aee2;color:#fff;display:grid;place-items:center}
+        .tg-meta{display:flex;justify-content:flex-end;align-items:center;gap:4px;font-size:10px;color:#75808a;margin-top:2px}.tg-check{color:#36a7e0;font-weight:900}
+        .tg-compose-wrap{background:#fff;border-top:1px solid #d5dce1;padding:7px 8px calc(7px + env(safe-area-inset-bottom));flex:0 0 auto}.tg-replybar{display:none;align-items:center;gap:8px;border-right:3px solid #168acd;background:#f5f7f8;padding:7px 9px;border-radius:8px;margin-bottom:6px}.tg-replybar.show{display:flex}.tg-replybar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .tg-compose{display:flex;align-items:flex-end;gap:5px}.tg-compose textarea{flex:1;min-height:42px;max-height:120px;border:0;outline:0;background:#f1f3f5;border-radius:22px;padding:11px 14px;font:inherit;resize:none}.tg-send{width:44px;height:44px;border-radius:50%;border:0;background:#168acd;color:#fff;font-size:18px;cursor:pointer}.tg-attach{width:40px;height:40px;border-radius:50%;font-size:19px}.tg-recording{background:#e95b64!important;animation:tgPulse 1s infinite alternate}@keyframes tgPulse{to{transform:scale(1.08)}}
+        .tg-overlay{position:fixed;inset:0;z-index:2147482600;background:rgba(0,0,0,.42);display:flex;align-items:flex-end;justify-content:center;padding:10px}.tg-sheet{width:min(620px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:18px 18px 8px 8px;padding:14px}.tg-sheet h3{margin:4px 0 14px}.tg-sheet-list{display:grid;gap:4px}.tg-action{width:100%;border:0;background:#fff;padding:12px;border-radius:10px;text-align:right;font:inherit;cursor:pointer}.tg-action:active{background:#edf3f7}.tg-action.danger{color:#d93445}.tg-field{margin-bottom:11px}.tg-field label{display:block;font-weight:700;margin-bottom:5px}.tg-field input,.tg-field textarea,.tg-field select{width:100%;border:1px solid #d8dfe5;border-radius:11px;padding:11px;font:inherit}.tg-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.tg-primary,.tg-secondary,.tg-danger{border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:800;cursor:pointer}.tg-primary{background:#168acd;color:#fff}.tg-secondary{background:#edf2f5;color:#27343e}.tg-danger{background:#e24a57;color:#fff}
+        .tg-user{display:flex;align-items:center;gap:10px;padding:9px;border-bottom:1px solid #eef1f3;cursor:pointer}.tg-user:active{background:#f2f6f8}.tg-badge{position:absolute;min-width:18px;height:18px;border-radius:10px;background:#e53945;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
+        .tg-toast{position:fixed;z-index:2147482700;left:50%;bottom:86px;transform:translateX(-50%);background:#24333d;color:#fff;padding:10px 15px;border-radius:12px;max-width:88%;text-align:center}
+        @media(min-width:900px){#student-messages-page{left:50%;transform:translateX(-50%);max-width:900px;border-inline:1px solid #e2e6e9}.tg-fab{left:28px}}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function ensurePage() {
+        injectCss();
+        let page = document.getElementById("student-messages-page");
+        if (!page) {
+            page = document.createElement("section");
+            page.id = "student-messages-page";
+            document.body.appendChild(page);
+        }
+        state.page = page;
+        return page;
+    }
+
+    function toast(message) {
+        document.querySelector(".tg-toast")?.remove();
+        const el = document.createElement("div");
+        el.className = "tg-toast";
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2400);
+    }
+
+    async function getUser() {
+        const client = sb();
+        if (!client) return null;
+        const { data } = await client.auth.getUser();
+        return data?.user || null;
+    }
+
+    function avatar(item) {
+        const name = item?.title || item?.full_name || item?.username || "م";
+        const url = item?.avatar_url || item?.photo_url || "";
+        return url
+            ? `<img class="tg-avatar" loading="lazy" decoding="async" src="${esc(url)}" alt="">`
+            : `<span class="tg-avatar">${esc(name.trim().charAt(0).toUpperCase() || "م")}</span>`;
+    }
+
+    function kindIcon(kind) {
+        if (kind === "channel") return "📢";
+        if (kind === "group") return "👥";
+        return "";
+    }
+
+    function mountEvents() {
+        state.controller?.abort();
+        state.controller = new AbortController();
+        const signal = state.controller.signal;
+        state.page.addEventListener("click", onClick, { signal });
+        state.page.addEventListener("input", onInput, { signal });
+        state.page.addEventListener("change", onChange, { signal });
+        state.page.addEventListener("keydown", onKeyDown, { signal });
+    }
+
+    function onClick(event) {
+        const target = event.target.closest("[data-tg-action]");
+        if (!target) return;
+        const action = target.dataset.tgAction;
+        if (action === "back") return handleBack();
+        if (action === "new") return openNewSheet();
+        if (action === "filter") return setFilter(target.dataset.filter);
+        if (action === "open-chat") return openChat(target.dataset.id);
+        if (action === "send") return sendMessage();
+        if (action === "attach") return document.getElementById("tg-file")?.click();
+        if (action === "record") return toggleRecord(target);
+        if (action === "cancel-reply") return clearReply();
+        if (action === "info") return openInfo();
+        if (action === "load-old") return loadOlder();
+        if (action === "message-menu") return openMessageMenu(target.dataset.id);
+        if (action === "close-overlay") return target.closest(".tg-overlay")?.remove();
+    }
+
+    function onInput(event) {
+        if (event.target.id === "tg-search") {
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(() => renderConversationList(event.target.value), 180);
+        }
+        if (event.target.id === "tg-message-search") {
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(() => renderMessages(event.target.value), 160);
+        }
+        if (event.target.id === "tg-input") autoGrow(event.target);
+    }
+
+    function onChange(event) {
+        if (event.target.id === "tg-file" && event.target.files?.[0]) {
+            uploadFile(event.target.files[0]);
+            event.target.value = "";
+        }
+    }
+
+    function onKeyDown(event) {
+        if (event.target.id === "tg-input" && event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+
+    function autoGrow(el) {
+        el.style.height = "42px";
+        el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+    }
+
+    function renderListShell() {
+        state.view = "list";
+        state.current = null;
+        state.page.innerHTML = `
+            <header class="tg-head">
+                <button class="tg-btn tg-round" data-tg-action="back" aria-label="رجوع">←</button>
+                <div class="tg-title"><strong>الرسائل</strong><small>محادثاتك ومجموعاتك وقنواتك</small></div>
+                <button class="tg-btn tg-round" data-tg-action="new" aria-label="جديد">✎</button>
+            </header>
+            <div class="tg-tabs">
+                <button class="tg-tab active" data-tg-action="filter" data-filter="all">الكل</button>
+                <button class="tg-tab" data-tg-action="filter" data-filter="direct">الخاص</button>
+                <button class="tg-tab" data-tg-action="filter" data-filter="group">المجموعات</button>
+                <button class="tg-tab" data-tg-action="filter" data-filter="channel">القنوات</button>
+            </div>
+            <div class="tg-search-wrap"><label class="tg-search">⌕<input id="tg-search" placeholder="البحث في المحادثات أو بدء محادثة"></label></div>
+            <main class="tg-body"><div id="tg-list" class="tg-list"></div></main>
+            <button class="tg-fab" data-tg-action="new" aria-label="رسالة جديدة">✎</button>`;
+        renderConversationList("");
+    }
+
+    function setFilter(filter) {
+        state.filter = filter || "all";
+        state.page.querySelectorAll(".tg-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.filter === state.filter));
+        renderConversationList(document.getElementById("tg-search")?.value || "");
+    }
+
+    function renderConversationList(query = "") {
+        const box = document.getElementById("tg-list");
+        if (!box) return;
+        const q = query.trim().toLowerCase();
+        let rows = state.conversations.filter((item) => {
+            const kindOk = state.filter === "all" || item.kind === state.filter;
+            const text = `${item.title || ""} ${item.username || ""} ${item.last_message || ""}`.toLowerCase();
+            return kindOk && (!q || text.includes(q));
+        });
+        box.innerHTML = rows.map((item) => `
+            <article class="tg-row" data-tg-action="open-chat" data-id="${esc(item.id)}">
+                ${avatar(item)}
+                <div class="tg-row-main">
+                    <div class="tg-row-line"><div class="tg-name">${kindIcon(item.kind)} ${esc(item.title || "محادثة")}</div><time class="tg-time">${esc(formatTime(item.last_message_at || item.updated_at))}</time></div>
+                    <div class="tg-preview"><span>${item.last_message_type === "image" ? "🖼 صورة" : item.last_message_type === "video" ? "🎥 فيديو" : item.last_message_type === "audio" ? "🎤 رسالة صوتية" : item.last_message_type === "file" ? "📎 ملف" : esc(item.last_message || "ابدأ المحادثة")}</span>${Number(item.unread_count || 0) > 0 ? `<b class="tg-unread">${Math.min(99, Number(item.unread_count))}${Number(item.unread_count) > 99 ? "+" : ""}</b>` : ""}</div>
+                </div>
+            </article>`).join("") || `<div class="tg-empty"><i>✉</i>${q ? "لا توجد نتائج" : "لا توجد محادثات بعد"}</div>`;
+    }
+
+    async function loadConversations(force = false) {
+        if (state.loading) return;
+        if (!force && Date.now() - state.cacheAt < 30000 && state.conversations.length) {
+            renderConversationList(document.getElementById("tg-search")?.value || "");
+            return;
+        }
+        state.loading = true;
+        try {
+            const { data, error } = await sb().rpc("student_get_conversations");
+            if (error) throw error;
+            state.conversations = Array.isArray(data) ? data : [];
+            state.cacheAt = Date.now();
+            renderConversationList(document.getElementById("tg-search")?.value || "");
+        } catch (error) {
+            toast(error.message || "تعذر تحميل المحادثات");
+        } finally {
+            state.loading = false;
+        }
+    }
+
+    async function openChat(id) {
+        if (!id || state.loading) return;
+        state.loading = true;
+        try {
+            const [conversationResult, memberResult, messageResult] = await Promise.all([
+                sb().rpc("student_get_conversation", { p_conversation: id }),
+                sb().rpc("student_get_conversation_members", { p_conversation: id }),
+                sb().rpc("student_get_messages", { p_conversation: id, p_before: null, p_limit: 50 })
+            ]);
+            if (conversationResult.error) throw conversationResult.error;
+            if (messageResult.error) throw messageResult.error;
+            state.current = Array.isArray(conversationResult.data) ? conversationResult.data[0] : conversationResult.data;
+            state.members = memberResult.data || [];
+            state.messages = (messageResult.data || []).reverse();
+            state.before = state.messages[0]?.created_at || null;
+            state.hasMore = (messageResult.data || []).length === 50;
+            state.view = "chat";
+            renderChatShell();
+            subscribeChat(id);
+            markRead();
+        } catch (error) {
+            toast(error.message || "تعذر فتح المحادثة");
+        } finally {
+            state.loading = false;
+        }
+    }
+
+    function renderChatShell() {
+        const current = state.current || {};
+        state.page.innerHTML = `
+            <section class="tg-chat">
+                <header class="tg-head">
+                    <button class="tg-btn tg-round" data-tg-action="back">←</button>
+                    ${avatar(current)}
+                    <button class="tg-btn tg-title" data-tg-action="info"><strong>${esc(current.title || "محادثة")}</strong><small>${current.kind === "direct" ? "متصل عبر Student" : `${state.members.length} عضو`}</small></button>
+                    <button class="tg-btn tg-round" data-tg-action="info">⋮</button>
+                </header>
+                <div class="tg-search-wrap"><label class="tg-search">⌕<input id="tg-message-search" placeholder="البحث داخل المحادثة"></label></div>
+                <main id="tg-msgs" class="tg-msgs"></main>
+                <div class="tg-compose-wrap">
+                    <div id="tg-replybar" class="tg-replybar"><span></span><button class="tg-btn" data-tg-action="cancel-reply">✕</button></div>
+                    <div class="tg-compose">
+                        <button class="tg-btn tg-attach" data-tg-action="attach">📎</button>
+                        <input id="tg-file" type="file" hidden accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.txt">
+                        <textarea id="tg-input" rows="1" placeholder="اكتب رسالة"></textarea>
+                        <button class="tg-btn tg-attach" data-tg-action="record" aria-label="تسجيل صوتي">🎤</button>
+                        <button class="tg-send" data-tg-action="send">➤</button>
+                    </div>
+                </div>
+            </section>`;
+        renderMessages();
+        requestAnimationFrame(scrollBottom);
+    }
+
+    function mediaHtml(message) {
+        if (!message.media_url) return "";
+        const url = esc(message.media_url);
+        if (message.message_type === "image") return `<img class="tg-media" loading="lazy" decoding="async" src="${url}" alt="صورة">`;
+        if (message.message_type === "video") return `<video class="tg-media" controls preload="metadata" playsinline src="${url}"></video>`;
+        if (message.message_type === "audio") return `<audio class="tg-audio" controls preload="metadata" src="${url}"></audio>`;
+        return `<a class="tg-file" href="${url}" target="_blank" rel="noopener"><span class="tg-file-icon">⬇</span><span>${esc(message.file_name || "تحميل الملف")}</span></a>`;
+    }
+
+    function renderMessages(query = "") {
+        const box = document.getElementById("tg-msgs");
+        if (!box) return;
+        const q = query.trim().toLowerCase();
+        const rows = q ? state.messages.filter((m) => `${m.body || ""} ${m.file_name || ""}`.toLowerCase().includes(q)) : state.messages;
+        box.innerHTML = `${state.hasMore && !q ? `<button class="tg-load-old" data-tg-action="load-old">تحميل رسائل أقدم</button>` : ""}${rows.map(messageHtml).join("") || `<div class="tg-empty">${q ? "لا توجد نتائج" : "ابدأ المحادثة الآن"}</div>`}`;
+        if (!q) requestAnimationFrame(scrollBottom);
+    }
+
+    function messageHtml(message) {
+        const mine = String(message.sender_id) === String(state.user?.id);
+        if (message.message_type === "system") return `<div class="tg-msg system">${esc(message.body || "")}</div>`;
+        const reply = message.reply_body || message.reply_preview ? `<div class="tg-reply">${esc(message.reply_body || message.reply_preview)}</div>` : "";
+        return `<article class="tg-msg ${mine ? "mine" : ""}" data-message-id="${esc(message.id)}">
+            ${!mine && state.current?.kind !== "direct" ? `<div class="tg-author">${esc(message.sender_name || message.username || "عضو")}</div>` : ""}
+            ${reply}${message.deleted_at ? `<div class="tg-text">تم حذف الرسالة</div>` : `${message.body ? `<div class="tg-text">${esc(message.body)}</div>` : ""}${mediaHtml(message)}`}
+            <div class="tg-meta"><time>${esc(formatTime(message.created_at))}</time>${message.edited_at ? "· معدلة" : ""}${mine ? `<span class="tg-check">${Number(message.read_count || 0) > 0 ? "✓✓" : "✓"}</span>` : ""}<button class="tg-btn" data-tg-action="message-menu" data-id="${esc(message.id)}">⋮</button></div>
+        </article>`;
+    }
+
+    function scrollBottom() {
+        const box = document.getElementById("tg-msgs");
+        if (box) box.scrollTop = box.scrollHeight;
+    }
+
+    async function loadOlder() {
+        if (!state.hasMore || state.loading || !state.current) return;
+        state.loading = true;
+        try {
+            const { data, error } = await sb().rpc("student_get_messages", { p_conversation: state.current.id, p_before: state.before, p_limit: 50 });
+            if (error) throw error;
+            const older = (data || []).reverse();
+            state.messages = [...older, ...state.messages];
+            state.before = state.messages[0]?.created_at || state.before;
+            state.hasMore = (data || []).length === 50;
+            renderMessages(document.getElementById("tg-message-search")?.value || "");
+        } catch (error) {
+            toast(error.message || "تعذر تحميل الرسائل القديمة");
+        } finally {
+            state.loading = false;
+        }
+    }
+
+    function setReply(message, editing = false) {
+        state.reply = editing ? null : message;
+        state.editing = editing ? message : null;
+        const bar = document.getElementById("tg-replybar");
+        if (!bar) return;
+        bar.classList.add("show");
+        bar.querySelector("span").textContent = editing ? "تعديل الرسالة" : `رد على: ${message.body || message.file_name || "رسالة"}`;
+        const input = document.getElementById("tg-input");
+        if (editing) input.value = message.body || "";
+        input?.focus();
+    }
+
+    function clearReply() {
+        state.reply = null;
+        state.editing = null;
+        document.getElementById("tg-replybar")?.classList.remove("show");
+        const input = document.getElementById("tg-input");
+        if (input) input.value = "";
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById("tg-input");
+        const body = input?.value.trim();
+        if (!body || !state.current) return;
+        input.disabled = true;
+        try {
+            const result = state.editing
+                ? await sb().rpc("student_edit_message", { p_message: state.editing.id, p_body: body })
+                : await sb().rpc("student_send_message", { p_conversation: state.current.id, p_body: body, p_reply_to: state.reply?.id || null, p_message_type: "text", p_media_url: null, p_file_name: null, p_file_size: null });
+            if (result.error) throw result.error;
+            clearReply();
+            input.value = "";
+            await refreshCurrent(false);
+        } catch (error) {
+            toast(error.message || "تعذر إرسال الرسالة");
+        } finally {
+            input.disabled = false;
+            input.focus();
+        }
+    }
+
+    async function uploadFile(file) {
+        if (!file || !state.current) return;
+        if (file.size > 25 * 1024 * 1024) return toast("الحد الأقصى 25MB");
+        const client = sb();
+        const ext = (file.name.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "");
+        const path = `${state.user.id}/${Date.now()}-${crypto.randomUUID?.() || Math.random().toString(36).slice(2)}.${ext}`;
+        toast("جارٍ رفع الملف...");
+        try {
+            const { error } = await client.storage.from("chat-media").upload(path, file, { cacheControl: "3600", upsert: false });
+            if (error) throw error;
+            const { data } = client.storage.from("chat-media").getPublicUrl(path);
+            const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : file.type.startsWith("audio/") ? "audio" : "file";
+            const result = await client.rpc("student_send_message", { p_conversation: state.current.id, p_body: "", p_reply_to: state.reply?.id || null, p_message_type: type, p_media_url: data.publicUrl, p_file_name: file.name, p_file_size: file.size });
+            if (result.error) throw result.error;
+            clearReply();
+            await refreshCurrent(false);
+        } catch (error) {
+            toast(error.message || "فشل رفع الملف");
+        }
+    }
+
+    async function toggleRecord(button) {
+        if (state.recorder?.state === "recording") {
+            state.recorder.stop();
+            button.classList.remove("tg-recording");
+            return;
+        }
+        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast("التسجيل الصوتي غير مدعوم على هذا الجهاز");
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            state.chunks = [];
+            state.recording = stream;
+            state.recorder = new MediaRecorder(stream);
+            state.recorder.ondataavailable = (event) => event.data.size && state.chunks.push(event.data);
+            state.recorder.onstop = async () => {
+                stream.getTracks().forEach((track) => track.stop());
+                const blob = new Blob(state.chunks, { type: state.recorder.mimeType || "audio/webm" });
+                const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type });
+                state.recorder = null;
+                state.recording = null;
+                await uploadFile(file);
+            };
+            state.recorder.start();
+            button.classList.add("tg-recording");
+            toast("بدأ التسجيل — اضغط مرة ثانية للإرسال");
+        } catch {
+            toast("تعذر الوصول إلى الميكروفون");
+        }
+    }
+
+    function overlay(content) {
+        const root = document.createElement("div");
+        root.className = "tg-overlay";
+        root.innerHTML = `<section class="tg-sheet">${content}</section>`;
+        document.body.appendChild(root);
+        root.addEventListener("click", (event) => { if (event.target === root) root.remove(); });
+        return root;
+    }
+
+    function openMessageMenu(id) {
+        const message = state.messages.find((item) => String(item.id) === String(id));
+        if (!message) return;
+        const mine = String(message.sender_id) === String(state.user.id);
+        const admin = ["owner", "admin"].includes(state.current?.my_role);
+        const root = overlay(`<div class="tg-sheet-list">
+            <button class="tg-action" data-menu="reply">↩ الرد</button>
+            ${mine && !message.deleted_at ? `<button class="tg-action" data-menu="edit">✎ تعديل</button><button class="tg-action danger" data-menu="delete">🗑 حذف</button>` : ""}
+            ${admin ? `<button class="tg-action" data-menu="pin">📌 تثبيت</button>` : ""}
+            <button class="tg-action" data-menu="copy">⧉ نسخ النص</button>
+            <button class="tg-action" data-menu="close">إغلاق</button>
+        </div>`);
+        root.addEventListener("click", async (event) => {
+            const action = event.target.closest("[data-menu]")?.dataset.menu;
+            if (!action) return;
+            if (action === "reply") setReply(message, false);
+            if (action === "edit") setReply(message, true);
+            if (action === "copy") navigator.clipboard?.writeText(message.body || message.media_url || "");
+            if (action === "pin") await runRpc("student_pin_message", { p_conversation: state.current.id, p_message: message.id }, "تم تثبيت الرسالة");
+            if (action === "delete") return confirmDelete(message.id, root);
+            root.remove();
+        });
+    }
+
+    function confirmDelete(id, oldRoot) {
+        oldRoot.remove();
+        const root = overlay(`<h3>حذف الرسالة؟</h3><p>لن يتمكن الآخرون من قراءة محتواها بعد الحذف.</p><div class="tg-actions"><button class="tg-secondary" data-no>إلغاء</button><button class="tg-danger" data-yes>حذف</button></div>`);
+        root.querySelector("[data-no]").onclick = () => root.remove();
+        root.querySelector("[data-yes]").onclick = async () => {
+            const { error } = await sb().rpc("student_delete_message", { p_message: id });
+            if (error) return toast(error.message);
+            root.remove();
+            await refreshCurrent(false);
+        };
+    }
+
+    async function runRpc(name, args, success) {
+        const { error } = await sb().rpc(name, args);
+        if (error) return toast(error.message);
+        if (success) toast(success);
+        if (state.view === "chat") refreshCurrent(false);
+    }
+
+    function openNewSheet() {
+        const root = overlay(`<h3>إنشاء جديد</h3><div class="tg-sheet-list"><button class="tg-action" data-new="direct">👤 محادثة خاصة</button><button class="tg-action" data-new="group">👥 مجموعة جديدة</button><button class="tg-action" data-new="channel">📢 قناة جديدة</button><button class="tg-action" data-new="close">إغلاق</button></div>`);
+        root.addEventListener("click", (event) => {
+            const action = event.target.closest("[data-new]")?.dataset.new;
+            if (!action) return;
+            root.remove();
+            if (action === "direct") openUserSearch();
+            if (action === "group" || action === "channel") openCommunityForm(action);
+        });
+    }
+
+    function openUserSearch() {
+        const root = overlay(`<h3>محادثة جديدة</h3><div class="tg-field"><input id="tg-user-query" placeholder="الاسم أو اسم المستخدم"></div><div id="tg-user-results"></div><div class="tg-actions"><button class="tg-secondary" data-close>إغلاق</button></div>`);
+        root.querySelector("[data-close]").onclick = () => root.remove();
+        let timer;
+        root.querySelector("#tg-user-query").addEventListener("input", (event) => {
+            clearTimeout(timer);
+            timer = setTimeout(async () => {
+                const q = event.target.value.trim().replace(/[,%()]/g, "");
+                const box = root.querySelector("#tg-user-results");
+                if (q.length < 2) return box.innerHTML = "";
+                const { data, error } = await sb().from("profiles").select("id,full_name,username,avatar_url,is_verified,verification_color").or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).neq("id", state.user.id).limit(25);
+                if (error) return toast(error.message);
+                box.innerHTML = (data || []).map((person) => `<div class="tg-user" data-user="${esc(person.id)}">${avatar(person)}<div><strong>${esc(person.full_name || person.username || "مستخدم")}</strong><small style="display:block;color:#75808a">@${esc(person.username || "")}</small></div></div>`).join("") || `<div class="tg-empty">لا توجد نتائج</div>`;
+                box.querySelectorAll("[data-user]").forEach((item) => item.onclick = async () => {
+                    const { data: id, error: startError } = await sb().rpc("student_start_direct_chat", { p_other_user: item.dataset.user });
+                    if (startError) return toast(startError.message);
+                    root.remove();
+                    openChat(id);
+                });
+            }, 280);
+        });
+        setTimeout(() => root.querySelector("#tg-user-query")?.focus(), 30);
+    }
+
+    function openCommunityForm(kind) {
+        const label = kind === "group" ? "مجموعة" : "قناة";
+        const root = overlay(`<h3>إنشاء ${label}</h3><div class="tg-field"><label>الاسم</label><input id="tg-community-name"></div><div class="tg-field"><label>الوصف</label><textarea id="tg-community-desc"></textarea></div><div class="tg-field"><label>الخصوصية</label><select id="tg-community-public"><option value="false">خاصة</option><option value="true">عامة</option></select></div><div class="tg-actions"><button class="tg-secondary" data-close>إلغاء</button><button class="tg-primary" data-save>إنشاء</button></div>`);
+        root.querySelector("[data-close]").onclick = () => root.remove();
+        root.querySelector("[data-save]").onclick = async () => {
+            const title = root.querySelector("#tg-community-name").value.trim();
+            if (!title) return toast("اكتب الاسم");
+            const { data: id, error } = await sb().rpc("student_create_community", { p_kind: kind, p_title: title, p_description: root.querySelector("#tg-community-desc").value.trim(), p_is_public: root.querySelector("#tg-community-public").value === "true" });
+            if (error) return toast(error.message);
+            root.remove();
+            openChat(id);
+        };
+    }
+
+    function openInfo() {
+        const current = state.current || {};
+        const admin = ["owner", "admin"].includes(current.my_role);
+        const root = overlay(`<div style="text-align:center">${avatar(current)}<h3>${esc(current.title || "محادثة")}</h3><p style="color:#74808b">${esc(current.description || "")}</p></div>${current.kind !== "direct" ? `<h4>الأعضاء (${state.members.length})</h4><div>${state.members.map((member) => `<div class="tg-user">${avatar(member)}<div style="flex:1"><strong>${esc(member.full_name || member.username || "عضو")}</strong><small style="display:block;color:#75808a">${esc(member.role || "member")}</small></div>${admin && member.user_id !== state.user.id ? `<button class="tg-btn" data-remove="${esc(member.user_id)}">حذف</button>` : ""}</div>`).join("")}</div>${admin ? `<button class="tg-primary" data-add style="width:100%;margin-top:10px">إضافة عضو</button>` : ""}<button class="tg-danger" data-leave style="width:100%;margin-top:8px">مغادرة</button>` : ""}<div class="tg-actions"><button class="tg-secondary" data-close>إغلاق</button></div>`);
+        root.querySelector("[data-close]").onclick = () => root.remove();
+        root.querySelector("[data-add]")?.addEventListener("click", () => { root.remove(); openAddMember(); });
+        root.querySelector("[data-leave]")?.addEventListener("click", async () => {
+            const { error } = await sb().rpc("student_leave_conversation", { p_conversation: current.id });
+            if (error) return toast(error.message);
+            root.remove();
+            showList();
+            loadConversations(true);
+        });
+        root.querySelectorAll("[data-remove]").forEach((button) => button.onclick = async () => {
+            const { error } = await sb().rpc("student_remove_member", { p_conversation: current.id, p_user: button.dataset.remove });
+            if (error) return toast(error.message);
+            root.remove();
+            openChat(current.id);
+        });
+    }
+
+    function openAddMember() {
+        const root = overlay(`<h3>إضافة عضو</h3><div class="tg-field"><input id="tg-add-query" placeholder="الاسم أو اليوزر"></div><div id="tg-add-results"></div><div class="tg-actions"><button class="tg-secondary" data-close>إغلاق</button></div>`);
+        root.querySelector("[data-close]").onclick = () => root.remove();
+        let timer;
+        root.querySelector("#tg-add-query").oninput = (event) => {
+            clearTimeout(timer);
+            timer = setTimeout(async () => {
+                const q = event.target.value.trim().replace(/[,%()]/g, "");
+                if (q.length < 2) return;
+                const { data } = await sb().from("profiles").select("id,full_name,username,avatar_url").or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);
+                const box = root.querySelector("#tg-add-results");
+                box.innerHTML = (data || []).map((person) => `<div class="tg-user" data-user="${esc(person.id)}">${avatar(person)}<strong>${esc(person.full_name || person.username)}</strong></div>`).join("");
+                box.querySelectorAll("[data-user]").forEach((item) => item.onclick = async () => {
+                    const { error } = await sb().rpc("student_add_member", { p_conversation: state.current.id, p_user: item.dataset.user });
+                    if (error) return toast(error.message);
+                    root.remove();
+                    openChat(state.current.id);
+                });
+            }, 260);
+        };
+    }
+
+    async function refreshCurrent(scroll = true) {
+        if (!state.current) return;
+        const { data, error } = await sb().rpc("student_get_messages", { p_conversation: state.current.id, p_before: null, p_limit: 50 });
+        if (error) return;
+        state.messages = (data || []).reverse();
+        state.before = state.messages[0]?.created_at || null;
+        state.hasMore = (data || []).length === 50;
+        renderMessages(document.getElementById("tg-message-search")?.value || "");
+        if (scroll) requestAnimationFrame(scrollBottom);
+        markRead();
+    }
+
+    function subscribeChat(id) {
+        unsubscribeChat();
+        state.chatChannel = sb().channel(`student-chat-${id}-${Date.now()}`).on("postgres_changes", { event: "*", schema: "public", table: "chat_messages", filter: `conversation_id=eq.${id}` }, () => {
+            clearTimeout(state.reloadTimer);
+            state.reloadTimer = setTimeout(() => refreshCurrent(true), 180);
+        }).subscribe();
+    }
+
+    function unsubscribeChat() {
+        if (state.chatChannel) {
+            sb()?.removeChannel(state.chatChannel);
+            state.chatChannel = null;
+        }
+    }
+
+    function subscribeGlobal() {
+        if (state.globalChannel) return;
+        state.globalChannel = sb().channel(`student-messages-global-${state.user.id}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, () => {
+            state.cacheAt = 0;
+            updateBadge();
+            if (state.view === "list") loadConversations(true);
+        }).subscribe();
+    }
+
+    function unsubscribeGlobal() {
+        if (state.globalChannel) {
+            sb()?.removeChannel(state.globalChannel);
+            state.globalChannel = null;
+        }
+    }
+
+    async function markRead() {
+        if (!state.current) return;
+        await sb().rpc("student_mark_conversation_read", { p_conversation: state.current.id });
+        updateBadge();
+    }
+
+    async function updateBadge() {
+        if (!state.user) state.user = await getUser();
+        if (!state.user) return;
+        const { data } = await sb().rpc("student_unread_messages_count");
+        const count = Number(data || 0);
+        document.querySelectorAll('[data-section="messages"]').forEach((button) => {
+            button.style.position = "relative";
+            button.querySelector(".tg-badge")?.remove();
+            if (count > 0) {
+                const badge = document.createElement("span");
+                badge.className = "tg-badge";
+                badge.textContent = count > 99 ? "99+" : String(count);
+                button.appendChild(badge);
+            }
+        });
+    }
+
+    async function open() {
+        ensurePage();
+        state.user = await getUser();
+        if (!state.user) return toast("سجّل الدخول أولًا");
+        state.page.classList.add("sm-open");
+        document.body.style.overflow = "hidden";
+        state.historyOpen = true;
+        if (!history.state?.studentPage || history.state.studentPage !== "messages") history.pushState({ studentPage: "messages" }, "", "#messages");
+        mountEvents();
+        renderListShell();
+        await loadConversations(false);
+        subscribeGlobal();
+        updateBadge();
+    }
+
+    function showList() {
+        unsubscribeChat();
+        clearReply();
+        renderListShell();
+        loadConversations(false);
+    }
+
+    function handleBack() {
+        if (document.querySelector(".tg-overlay")) return document.querySelector(".tg-overlay").remove();
+        if (state.view === "chat") return showList();
+        close();
+    }
+
+    function close() {
+        cleanupPage();
+        state.page?.classList.remove("sm-open");
+        document.body.style.overflow = "";
+        state.historyOpen = false;
+        state.view = "list";
+        state.current = null;
+        if (location.hash === "#messages") history.replaceState({ studentPage: "home" }, "", "#home");
+    }
+
+    function cleanupPage() {
+        state.controller?.abort();
+        state.controller = null;
+        clearTimeout(state.searchTimer);
+        clearTimeout(state.reloadTimer);
+        unsubscribeChat();
+        unsubscribeGlobal();
+        if (state.recorder?.state === "recording") state.recorder.stop();
+        state.recording?.getTracks?.().forEach((track) => track.stop());
+        state.recorder = null;
+        state.recording = null;
+        state.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        state.objectUrls.clear();
+        document.querySelectorAll(".tg-overlay").forEach((el) => el.remove());
+        state.page?.querySelectorAll("video,audio").forEach((media) => {
+            try { media.pause(); media.removeAttribute("src"); media.load(); } catch {}
+        });
+    }
+
+    window.addEventListener("popstate", () => {
+        if (!state.historyOpen) return;
+        if (state.view === "chat") showList();
+        else close();
+    });
+
+    window.StudentMessages = { version: "2.0.0", open, close, updateBadge, cleanup: cleanupPage };
+    window.openStudentMessages = open;
+    document.addEventListener("DOMContentLoaded", () => setTimeout(updateBadge, 1500), { once: true });
 })();
+
