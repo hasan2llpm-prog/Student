@@ -1890,37 +1890,10 @@ function escapeAttribute(
 ========================================================= */
 
 function loadAccountRoleOnboardingModule() {
-
-    if (window.StudentAccountRoleOnboarding) {
-        return Promise.resolve();
-    }
-
-    if (window.__studentAccountRoleLoading) {
-        return window.__studentAccountRoleLoading;
-    }
-
-    window.__studentAccountRoleLoading = new Promise(function(resolve, reject) {
-
-        const existing = document.querySelector(
-            'script[data-student-account-role="true"]'
-        );
-
-        if (existing) {
-            existing.addEventListener("load", resolve, { once: true });
-            existing.addEventListener("error", reject, { once: true });
-            return;
-        }
-
-        const script = document.createElement("script");
-        script.src = "account-role-onboarding.js";
-        script.async = true;
-        script.dataset.studentAccountRole = "true";
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
-
-    return window.__studentAccountRoleLoading;
+    // الوحدة مدمجة داخل app.js؛ لا تنشئ طلب شبكة لملف غير موجود.
+    return window.StudentAccountRoleOnboarding
+        ? Promise.resolve()
+        : Promise.reject(new Error("وحدة اختيار نوع الحساب غير جاهزة"));
 }
 
 
@@ -3776,24 +3749,11 @@ document.addEventListener(
 
     async function openTeacherPortal() {
         try {
-            if (!window.StudentTeachersEducation) {
-                await new Promise((resolve, reject) => {
-                    const old = document.querySelector('script[data-student-teachers="true"]');
-                    if (old) {
-                        old.addEventListener("load", resolve, { once: true });
-                        old.addEventListener("error", reject, { once: true });
-                        return;
-                    }
-                    const script = document.createElement("script");
-                    script.src = "teachers-education.js";
-                    script.async = true;
-                    script.dataset.studentTeachers = "true";
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
+            // StudentTeachersEducation مدمج داخل education-admin.js المحمّل مسبقًا.
+            if (!window.StudentTeachersEducation?.openTeacherPortal) {
+                throw new Error("واجهة المدرسين غير جاهزة");
             }
-            window.StudentTeachersEducation?.openTeacherPortal?.();
+            window.StudentTeachersEducation.openTeacherPortal();
         } catch (error) {
             console.error("Teacher portal loading failed:", error);
         }
