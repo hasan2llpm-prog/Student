@@ -157,37 +157,39 @@
             justify-content: center;
         }
 
-        .student-admin-overlay {
+        .student-admin-page {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.45);
             z-index: 99991;
             display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 15px;
+            flex-direction: column;
+            background: #fff;
+            direction: rtl;
+            overflow: hidden;
         }
 
-        .student-admin-overlay.show {
+        .student-admin-page.show {
             display: flex;
         }
 
         .student-admin-panel {
             width: 100%;
-            max-width: 650px;
-            max-height: 90vh;
-            overflow-y: auto;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
             background: #fff;
-            border-radius: 22px;
+            border-radius: 0;
             direction: rtl;
-            box-shadow: 0 15px 50px rgba(0,0,0,.2);
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
         }
 
         .student-admin-header {
-            position: sticky;
-            top: 0;
+            flex: 0 0 auto;
             background: #fff;
-            padding: 18px;
+            min-height: 68px;
+            padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
             border-bottom: 1px solid #eee;
             display: flex;
             align-items: center;
@@ -219,7 +221,20 @@
         }
 
         .student-admin-content {
-            padding: 15px;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px 15px calc(24px + env(safe-area-inset-bottom));
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        body.student-admin-page-open {
+            overflow: hidden !important;
         }
 
         .student-admin-status {
@@ -435,7 +450,7 @@
         document.createElement("div");
 
     overlay.className =
-        "student-admin-overlay";
+        "student-admin-page";
 
     overlay.innerHTML = `
         <div class="student-admin-panel">
@@ -455,8 +470,10 @@
                 <button
                     class="student-admin-close"
                     id="student-admin-close"
+                    type="button"
+                    aria-label="رجوع"
                 >
-                    <i class="fa-solid fa-xmark"></i>
+                    <i class="fa-solid fa-arrow-right"></i>
                 </button>
 
             </div>
@@ -1019,6 +1036,7 @@
     async function openAdminPanel() {
 
         overlay.classList.add("show");
+        document.body.classList.add("student-admin-page-open");
 
         await loadFeatures();
     }
@@ -1031,7 +1049,10 @@
     function closeAdminPanel() {
 
         overlay.classList.remove("show");
+        document.body.classList.remove("student-admin-page-open");
     }
+
+    window.closeStudentAdminPanel = closeAdminPanel;
 
 
     adminButton.addEventListener(
@@ -1046,17 +1067,6 @@
     );
 
 
-    overlay.addEventListener(
-        "click",
-        function (event) {
-
-            if (
-                event.target === overlay
-            ) {
-                closeAdminPanel();
-            }
-        }
-    );
 
 
     /* =====================================================
