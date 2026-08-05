@@ -261,10 +261,29 @@
     }
 
     function loadTeachersEducation() {
-        // الوحدة موجودة داخل هذا الملف نفسه؛ منع إعادة تحميل education-admin.js.
-        return window.StudentTeachersEducation
-            ? Promise.resolve()
-            : Promise.reject(new Error("واجهة المدرسين غير جاهزة"));
+        return new Promise(function (resolve, reject) {
+            if (window.StudentTeachersEducation) return resolve();
+
+            const existing = document.querySelector(
+                'script[data-student-teachers-education="true"]'
+            );
+
+            if (existing) {
+                existing.addEventListener("load", resolve, { once: true });
+                existing.addEventListener("error", reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "education-admin.js?v=1.0.0";
+            script.async = true;
+            script.dataset.studentTeachersEducation = "true";
+            script.onload = resolve;
+            script.onerror = function () {
+                reject(new Error("تعذر تحميل teachers-education.js"));
+            };
+            document.body.appendChild(script);
+        });
     }
 
     function renderSubjects(title, subjects, context) {
@@ -941,7 +960,7 @@
         const style = document.createElement("style");
         style.id = "student-teachers-education-style";
         style.textContent = `
-            .ste-overlay{position:fixed;inset:0;background:#fff;z-index:10040;display:none;direction:rtl}
+            .ste-overlay{position:fixed;inset:0;background:#fff;z-index:100120;display:none;direction:rtl}
             .ste-overlay.show{display:block}
             .ste-panel{width:100%;height:100%;max-height:none;background:#fff;border-radius:0;overflow:hidden;box-shadow:none;direction:rtl;display:flex;flex-direction:column}
             .ste-head{display:flex;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid #eef0f4;background:#fff;position:sticky;top:0;z-index:2}
@@ -960,7 +979,7 @@
             .ste-empty{text-align:center;padding:32px 14px;color:#6b7280}.ste-status{padding:10px 12px;border-radius:12px;background:#eff6ff;color:#1d4ed8;margin-bottom:12px;font-size:13px;line-height:1.6}
             .ste-badge{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2ff;color:#4338ca;margin-top:5px}
             .ste-material{display:block;text-decoration:none;color:inherit}.ste-material:hover{border-color:#bfdbfe}
-            .ste-confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10060;display:flex;align-items:center;justify-content:center;padding:18px;direction:rtl}
+            .ste-confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100140;display:flex;align-items:center;justify-content:center;padding:18px;direction:rtl}
             .ste-confirm-box{background:#fff;width:min(420px,100%);border-radius:18px;padding:18px;box-shadow:0 20px 55px rgba(0,0,0,.25)}
 
         `;
@@ -2173,10 +2192,34 @@
     ===================================================== */
 
     function loadEducationManagement() {
-        // إدارة التعليم مدمجة داخل education-admin.js؛ لا تعِد تحميل الملف.
-        return window.StudentEducationManagement
-            ? Promise.resolve()
-            : Promise.reject(new Error("واجهة إدارة التعليم غير جاهزة"));
+        return new Promise(function (resolve, reject) {
+
+            if (window.StudentEducationManagement) {
+                resolve();
+                return;
+            }
+
+            const existing = document.querySelector(
+                'script[data-student-education-management="true"]'
+            );
+
+            if (existing) {
+                existing.addEventListener("load", resolve, { once: true });
+                existing.addEventListener("error", reject, { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = "education-admin.js?v=1.0.0";
+            script.async = true;
+            script.dataset.studentEducationManagement = "true";
+            script.onload = resolve;
+            script.onerror = function () {
+                reject(new Error("تعذر تحميل education-management.js"));
+            };
+
+            document.body.appendChild(script);
+        });
     }
 
     async function openEducationManagement() {
@@ -2222,10 +2265,9 @@
     ===================================================== */
 
     function loadTeachersEducation() {
-        // الوحدة موجودة داخل هذا الملف نفسه؛ منع إعادة تحميل education-admin.js.
         return window.StudentTeachersEducation
             ? Promise.resolve()
-            : Promise.reject(new Error("واجهة المدرسين غير جاهزة"));
+            : Promise.reject(new Error("واجهة طلبات المدرسين غير جاهزة"));
     }
 
     async function openTeachersManagement() {
@@ -2242,8 +2284,14 @@
                 throw new Error("ملف إدارة المدرسين غير صالح");
             }
 
+            overlay.classList.remove("show");
+            document.body.classList.remove("student-admin-page-open");
+
             await window.StudentTeachersEducation.openAdmin(client, {
-                onClose: function () { overlay.classList.add("show"); }
+                onClose: function () {
+                    overlay.classList.add("show");
+                    document.body.classList.add("student-admin-page-open");
+                }
             });
 
         } catch (error) {
