@@ -48,7 +48,9 @@
             ["#student-reel-publisher.show, #student-reel-publisher.active", "closeStudentReelPublisher"],
             ["#student-story-form-modal.show, #student-story-form-modal.active", "closeStoryForm"],
             ["#studentStoryViewer.show, #studentStoryViewer.active", "closeStoryViewer"],
-            ["#student-admin-page.show", "closeStudentAdminPanel"],
+            ["#student-ads-admin-page.show", "closeStudentAdsAdmin"],
+            ["#student-teachers-education-overlay.show", "closeStudentTeachersEducation"],
+            [".student-admin-overlay.show", "closeStudentAdminPanel"],
             ["#student-store-overlay.show, #student-store-overlay.active", "closeStudentStore"],
             ["#student-reels-overlay.show, #student-reels-overlay.active", "closeStudentReels"],
             ["#student-education-overlay.show, #student-education-overlay.active", "closeEducationPanel"],
@@ -64,7 +66,7 @@
         }
 
         const generic = [...document.querySelectorAll(
-            ".student-internal-page,.student-fullscreen-page,.student-page-overlay.show,.student-page-overlay.active,.student-overlay.show,.student-overlay.active,.student-modal.show,.student-modal.active"
+            ".student-internal-page,.student-fullscreen-page.show,.student-page-overlay.show,.student-page-overlay.active,.student-overlay.show,.student-overlay.active,.student-modal.show,.student-modal.active"
         )].filter(visible).pop();
         if (generic) return hide(generic);
 
@@ -158,8 +160,9 @@
     function onPopState(event) {
         event.stopImmediatePropagation();
         event.stopPropagation();
-        back();
+        const handled = back();
         try { history.pushState({ [GUARD_KEY]: "guard" }, "", location.href); } catch (_) {}
+        return handled;
     }
 
     /* capture phase runs before old bubble listeners still present in feature files */
