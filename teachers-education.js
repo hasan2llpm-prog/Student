@@ -11,6 +11,7 @@
 
     let client = null;
     let currentContext = null;
+    let closeCallback = null;
 
     function db(passedClient) {
         if (passedClient) client = passedClient;
@@ -34,13 +35,13 @@
         const style = document.createElement("style");
         style.id = "student-teachers-education-style";
         style.textContent = `
-            .ste-overlay{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:10040;display:none;align-items:flex-end;justify-content:center}
-            .ste-overlay.show{display:flex}
-            .ste-panel{width:min(720px,100%);max-height:92vh;background:#fff;border-radius:24px 24px 0 0;overflow:hidden;box-shadow:0 -18px 50px rgba(0,0,0,.18);direction:rtl}
+            .ste-overlay{position:fixed;inset:0;background:#fff;z-index:10040;display:none;direction:rtl}
+            .ste-overlay.show{display:block}
+            .ste-panel{width:100%;height:100%;max-height:none;background:#fff;border-radius:0;overflow:hidden;box-shadow:none;direction:rtl;display:flex;flex-direction:column}
             .ste-head{display:flex;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid #eef0f4;background:#fff;position:sticky;top:0;z-index:2}
             .ste-title{font-weight:800;font-size:17px;flex:1;color:#111827}
             .ste-close,.ste-back{border:1px solid #e5e7eb;background:#fff;border-radius:11px;width:39px;height:39px;cursor:pointer;font-size:18px}
-            .ste-body{padding:14px;overflow:auto;max-height:calc(92vh - 70px);background:#f8fafc}
+            .ste-body{padding:14px;overflow:auto;max-height:none;flex:1;background:#f8fafc;-webkit-overflow-scrolling:touch}
             .ste-card{background:#fff;border:1px solid #e7eaf0;border-radius:16px;padding:14px;margin-bottom:10px}
             .ste-row{display:flex;align-items:center;gap:10px}
             .ste-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#eef2ff;display:grid;place-items:center;font-size:22px;flex:0 0 auto}
@@ -55,7 +56,7 @@
             .ste-material{display:block;text-decoration:none;color:inherit}.ste-material:hover{border-color:#bfdbfe}
             .ste-confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10060;display:flex;align-items:center;justify-content:center;padding:18px;direction:rtl}
             .ste-confirm-box{background:#fff;width:min(420px,100%);border-radius:18px;padding:18px;box-shadow:0 20px 55px rgba(0,0,0,.25)}
-            @media(min-width:760px){.ste-overlay{align-items:center}.ste-panel{border-radius:24px;max-height:88vh}.ste-body{max-height:calc(88vh - 70px)}}
+
         `;
         document.head.appendChild(style);
     }
@@ -66,7 +67,7 @@
         if (overlay) return overlay;
         overlay = document.createElement("div");
         overlay.id = "student-teachers-education-overlay";
-        overlay.className = "ste-overlay";
+        overlay.className = "ste-overlay student-fullscreen-page";
         overlay.innerHTML = `
             <section class="ste-panel" role="dialog" aria-modal="true">
                 <header class="ste-head">
@@ -78,7 +79,7 @@
             </section>`;
         document.body.appendChild(overlay);
         overlay.querySelector("#ste-close").addEventListener("click", close);
-        overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
+
         return overlay;
     }
 
@@ -96,7 +97,13 @@
     function close() {
         const overlay = document.getElementById("student-teachers-education-overlay");
         if (overlay) overlay.classList.remove("show");
+        const callback = closeCallback;
+        closeCallback = null;
+        try { callback?.(); } catch (_) {}
+        return true;
     }
+
+    window.closeStudentTeachersEducation = close;
 
     function loading(title) {
         openPanel(title, `<div class="ste-empty">جارٍ التحميل...</div>`);
@@ -308,7 +315,9 @@
         } catch (error) { showError("مساحة المدرس", error); }
     }
 
-    async function openAdmin(passedClient) {
+    async function openAdmin(passedClient, options = {}) {
+        closeCallback = typeof options.onClose === "function" ? options.onClose : null;
+        try { history.pushState({ studentPage: "teachers-admin" }, "", location.href); } catch (_) {}
         db(passedClient);
         loading("طلبات المدرسين");
         try {
