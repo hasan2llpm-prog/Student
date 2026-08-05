@@ -1975,7 +1975,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education.js?v=2.2.0";
+        script.src = "education-admin.js?v=1.0.0";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2275,26 +2275,6 @@ function openBottomSection(section) {
         return;
     }
 
-    if (section === "reels") {
-        if (typeof window.openStudentReels === "function") {
-            window.openStudentReels(0);
-            return;
-        }
-
-        loadExternalScript(
-            "reels.js?v=2.2.0",
-            "student-reels",
-            "Student Reels"
-        );
-
-        setTimeout(function () {
-            if (typeof window.openStudentReels === "function") {
-                window.openStudentReels(0);
-            }
-        }, 250);
-        return;
-    }
-
     if (section === "store") {
         openStudentStoreSection();
         return;
@@ -2306,40 +2286,8 @@ function openBottomSection(section) {
             return;
         }
     }
-
     if (section === "messages") {
-        if (typeof window.openStudentMessages === "function") {
-            window.openStudentMessages();
-            return;
-        }
-
-        const existingMessagesScript = document.querySelector(
-            'script[data-student-messages="true"]'
-        );
-
-        if (existingMessagesScript) {
-            existingMessagesScript.addEventListener(
-                "load",
-                function () {
-                    window.openStudentMessages?.();
-                },
-                { once: true }
-            );
-            return;
-        }
-
-        const messagesScript = document.createElement("script");
-        messagesScript.src = "messages.js?v=1.0.2";
-        messagesScript.async = true;
-        messagesScript.charset = "utf-8";
-        messagesScript.setAttribute("data-student-messages", "true");
-        messagesScript.onload = function () {
-            window.openStudentMessages?.();
-        };
-        messagesScript.onerror = function () {
-            console.error("تعذر تحميل messages.js");
-        };
-        document.body.appendChild(messagesScript);
+        window.openStudentMessages?.();
         return;
     }
 
@@ -2473,62 +2421,35 @@ function bindInterfaceButtons() {
    تحميل ملف خارجي
 ========================================================= */
 
-function loadExternalScript(
-    src,
-    dataAttribute,
-    label
-) {
-
-    if (
-        document.querySelector(
-            `script[data-${dataAttribute}="true"]`
-        )
-    ) {
-        return;
+function loadExternalScript(src, dataAttribute, label) {
+    window.__studentScriptPromises = window.__studentScriptPromises || new Map();
+    const key = String(src).split("?")[0];
+    if (window.__studentScriptPromises.has(key)) {
+        return window.__studentScriptPromises.get(key);
     }
-
-
-    const script =
-        document.createElement(
-            "script"
-        );
-
-
-    script.src =
-        src;
-
-
-    script.async =
-        true;
-
-
-    script.setAttribute(
-        `data-${dataAttribute}`,
-        "true"
-    );
-
-
-    script.onload =
-        function() {
-
-            console.log(
-                `${label} loaded.`
-            );
-        };
-
-
-    script.onerror =
-        function() {
-
-            console.error(
-                `تعذر تحميل ${src}`
-            );
-        };
-
-
-    document.body.appendChild(
-        script
-    );
+    const existing = document.querySelector(`script[data-${dataAttribute}="true"]`);
+    if (existing?.dataset.loaded === "true") return Promise.resolve(existing);
+    const promise = new Promise(function(resolve, reject) {
+        const script = existing || document.createElement("script");
+        if (!existing) {
+            script.src = src;
+            script.async = true;
+            script.setAttribute(`data-${dataAttribute}`, "true");
+            document.body.appendChild(script);
+        }
+        script.addEventListener("load", function() {
+            script.dataset.loaded = "true";
+            console.log(`${label} loaded.`);
+            resolve(script);
+        }, { once: true });
+        script.addEventListener("error", function() {
+            window.__studentScriptPromises.delete(key);
+            console.error(`تعذر تحميل ${src}`);
+            reject(new Error(`تعذر تحميل ${src}`));
+        }, { once: true });
+    });
+    window.__studentScriptPromises.set(key, promise);
+    return promise;
 }
 
 
@@ -2536,20 +2457,14 @@ function loadExternalScript(
    تحميل لوحة المشرف
 ========================================================= */
 
-function loadNavigationManager() {
-
-    loadExternalScript(
-        "navigation-manager.js?v=2.2.0",
-        "student-navigation-manager",
-        "Student Navigation Manager"
-    );
+function loadNavigationManager() { return Promise.resolve(window.StudentNavigation);
 }
 
 
 function loadAdminSystem() {
 
     loadExternalScript(
-        "admin.js",
+        "education-admin.js?v=1.0.0",
         "student-admin",
         "Student Admin"
     );
@@ -2560,13 +2475,7 @@ function loadAdminSystem() {
    تحميل القائمة
 ========================================================= */
 
-function loadMenuSystem() {
-
-    loadExternalScript(
-        "menu.js?v=2.2.0",
-        "student-menu",
-        "Student Menu"
-    );
+function loadMenuSystem() { return loadSettingsSystem();
 }
 
 
@@ -2588,13 +2497,7 @@ function loadSettingsSystem() {
    تحميل المنشورات
 ========================================================= */
 
-function loadPostsSystem() {
-
-    loadExternalScript(
-        "posts.js",
-        "student-posts",
-        "Student Posts"
-    );
+function loadPostsSystem() { return Promise.resolve();
 }
 
 
@@ -2602,13 +2505,7 @@ function loadPostsSystem() {
    تحميل البحث
 ========================================================= */
 
-function loadSearchSystem() {
-
-    loadExternalScript(
-        "search.js",
-        "student-search",
-        "Student Search"
-    );
+function loadSearchSystem() { return Promise.resolve(window.openStudentSearch);
 }
 
 
@@ -2616,13 +2513,7 @@ function loadSearchSystem() {
    تحميل Feed
 ========================================================= */
 
-function loadFeedSystem() {
-
-    loadExternalScript(
-        "feed.js",
-        "student-feed",
-        "Student Feed"
-    );
+function loadFeedSystem() { return Promise.resolve(window.loadStudentFeed);
 }
 
 
@@ -2846,8 +2737,6 @@ document.addEventListener(
 
         loadAdminSystem();
 
-        loadMenuSystem();
-
         loadSettingsSystem();
 
         loadSearchSystem();
@@ -3005,4 +2894,1017 @@ document.addEventListener(
     } else {
         waitForClient();
     }
+})();
+
+
+/* ===== MERGED MODULE: navigation-manager.js ===== */
+/* =========================================================
+   Student — Clean Central Navigation
+   one back controller; no old profile/feed observers or timers
+========================================================= */
+(function () {
+    "use strict";
+
+    if (window.StudentNavigation?.version === "clean-2") return;
+
+    const pageStack = [];
+    let exitDialog = null;
+    let handlingBack = false;
+    const GUARD_KEY = "studentBackGuard";
+
+    const visible = (el) => {
+        if (!el || !el.isConnected) return false;
+        const style = getComputedStyle(el);
+        return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+    };
+
+    const hide = (el) => {
+        if (!el) return false;
+        el.classList.remove("active", "show", "open", "is-open", "visible");
+        if (el.hasAttribute("aria-hidden")) el.setAttribute("aria-hidden", "true");
+        if (visible(el)) el.style.display = "none";
+        return true;
+    };
+
+    function safeCall(name, ...args) {
+        const fn = window[name];
+        if (typeof fn !== "function") return false;
+        try {
+            const result = fn(...args);
+            return result !== false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function closeTopLayer() {
+        /* deepest/temporary layers first */
+        const directClosers = [
+            ["#studentStoryDeleteConfirm.active", null],
+            ["#studentStoryViewersModal.active", null],
+            ["#student-reel-comments.show, #student-reel-comments.active", null],
+            [".student-store-modal.show, .student-store-modal.active", null],
+            ["#student-reel-publisher.show, #student-reel-publisher.active", "closeStudentReelPublisher"],
+            ["#student-story-form-modal.show, #student-story-form-modal.active", "closeStoryForm"],
+            ["#studentStoryViewer.show, #studentStoryViewer.active", "closeStoryViewer"],
+            ["#student-ads-admin-page.show", "closeStudentAdsAdmin"],
+            ["#student-teachers-education-overlay.show", "closeStudentTeachersEducation"],
+            [".student-admin-overlay.show", "closeStudentAdminPanel"],
+            ["#student-store-overlay.show, #student-store-overlay.active", "closeStudentStore"],
+            ["#student-education-overlay.show, #student-education-overlay.active", "closeEducationPanel"],
+            ["#floating-panel.show", "closeFloatingPanel"],
+            ["#student-main-menu.is-open", "closeStudentMenu"]
+        ];
+
+        for (const [selector, fnName] of directClosers) {
+            const el = document.querySelector(selector);
+            if (!el || !visible(el)) continue;
+            if (fnName && safeCall(fnName)) return true;
+            return hide(el);
+        }
+
+        const generic = [...document.querySelectorAll(
+            ".student-internal-page,.student-fullscreen-page.show,.student-page-overlay.show,.student-page-overlay.active,.student-overlay.show,.student-overlay.active,.student-modal.show,.student-modal.active"
+        )].filter(visible).pop();
+        if (generic) return hide(generic);
+
+        return false;
+    }
+
+    function openPage({ id = "page", title = "", html = "", onClose = null } = {}) {
+        const current = pageStack.at(-1);
+        if (current?.element) current.element.hidden = true;
+
+        const page = document.createElement("section");
+        page.className = "student-internal-page";
+        page.dataset.studentNavPage = id;
+        page.innerHTML = `
+            <header class="student-internal-header">
+                <button class="student-internal-back" type="button" aria-label="رجوع">
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <div class="student-internal-title"></div>
+            </header>
+            <div class="student-internal-body"></div>`;
+        page.querySelector(".student-internal-title").textContent = title;
+        page.querySelector(".student-internal-body").innerHTML = html;
+        page.querySelector(".student-internal-back").addEventListener("click", () => back());
+        document.body.appendChild(page);
+        pageStack.push({ id, element: page, onClose });
+        return page;
+    }
+
+    function closePage() {
+        const entry = pageStack.pop();
+        if (!entry) return false;
+        entry.element?.remove();
+        try { entry.onClose?.(); } catch (_) {}
+        const previous = pageStack.at(-1);
+        if (previous?.element) previous.element.hidden = false;
+        return true;
+    }
+
+    function back() {
+        if (handlingBack) return true;
+        handlingBack = true;
+        try {
+            if (exitDialog) {
+                exitDialog.remove();
+                exitDialog = null;
+                return true;
+            }
+            if (closePage()) return true;
+            if (closeTopLayer()) return true;
+            showExitConfirm();
+            return false;
+        } finally {
+            setTimeout(() => { handlingBack = false; }, 0);
+        }
+    }
+
+    function showExitConfirm() {
+        if (exitDialog) return;
+        exitDialog = document.createElement("div");
+        exitDialog.className = "student-exit-confirm";
+        exitDialog.innerHTML = `
+            <div class="student-exit-card" role="dialog" aria-modal="true">
+                <h3>الخروج من التطبيق</h3>
+                <p style="margin-top:8px;color:#6f7782">هل تريد مغادرة التطبيق؟</p>
+                <div style="display:flex;gap:10px;margin-top:18px">
+                    <button type="button" data-cancel style="flex:1;padding:12px;border:0;border-radius:12px">إلغاء</button>
+                    <button type="button" data-exit style="flex:1;padding:12px;border:0;border-radius:12px;background:#d93025;color:#fff">خروج</button>
+                </div>
+            </div>`;
+        document.body.appendChild(exitDialog);
+        exitDialog.querySelector("[data-cancel]").onclick = () => {
+            exitDialog.remove();
+            exitDialog = null;
+        };
+        exitDialog.querySelector("[data-exit]").onclick = () => {
+            exitDialog.remove();
+            exitDialog = null;
+            try { window.close(); } catch (_) {}
+        };
+    }
+
+    /* One permanent browser-history guard. No feature is allowed to own exit logic. */
+    function installHistoryGuard() {
+        try {
+            history.replaceState({ ...(history.state || {}), [GUARD_KEY]: "root" }, "", location.href);
+            history.pushState({ [GUARD_KEY]: "guard" }, "", location.href);
+        } catch (_) {}
+    }
+
+    function onPopState(event) {
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        const handled = back();
+        try { history.pushState({ [GUARD_KEY]: "guard" }, "", location.href); } catch (_) {}
+        return handled;
+    }
+
+    /* capture phase runs before old bubble listeners still present in feature files */
+    window.addEventListener("popstate", onPopState, true);
+    document.addEventListener("backbutton", (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        back();
+    }, true);
+
+    /* X/back buttons use this controller instead of history.back(). */
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest(
+            ".student-internal-back,.student-page-back,[data-student-back]," +
+            ".student-reel-close,.student-reel-publisher-close,.student-store-close," +
+            ".student-menu-close,.student-menu-back,.panel-close,.close-panel"
+        );
+        if (!button) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        back();
+    }, true);
+
+    installHistoryGuard();
+
+    window.StudentHandleAndroidBack = back;
+    window.StudentNavigation = {
+        version: "clean-2",
+        openPage,
+        back,
+        closePage,
+        closeTopLayer,
+        showExitConfirm
+    };
+})();
+
+
+/* ===== MERGED MODULE: notifications.js ===== */
+/* =========================================================
+   Student - Notifications
+   In-app realtime + Web Push subscription + admin broadcast
+========================================================= */
+(function () {
+    "use strict";
+
+    if (window.StudentNotifications) return;
+
+    const VAPID_PUBLIC_KEY = "BDzANVHrkwSN1O6cIyREd5yYgjo7pxiGiizwdOGw2nHIxciXm5Fs5jxmCGh9NjOMX3Xo0t2sd949fLrRfJwTCQI";
+    const SW_URL = "./sw.js?v=1.0.1";
+
+    const state = {
+        user: null,
+        isAdmin: false,
+        items: [],
+        channel: null,
+        overlay: null,
+        loading: false,
+        initializedFor: null
+    };
+
+    function sb() {
+        return typeof supabaseClient !== "undefined" ? supabaseClient : null;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function ensureStyles() {
+        if (document.getElementById("student-notifications-style")) return;
+        const style = document.createElement("style");
+        style.id = "student-notifications-style";
+        style.textContent = `
+            #student-notifications-page{position:fixed;inset:0;z-index:10050;background:#fff;display:none;overflow:auto;direction:rtl;color:#172033}
+            #student-notifications-page.is-open{display:block}
+            .sn-head{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #e9edf3;padding:14px 16px;display:flex;align-items:center;gap:12px}
+            .sn-back,.sn-action,.sn-btn{border:0;cursor:pointer;font:inherit}
+            .sn-back{width:42px;height:42px;border-radius:50%;background:#f1f4f8;font-size:21px}
+            .sn-title{font-size:19px;font-weight:800;flex:1;margin:0}
+            .sn-action{background:#087cff;color:#fff;border-radius:12px;padding:10px 13px;font-weight:700}
+            .sn-body{max-width:720px;margin:0 auto;padding:14px 14px 90px}
+            .sn-permission{border:1px solid #dce8ff;background:#f4f8ff;border-radius:16px;padding:14px;margin-bottom:14px}
+            .sn-permission strong{display:block;margin-bottom:5px}.sn-permission p{margin:0 0 12px;color:#566171;line-height:1.7}
+            .sn-btn{background:#087cff;color:#fff;border-radius:12px;padding:11px 15px;font-weight:750}.sn-btn.secondary{background:#eef2f7;color:#223047}.sn-btn.danger{background:#e93d4f}
+            .sn-list{display:grid;gap:10px}.sn-item{border:1px solid #e8ebf0;border-radius:16px;padding:13px;background:#fff;display:flex;gap:11px;align-items:flex-start}
+            .sn-item.unread{background:#f4f8ff;border-color:#cfe0ff}.sn-icon{width:42px;height:42px;border-radius:50%;background:#eef4ff;display:grid;place-items:center;flex:0 0 42px;font-size:19px}
+            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:800;margin-bottom:4px}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:12px;color:#8a94a3;margin-top:7px}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
+            .sn-empty{text-align:center;padding:60px 20px;color:#788393}.sn-empty .bell{font-size:48px;margin-bottom:12px}
+            .sn-modal{position:fixed;inset:0;z-index:10070;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}
+            .sn-sheet{width:min(620px,100%);background:#fff;border-radius:22px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
+            .sn-field{margin-bottom:12px}.sn-field label{display:block;font-weight:700;margin-bottom:6px}.sn-field input,.sn-field textarea,.sn-field select{width:100%;border:1px solid #dbe1ea;border-radius:12px;padding:12px;font:inherit;outline:none}.sn-field textarea{min-height:110px;resize:vertical}
+            .sn-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:15px}.sn-toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:10100;background:#172033;color:#fff;border-radius:12px;padding:11px 16px;max-width:88%;text-align:center}
+            .sn-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function toast(message) {
+        document.querySelector(".sn-toast")?.remove();
+        const el = document.createElement("div");
+        el.className = "sn-toast";
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2800);
+    }
+
+    function ensurePage() {
+        ensureStyles();
+        let page = document.getElementById("student-notifications-page");
+        if (page) return page;
+        page = document.createElement("section");
+        page.id = "student-notifications-page";
+        page.innerHTML = `
+            <header class="sn-head">
+                <button class="sn-back" type="button" aria-label="رجوع">‹</button>
+                <h2 class="sn-title">الإشعارات</h2>
+                <button class="sn-action" id="sn-broadcast" type="button" hidden>نشر للجميع</button>
+            </header>
+            <main class="sn-body">
+                <div id="sn-permission-box"></div>
+                <div id="sn-list" class="sn-list"></div>
+            </main>`;
+        document.body.appendChild(page);
+        page.querySelector(".sn-back").addEventListener("click", close);
+        page.querySelector("#sn-broadcast").addEventListener("click", openBroadcast);
+        state.overlay = page;
+        return page;
+    }
+
+    async function getUser() {
+        const client = sb();
+        if (!client) return null;
+        const { data } = await client.auth.getUser();
+        return data?.user || null;
+    }
+
+    async function checkAdmin() {
+        const client = sb();
+        if (!client || !state.user) return false;
+        try {
+            const { data, error } = await client.rpc("current_user_is_admin");
+            if (!error) return data === true;
+        } catch (_) {}
+        try {
+            const { data } = await client.from("profiles").select("role").eq("id", state.user.id).maybeSingle();
+            return data?.role === "admin";
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function dateText(value) {
+        if (!value) return "";
+        try {
+            return new Intl.DateTimeFormat("ar-IQ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function renderPermission() {
+        const box = document.getElementById("sn-permission-box");
+        if (!box) return;
+        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+            box.innerHTML = `<div class="sn-permission"><strong>الإشعارات الخارجية غير مدعومة</strong><p>هذا المتصفح لا يدعم إشعارات الهاتف الخارجية.</p></div>`;
+            return;
+        }
+        if (Notification.permission === "granted") {
+            box.innerHTML = `<div class="sn-permission"><strong>إشعارات الهاتف مفعلة</strong><p>ستصلك التنبيهات الخارجية حسب إعدادات جهازك.</p></div>`;
+            return;
+        }
+        if (Notification.permission === "denied") {
+            box.innerHTML = `<div class="sn-permission"><strong>تم رفض الإذن</strong><p>افتح إعدادات الموقع في المتصفح واسمح بالإشعارات، ثم أعد فتح التطبيق.</p></div>`;
+            return;
+        }
+        box.innerHTML = `<div class="sn-permission"><strong>فعّل إشعارات الهاتف</strong><p>اسمح للتطبيق بإرسال الإشعارات إلى لوحة إشعارات جهازك حتى عند مغادرة الصفحة.</p><button class="sn-btn" id="sn-enable-push" type="button">تفعيل الإشعارات</button></div>`;
+        box.querySelector("#sn-enable-push")?.addEventListener("click", enablePush);
+    }
+
+    function render() {
+        const page = ensurePage();
+        page.querySelector("#sn-broadcast").hidden = !state.isAdmin;
+        renderPermission();
+        const list = page.querySelector("#sn-list");
+        if (state.loading) {
+            list.innerHTML = `<div class="sn-empty">جارٍ تحميل الإشعارات...</div>`;
+            return;
+        }
+        if (!state.items.length) {
+            list.innerHTML = `<div class="sn-empty"><div class="bell">🔔</div><div>لا توجد إشعارات حتى الآن.</div></div>`;
+            return;
+        }
+        list.innerHTML = state.items.map(item => {
+            const canManage = state.isAdmin && item.is_broadcast === true && item.kind === "admin_broadcast";
+            return `
+            <article class="sn-item ${item.is_read ? "" : "unread"}" data-id="${escapeHtml(item.id)}">
+                <div class="sn-icon">${escapeHtml(item.icon || "🔔")}</div>
+                <div class="sn-content">
+                    <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
+                    <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
+                    <div class="sn-meta">${escapeHtml(dateText(item.created_at))}</div>
+                    ${canManage ? `<div class="sn-item-admin"><button class="sn-mini" data-edit-broadcast type="button">تعديل</button><button class="sn-mini danger" data-delete-broadcast type="button">حذف</button></div>` : ""}
+                </div>
+            </article>`;
+        }).join("");
+        list.querySelectorAll(".sn-item").forEach(el => {
+            el.addEventListener("click", async event => {
+                if (event.target.closest("button")) return;
+                const item = state.items.find(x => String(x.id) === String(el.dataset.id));
+                if (!item) return;
+                if (!item.is_read) await markRead(item.id);
+                await openNotificationTarget(item);
+            });
+        });
+        list.querySelectorAll("[data-edit-broadcast]").forEach(btn => {
+            btn.addEventListener("click", () => openEditBroadcast(btn.closest(".sn-item").dataset.id));
+        });
+        list.querySelectorAll("[data-delete-broadcast]").forEach(btn => {
+            btn.addEventListener("click", () => confirmDeleteBroadcast(btn.closest(".sn-item").dataset.id));
+        });
+        updateBadge();
+    }
+
+    async function openNotificationTarget(item) {
+        const meta = item?.metadata || {};
+        const kind = String(item?.kind || item?.type || "");
+        const link = String(item?.link || "");
+
+        close();
+
+        if (kind.startsWith("story_") || link === "stories" || meta.story_id) {
+            if (typeof window.openStoriesSection === "function") {
+                window.openStoriesSection();
+                return;
+            }
+        }
+
+        if (kind.startsWith("store_") || link === "store" || meta.order_id) {
+            if (typeof window.openStudentStoreSection === "function") {
+                window.openStudentStoreSection();
+                return;
+            }
+        }
+
+        if (kind === "follow" || link === "profile") {
+            if (typeof window.openStudentProfile === "function") {
+                window.openStudentProfile(item.actor_id || meta.actor_id || null);
+                return;
+            }
+        }
+
+        if (link && /^(https?:\/\/|\.\/|\/)/i.test(link)) {
+            location.href = link;
+        }
+    }
+
+    async function load() {
+        const client = sb();
+        if (!client || !state.user) return;
+        state.loading = true;
+        render();
+        const { data, error } = await client
+            .from("notifications")
+            .select("id,title,body,icon,kind,link,is_read,created_at,actor_id,metadata,is_broadcast,audience,user_id")
+            .or(`user_id.eq.${state.user.id},and(user_id.is.null,is_broadcast.eq.true)`)
+            .order("created_at", { ascending: false })
+            .limit(150);
+        state.loading = false;
+        if (error) {
+            console.error("Notifications load error:", error);
+            state.items = [];
+            render();
+            toast("تعذر تحميل الإشعارات. شغّل كود SQL أولًا.");
+            return;
+        }
+        const rows = data || [];
+        const broadcastIds = rows.filter(x => x.is_broadcast === true).map(x => x.id);
+        let readBroadcasts = new Set();
+        if (broadcastIds.length) {
+            const { data: reads } = await client
+                .from("notification_reads")
+                .select("notification_id")
+                .eq("user_id", state.user.id)
+                .in("notification_id", broadcastIds);
+            readBroadcasts = new Set((reads || []).map(x => String(x.notification_id)));
+        }
+        state.items = rows.map(item => ({
+            ...item,
+            is_read: item.is_broadcast === true ? readBroadcasts.has(String(item.id)) : item.is_read === true
+        }));
+        render();
+        await markAllDelivered();
+    }
+
+    async function markRead(id) {
+        const client = sb();
+        if (!client || !id) return;
+        const item = state.items.find(x => String(x.id) === String(id));
+        if (!item) return;
+        item.is_read = true;
+        render();
+        if (item.is_broadcast === true) {
+            await client.from("notification_reads").upsert({
+                notification_id: id,
+                user_id: state.user.id,
+                read_at: new Date().toISOString()
+            }, { onConflict: "notification_id,user_id" });
+        } else {
+            await client.from("notifications")
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .eq("id", id)
+                .eq("user_id", state.user.id);
+        }
+    }
+
+    async function markAllRead() {
+        const client = sb();
+        if (!client || !state.user) return;
+        const unread = state.items.filter(x => !x.is_read);
+        if (!unread.length) return;
+        const personalIds = unread.filter(x => x.is_broadcast !== true).map(x => x.id);
+        const broadcastRows = unread.filter(x => x.is_broadcast === true).map(x => ({
+            notification_id: x.id,
+            user_id: state.user.id,
+            read_at: new Date().toISOString()
+        }));
+        state.items.forEach(x => { x.is_read = true; });
+        render();
+        if (personalIds.length) {
+            await client.from("notifications")
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .in("id", personalIds)
+                .eq("user_id", state.user.id);
+        }
+        if (broadcastRows.length) {
+            await client.from("notification_reads").upsert(broadcastRows, { onConflict: "notification_id,user_id" });
+        }
+    }
+
+    async function markAllDelivered() {
+        const client = sb();
+        if (!client || !state.user) return;
+        await client.from("notifications").update({ delivered_at: new Date().toISOString() }).eq("user_id", state.user.id).is("delivered_at", null);
+    }
+
+    function updateBadge() {
+        const unread = state.items.filter(x => !x.is_read).length;
+        const bells = document.querySelectorAll(".fa-bell");
+        bells.forEach(bell => {
+            const host = bell.parentElement || bell;
+            host.style.position = host.style.position || "relative";
+            host.querySelector(".sn-badge")?.remove();
+            if (unread > 0) {
+                const badge = document.createElement("span");
+                badge.className = "sn-badge";
+                badge.textContent = unread > 99 ? "99+" : String(unread);
+                host.appendChild(badge);
+            }
+        });
+    }
+
+    async function subscribeRealtime() {
+        const client = sb();
+        if (!client || !state.user) return;
+        if (state.channel) await client.removeChannel(state.channel);
+        state.channel = client.channel(`student-notifications-${state.user.id}`)
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, payload => {
+                const item = payload.new;
+                const belongs = item.user_id === state.user.id || item.is_broadcast === true || (state.isAdmin && item.audience === "admin");
+                if (!belongs) return;
+                state.items.unshift({ ...item, is_read: false });
+                render();
+                showForeground(item);
+            })
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, payload => {
+                const index = state.items.findIndex(x => String(x.id) === String(payload.new.id));
+                if (index < 0) return;
+                state.items[index] = { ...state.items[index], ...payload.new };
+                render();
+            })
+            .on("postgres_changes", { event: "DELETE", schema: "public", table: "notifications" }, payload => {
+                state.items = state.items.filter(x => String(x.id) !== String(payload.old.id));
+                render();
+            })
+            .subscribe();
+    }
+
+    async function showForeground(item) {
+        if (document.visibilityState === "visible") {
+            toast(item.title || "إشعار جديد");
+            return;
+        }
+        if (Notification.permission !== "granted") return;
+        const registration = await navigator.serviceWorker.ready;
+        registration.showNotification(item.title || "Student", {
+            body: item.body || "لديك إشعار جديد",
+            icon: "./apple-touch-icon.png",
+            badge: "./apple-touch-icon.png",
+            data: { url: item.link || "./index.html", notification_id: item.id }
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = atob(base64);
+        return Uint8Array.from([...rawData].map(ch => ch.charCodeAt(0)));
+    }
+
+    async function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) throw new Error("SERVICE_WORKER_UNSUPPORTED");
+        return navigator.serviceWorker.register(SW_URL, { scope: "./" });
+    }
+
+    async function enablePush() {
+        const client = sb();
+        if (!client || !state.user) return;
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                renderPermission();
+                return;
+            }
+            const registration = await registerServiceWorker();
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+                });
+            }
+            const json = subscription.toJSON();
+            const { error } = await client.from("push_subscriptions").upsert({
+                user_id: state.user.id,
+                endpoint: json.endpoint,
+                p256dh: json.keys?.p256dh || "",
+                auth: json.keys?.auth || "",
+                user_agent: navigator.userAgent,
+                is_active: true,
+                updated_at: new Date().toISOString()
+            }, { onConflict: "user_id,endpoint" });
+            if (error) throw error;
+            localStorage.setItem(`student-push-asked:${state.user.id}`, "yes");
+            renderPermission();
+            toast("تم تفعيل إشعارات الهاتف.");
+        } catch (error) {
+            console.error("Push enable error:", error);
+            toast("تعذر تفعيل الإشعارات الخارجية. تأكد من تشغيل SQL ورفع sw.js.");
+        }
+    }
+
+    function showFirstLoginPrompt() {
+        if (!state.user || !("Notification" in window)) return;
+
+        const permission = Notification.permission;
+        if (permission === "granted") return;
+
+        const key = `student-push-reminder:${state.user.id}`;
+        const lastShown = Number(localStorage.getItem(key) || 0);
+        const remindAfter = 24 * 60 * 60 * 1000;
+
+        if (Date.now() - lastShown < remindAfter) return;
+
+        setTimeout(() => {
+            if (document.querySelector(".sn-modal[data-push-reminder]")) return;
+
+            const modal = document.createElement("div");
+            modal.className = "sn-modal";
+            modal.dataset.pushReminder = "1";
+
+            if (permission === "denied") {
+                modal.innerHTML = `<div class="sn-sheet"><h3>الإشعارات متوقفة</h3><p style="line-height:1.8;color:#566171">سبق أن تم رفض إذن الإشعارات. افتح إعدادات هذا الموقع في Chrome، ثم غيّر الإشعارات إلى سماح، وبعدها أعد فتح التطبيق.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">حسنًا</button></div></div>`;
+            } else {
+                modal.innerHTML = `<div class="sn-sheet"><h3>تفعيل الإشعارات</h3><p style="line-height:1.8;color:#566171">فعّل الإشعارات لتصلك تنبيهات Student في لوحة إشعارات الهاتف.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">لاحقًا</button><button class="sn-btn" data-enable type="button">تفعيل الآن</button></div></div>`;
+            }
+
+            document.body.appendChild(modal);
+            localStorage.setItem(key, String(Date.now()));
+
+            modal.querySelector("[data-close]").onclick = () => modal.remove();
+            modal.querySelector("[data-enable]")?.addEventListener("click", async () => {
+                modal.remove();
+                await enablePush();
+            });
+        }, 1200);
+    }
+
+    function openEditBroadcast(id) {
+        const item = state.items.find(x => String(x.id) === String(id));
+        if (!state.isAdmin || !item) return;
+        const modal = document.createElement("div");
+        modal.className = "sn-modal";
+        modal.innerHTML = `<form class="sn-sheet"><h3>تعديل الإشعار</h3>
+            <div class="sn-field"><label>العنوان</label><input name="title" maxlength="100" required value="${escapeHtml(item.title || "")}"></div>
+            <div class="sn-field"><label>النص</label><textarea name="body" maxlength="500" required>${escapeHtml(item.body || "")}</textarea></div>
+            <div class="sn-field"><label>الرابط (اختياري)</label><input name="link" maxlength="300" value="${escapeHtml(item.link || "")}"></div>
+            <div class="sn-actions"><button class="sn-btn secondary" data-close type="button">إلغاء</button><button class="sn-btn" type="submit">حفظ</button></div></form>`;
+        document.body.appendChild(modal);
+        modal.querySelector("[data-close]").onclick = () => modal.remove();
+        modal.querySelector("form").onsubmit = async event => {
+            event.preventDefault();
+            const button = event.submitter;
+            button.disabled = true;
+            const form = new FormData(event.currentTarget);
+            const { error } = await sb().rpc("student_admin_update_broadcast", {
+                p_notification_id: id,
+                p_title: String(form.get("title") || "").trim(),
+                p_body: String(form.get("body") || "").trim(),
+                p_link: String(form.get("link") || "").trim() || null
+            });
+            if (error) {
+                button.disabled = false;
+                toast(`تعذر التعديل: ${error.message}`);
+                return;
+            }
+            modal.remove();
+            await load();
+            toast("تم تعديل الإشعار.");
+        };
+    }
+
+    function confirmDeleteBroadcast(id) {
+        if (!state.isAdmin) return;
+        const modal = document.createElement("div");
+        modal.className = "sn-modal";
+        modal.innerHTML = `<div class="sn-sheet"><h3>حذف الإشعار؟</h3><p style="line-height:1.8;color:#566171">سيُحذف هذا الإشعار من جميع الحسابات نهائيًا.</p><div class="sn-actions"><button class="sn-btn secondary" data-close type="button">إلغاء</button><button class="sn-btn danger" data-delete type="button">حذف</button></div></div>`;
+        document.body.appendChild(modal);
+        modal.querySelector("[data-close]").onclick = () => modal.remove();
+        modal.querySelector("[data-delete]").onclick = async event => {
+            event.currentTarget.disabled = true;
+            const { error } = await sb().rpc("student_admin_delete_broadcast", { p_notification_id: id });
+            if (error) {
+                event.currentTarget.disabled = false;
+                toast(`تعذر الحذف: ${error.message}`);
+                return;
+            }
+            modal.remove();
+            state.items = state.items.filter(x => String(x.id) !== String(id));
+            render();
+            toast("تم حذف الإشعار.");
+        };
+    }
+
+    function openBroadcast() {
+        if (!state.isAdmin) return;
+        const modal = document.createElement("div");
+        modal.className = "sn-modal";
+        modal.innerHTML = `<form class="sn-sheet" id="sn-broadcast-form"><h3>نشر إشعار للجميع</h3>
+            <div class="sn-field"><label>عنوان الإشعار</label><input name="title" maxlength="100" required></div>
+            <div class="sn-field"><label>نص الإشعار</label><textarea name="body" maxlength="500" required></textarea></div>
+            <div class="sn-field"><label>الرابط أو القسم (اختياري)</label><input name="link" maxlength="300" placeholder="مثال: ./index.html"></div>
+            <div class="sn-actions"><button class="sn-btn secondary" data-close type="button">إلغاء</button><button class="sn-btn" type="submit">نشر الآن</button></div></form>`;
+        document.body.appendChild(modal);
+        modal.querySelector("[data-close]").onclick = () => modal.remove();
+        modal.querySelector("form").onsubmit = async event => {
+            event.preventDefault();
+            const button = event.submitter;
+            button.disabled = true;
+            button.textContent = "جارٍ النشر...";
+            const form = new FormData(event.currentTarget);
+            const client = sb();
+            const title = String(form.get("title") || "").trim();
+            const body = String(form.get("body") || "").trim();
+            const link = String(form.get("link") || "").trim() || null;
+
+            let notificationId = null;
+
+            // مسار واحد ثابت: دالة V2 الآمنة في Supabase.
+            // لا نستخدم الإدخال المباشر لأنه يخضع لسياسات RLS وقد يفشل حتى للأدمن.
+            const rpcResult = await client.rpc("student_admin_broadcast_v2", {
+                p_title: title,
+                p_body: body,
+                p_link: link
+            });
+
+            if (rpcResult.error) {
+                console.error("Broadcast V2 RPC error:", rpcResult.error);
+                button.disabled = false;
+                button.textContent = "نشر الآن";
+                const details = [
+                    rpcResult.error.message,
+                    rpcResult.error.details,
+                    rpcResult.error.hint,
+                    rpcResult.error.code
+                ].filter(Boolean).join(" | ") || "خطأ غير معروف";
+                toast(`فشل النشر: ${details}`);
+                return;
+            }
+
+            notificationId = rpcResult.data || null;
+
+            // الإشعار الداخلي تم نشره. فشل Push الخارجي لا يلغي نجاح النشر الداخلي.
+            if (notificationId) {
+                try {
+                    const pushResult = await client.functions.invoke("send-push", {
+                        body: { notification_id: notificationId, broadcast: true }
+                    });
+                    if (pushResult?.error) console.warn("External push invoke failed:", pushResult.error);
+                } catch (error2) {
+                    console.warn("External push invoke failed:", error2);
+                }
+            }
+
+            modal.remove();
+            await load();
+            toast("تم نشر الإشعار للجميع داخل التطبيق.");
+        };
+    }
+
+    async function init() {
+        const client = sb();
+        if (!client) return;
+        const user = await getUser();
+        if (!user) return;
+        if (state.initializedFor === user.id) return;
+        state.initializedFor = user.id;
+        state.user = user;
+        state.isAdmin = await checkAdmin();
+        await registerServiceWorker().catch(() => null);
+        await load();
+        await subscribeRealtime();
+        showFirstLoginPrompt();
+    }
+
+    async function open() {
+        await init();
+        const page = ensurePage();
+        page.classList.add("is-open");
+        document.body.style.overflow = "hidden";
+        await load();
+        await markAllRead();
+    }
+
+    function close() {
+        const page = document.getElementById("student-notifications-page");
+        page?.classList.remove("is-open");
+        document.body.style.overflow = "";
+    }
+
+    window.StudentNotifications = { init, open, close, enablePush };
+    window.openNotifications = open;
+
+    const wait = setInterval(() => {
+        if (sb()) {
+            clearInterval(wait);
+            init().catch(console.error);
+        }
+    }, 500);
+    setTimeout(() => clearInterval(wait), 30000);
+})();
+
+
+/* ===== MERGED MODULE: account-role-onboarding.js ===== */
+/* =========================================================
+   Student - Account Role Onboarding
+   اختيار حساب طالب أو مدرس
+========================================================= */
+
+(function () {
+    "use strict";
+
+    if (window.StudentAccountRoleOnboarding) return;
+
+    const STORAGE_KEY = "student_pending_account_role";
+    const GUEST_DONE_KEY = "student_guest_role_selected";
+    let overlay = null;
+    let busy = false;
+
+    function escapeHTML(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function close() {
+        overlay?.remove();
+        overlay = null;
+        document.body.style.overflow = "";
+    }
+
+    function setMessage(message, type) {
+        const el = document.getElementById("student-role-message");
+        if (!el) return;
+        el.textContent = message || "";
+        el.style.color = type === "error" ? "#b42318" : "#18794e";
+    }
+
+    function setBusy(value) {
+        busy = value;
+        document.querySelectorAll("[data-student-role]").forEach((button) => {
+            button.disabled = value;
+            button.style.opacity = value ? "0.65" : "1";
+        });
+    }
+
+    async function isAdmin(client) {
+        if (!client) return false;
+        const { data, error } = await client.rpc("current_user_is_admin");
+        if (error) {
+            console.warn("Admin role check failed:", error);
+            return false;
+        }
+        return data === true;
+    }
+
+    async function openTeacherPortal() {
+        try {
+            if (!window.StudentTeachersEducation) {
+                await new Promise((resolve, reject) => {
+                    const old = document.querySelector('script[data-student-teachers="true"]');
+                    if (old) {
+                        old.addEventListener("load", resolve, { once: true });
+                        old.addEventListener("error", reject, { once: true });
+                        return;
+                    }
+                    const script = document.createElement("script");
+                    script.src = "teachers-education.js";
+                    script.async = true;
+                    script.dataset.studentTeachers = "true";
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+            window.StudentTeachersEducation?.openTeacherPortal?.();
+        } catch (error) {
+            console.error("Teacher portal loading failed:", error);
+        }
+    }
+
+    async function chooseRole(role, options) {
+        if (busy || !["student", "teacher"].includes(role)) return;
+
+        const { supabaseClient, user, onSelected } = options;
+
+        if (!user) {
+            localStorage.setItem(STORAGE_KEY, role);
+            localStorage.setItem(GUEST_DONE_KEY, "1");
+            close();
+            return;
+        }
+
+        setBusy(true);
+        setMessage("جارٍ حفظ اختيارك...", "success");
+
+        try {
+            const { data, error } = await supabaseClient.rpc(
+                "choose_account_role",
+                { selected_role: role }
+            );
+
+            if (error) throw error;
+
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.setItem(GUEST_DONE_KEY, "1");
+            await onSelected?.(data || null);
+            close();
+
+            if (role === "teacher") {
+                await openTeacherPortal();
+            }
+        } catch (error) {
+            console.error("Choose account role error:", error);
+            setMessage(error?.message || "تعذر حفظ نوع الحساب.", "error");
+            setBusy(false);
+        }
+    }
+
+    function render(options, pendingRole) {
+        close();
+        document.body.style.overflow = "hidden";
+
+        overlay = document.createElement("div");
+        overlay.id = "student-account-role-onboarding";
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-modal", "true");
+        overlay.style.cssText = `
+            position:fixed;inset:0;z-index:2147483000;background:rgba(8,18,35,.72);
+            display:flex;align-items:center;justify-content:center;padding:16px;direction:rtl;
+            font-family:Tahoma,Arial,sans-serif;box-sizing:border-box;
+        `;
+
+        overlay.innerHTML = `
+            <section style="width:100%;max-width:560px;max-height:94vh;overflow:auto;background:#fff;border-radius:24px;padding:22px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.3);">
+                <div style="text-align:center;margin-bottom:18px;">
+                    <div style="width:58px;height:58px;border-radius:18px;background:#eaf4ff;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px;">🎓</div>
+                    <h2 style="margin:0 0 8px;color:#14213d;font-size:23px;">اختر طريقة استخدام Student</h2>
+                    <p style="margin:0;color:#667085;line-height:1.75;font-size:14px;">يمكنك إكمال الاستخدام كطالب، أو اختيار حساب مدرس وإرسال طلب اعتماد.</p>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+                    <button type="button" data-student-role="student" style="text-align:right;border:2px solid ${pendingRole === "student" ? "#1877f2" : "#e4e7ec"};background:#fff;border-radius:18px;padding:17px;cursor:pointer;">
+                        <strong style="display:block;color:#101828;font-size:18px;margin-bottom:9px;">👨‍🎓 الاستمرار كطالب</strong>
+                        <span style="display:block;color:#475467;font-size:13px;line-height:1.8;">تصفح المراحل والمواد والمدرسين، والاستفادة من الملفات والشروحات المنشورة.</span>
+                        <span style="display:block;color:#b42318;font-size:12px;line-height:1.7;margin-top:8px;">لا يجوز نشر محتوى تعليمي أو الظهور باسم مدرس.</span>
+                    </button>
+
+                    <button type="button" data-student-role="teacher" style="text-align:right;border:2px solid ${pendingRole === "teacher" ? "#d92d20" : "#e4e7ec"};background:#fff;border-radius:18px;padding:17px;cursor:pointer;">
+                        <strong style="display:block;color:#101828;font-size:18px;margin-bottom:9px;">👨‍🏫 اختيار حساب مدرس</strong>
+                        <span style="display:block;color:#475467;font-size:13px;line-height:1.8;">إنشاء صفحة مدرس، اختيار التخصص والمواد، ورفع الشروحات بعد اعتماد الطلب.</span>
+                        <span style="display:block;color:#b42318;font-size:12px;line-height:1.7;margin-top:8px;">يلزم تقديم معلومات صحيحة والالتزام بجودة المحتوى وسياسات التطبيق.</span>
+                    </button>
+                </div>
+
+                <div style="margin-top:14px;padding:13px 14px;background:#fff4f2;border:1px solid #fecdca;border-radius:14px;color:#912018;font-size:13px;line-height:1.8;">
+                    🔴 يحصل المدرس المقبول على <strong>علامة توثيق حمراء مجانية</strong>. اختيار حساب مدرس لا يمنح التوثيق أو صلاحية النشر مباشرة؛ يبدأ ذلك بعد مراجعة الأدمن والموافقة.
+                </div>
+
+                <div id="student-role-message" style="min-height:22px;margin-top:10px;text-align:center;font-size:13px;"></div>
+            </section>
+        `;
+
+        document.body.appendChild(overlay);
+
+        overlay.querySelectorAll("[data-student-role]").forEach((button) => {
+            button.addEventListener("click", () => {
+                chooseRole(button.dataset.studentRole, options);
+            });
+        });
+    }
+
+    async function open(options = {}) {
+        const profile = options.profile || null;
+        const user = options.user || null;
+        const client = options.supabaseClient || window.supabaseClient || null;
+
+        if (user) {
+            if (profile?.account_type_selected === true) return;
+            if (await isAdmin(client)) return;
+        } else if (localStorage.getItem(GUEST_DONE_KEY) === "1") {
+            return;
+        }
+
+        const pendingRole = localStorage.getItem(STORAGE_KEY) || "";
+        render({ ...options, supabaseClient: client }, pendingRole);
+    }
+
+    window.StudentAccountRoleOnboarding = { open, close };
 })();
