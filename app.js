@@ -2986,6 +2986,7 @@ document.addEventListener(
                 exitDialog = null;
                 return true;
             }
+            if (window.StudentMessages?.handleBack?.()) return true;
             if (closePage()) return true;
             if (closeTopLayer()) return true;
             showExitConfirm();
