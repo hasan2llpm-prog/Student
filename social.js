@@ -6884,26 +6884,12 @@ window.openStudentSearch=open; window.closeStudentSearch=close;
 (function(){
 'use strict';
 if(window.StudentMessages) return;
-const S={user:null,page:null,view:'list',conversations:[],current:null,messages:[],members:[],profiles:{},channel:null,globalChannel:null,globalRefreshTimer:null,readTimer:null,typing:null,reply:null,editing:null,loading:false,historyOpen:false};
+const S={user:null,page:null,view:'list',conversations:[],current:null,messages:[],members:[],profiles:{},channel:null,typing:null,reply:null,editing:null,loading:false,historyOpen:false};
 const sb=()=>typeof supabaseClient!=='undefined'?supabaseClient:null;
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 const fmt=v=>{try{return new Intl.DateTimeFormat('ar-IQ',{dateStyle:'short',timeStyle:'short'}).format(new Date(v))}catch{return''}};
 function css(){if(document.getElementById('student-messages-style'))return;let s=document.createElement('style');s.id='student-messages-style';s.textContent=`
 #student-messages-page{position:fixed;inset:0;z-index:10040;background:#f7f9fc;display:none;direction:rtl;color:#172033}.sm-open{display:flex!important;flex-direction:column}.sm-head{height:64px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid #e7ebf1;flex:0 0 auto}.sm-back,.sm-icon,.sm-send,.sm-fab,.sm-mini{border:0;cursor:pointer;font:inherit}.sm-back,.sm-icon{width:42px;height:42px;border-radius:50%;background:#eef2f7;display:grid;place-items:center;font-size:20px}.sm-title{font-size:19px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-sub{font-size:12px;color:#7b8695}.sm-search{padding:12px 14px;background:#fff;border-bottom:1px solid #edf0f4}.sm-searchbox{display:flex;align-items:center;gap:9px;background:#f0f3f7;border-radius:14px;padding:0 12px}.sm-searchbox input{width:100%;border:0;background:transparent;outline:0;padding:12px 0;font:inherit}.sm-body{flex:1;overflow:auto;max-width:900px;width:100%;margin:0 auto}.sm-list{padding:10px}.sm-row{display:flex;gap:12px;align-items:center;background:#fff;padding:12px;border-radius:16px;margin-bottom:8px;border:1px solid #e8ecf2;cursor:pointer}.sm-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#e8eef7;display:grid;place-items:center;font-weight:800;flex:0 0 48px}.sm-main{min-width:0;flex:1}.sm-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-preview{font-size:13px;color:#737f8f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}.sm-time{font-size:11px;color:#919baa}.sm-count{min-width:21px;height:21px;border-radius:11px;background:#ef3340;color:#fff;font-size:11px;display:grid;place-items:center;padding:0 6px;margin-top:5px}.sm-fab{position:fixed;left:20px;bottom:86px;width:58px;height:58px;border-radius:50%;background:#087cff;color:#fff;font-size:25px;box-shadow:0 8px 24px rgba(8,124,255,.3)}.sm-empty{text-align:center;color:#788495;padding:70px 20px}.sm-chat{display:flex;flex-direction:column;height:100%}.sm-msgs{flex:1;overflow:auto;padding:16px 12px 100px;background:#eef3f8}.sm-day{text-align:center;font-size:12px;color:#7f8b99;margin:14px}.sm-msg{max-width:78%;margin:5px 0;padding:9px 11px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative}.sm-msg.mine{margin-right:auto;background:#dff0ff}.sm-msg.system{margin:10px auto;background:#dfe7ef;color:#526171;text-align:center;max-width:90%}.sm-author{font-size:12px;font-weight:800;color:#087cff;margin-bottom:4px}.sm-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.sm-reply{border-right:3px solid #087cff;background:rgba(8,124,255,.08);padding:6px 8px;border-radius:8px;margin-bottom:6px;font-size:12px}.sm-media{max-width:100%;max-height:320px;border-radius:12px;margin-top:6px}.sm-file{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.05);padding:9px;border-radius:10px;margin-top:6px}.sm-meta{font-size:10px;color:#8994a2;text-align:left;margin-top:4px}.sm-actions{display:none;position:absolute;top:-36px;left:0;background:#172033;color:#fff;border-radius:10px;padding:4px;gap:2px;z-index:2}.sm-msg:focus-within .sm-actions,.sm-msg:hover .sm-actions{display:flex}.sm-mini{background:transparent;color:inherit;padding:6px;border-radius:7px}.sm-compose{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dfe5ec;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:8px;z-index:2}.sm-compose textarea{flex:1;max-height:120px;min-height:44px;border:1px solid #dbe2ea;border-radius:18px;padding:11px 13px;font:inherit;resize:none;outline:0}.sm-send{width:46px;height:46px;border-radius:50%;background:#087cff;color:#fff;font-size:19px}.sm-replybar{position:fixed;bottom:63px;left:10px;right:10px;background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:8px 12px;display:none;z-index:3}.sm-replybar.show{display:flex}.sm-sheet{position:fixed;inset:0;background:rgba(8,17,30,.52);z-index:10080;display:flex;align-items:flex-end;justify-content:center;padding:12px}.sm-card{background:#fff;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:22px;padding:18px}.sm-card h3{margin:0 0 14px}.sm-field{margin-bottom:12px}.sm-field label{display:block;font-weight:700;margin-bottom:6px}.sm-field input,.sm-field textarea,.sm-field select{width:100%;border:1px solid #d9e0e8;border-radius:12px;padding:11px;font:inherit}.sm-actions-row{display:flex;gap:8px;justify-content:flex-end}.sm-btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;background:#087cff;color:#fff}.sm-btn.secondary{background:#eef2f6;color:#243247}.sm-btn.danger{background:#e83d50}.sm-user-results{display:grid;gap:8px;max-height:360px;overflow:auto}.sm-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
-/* Telegram-inspired dark interface */
-#student-messages-page{background:#0e1621;color:#f5f5f5}
-.sm-head,.sm-search,.sm-compose{background:#17212b;border-color:#0b1118}
-.sm-back,.sm-icon{background:#22303d;color:#f5f5f5}
-.sm-searchbox{background:#242f3d}.sm-searchbox input{color:#f5f5f5}.sm-searchbox input::placeholder{color:#7f91a4}
-.sm-row{background:#17212b;border-color:#202c38}.sm-row:active{background:#202b36}
-.sm-avatar{background:#2b5278;color:#fff}.sm-name,.sm-title{color:#f5f5f5}.sm-preview,.sm-time,.sm-sub{color:#7f91a4}
-.sm-msgs{background-color:#0e1621;background-image:radial-gradient(rgba(255,255,255,.025) 1px,transparent 1px);background-size:18px 18px}
-.sm-msg{background:#182533;color:#f5f5f5;box-shadow:0 1px 2px rgba(0,0,0,.25);border-bottom-left-radius:4px}
-.sm-msg.mine{background:#2b5278;border-bottom-left-radius:16px;border-bottom-right-radius:4px}
-.sm-msg.system{background:#243140;color:#aab7c4}.sm-author{color:#64a9e8}.sm-meta{color:#9eb0c2}
-.sm-compose textarea{background:#17212b;color:#f5f5f5;border-color:#2c3b49}.sm-compose textarea::placeholder{color:#7f91a4}
-.sm-send,.sm-fab,.sm-btn{background:#5288c1}.sm-replybar,.sm-card{background:#17212b;color:#f5f5f5;border-color:#2b3947}
-.sm-field input,.sm-field textarea,.sm-field select{background:#0e1621;color:#f5f5f5;border-color:#314152}.sm-btn.secondary{background:#263646;color:#f5f5f5}
 `;document.head.appendChild(s)}
 function page(){css();let p=document.getElementById('student-messages-page');if(p)return p;p=document.createElement('section');p.id='student-messages-page';document.body.appendChild(p);S.page=p;return p}
 function toast(t){let e=document.createElement('div');e.style='position:fixed;z-index:10100;left:50%;bottom:90px;transform:translateX(-50%);background:#172033;color:#fff;padding:11px 16px;border-radius:12px;max-width:88%';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
@@ -6911,7 +6897,18 @@ async function user(){let c=sb();if(!c)return null;let{data}=await c.auth.getUse
 async function init(){S.user=await user();if(!S.user){toast('\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0623\u0648\u0644\u064B\u0627');return false}return true}
 function avatar(p){return p?.avatar_url?`<img class="sm-avatar" src="${esc(p.avatar_url)}">`:`<div class="sm-avatar">${esc((p?.full_name||p?.username||'?').slice(0,1))}</div>`}
 async function open(){if(!await init())return;let p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){history.pushState({studentMessages:'list'},'',location.href);S.historyOpen=true}renderList();await loadConversations();subscribeGlobal()}
-function close(){if(S.view==='chat'){history.back();return}if(S.historyOpen){history.back();return}hidePage()}
+function handleBack(){
+    const p=document.getElementById('student-messages-page');
+    if(!p||!p.classList.contains('sm-open'))return false;
+    document.querySelectorAll('.sm-sheet').forEach(sheet=>sheet.remove());
+    if(S.view==='chat'){
+        showList();
+        return true
+    }
+    hidePage();
+    return true
+}
+function close(){handleBack()}
 function hidePage(){S.page?.classList.remove('sm-open');document.body.style.overflow='';unsubscribeChat();S.historyOpen=false;S.view='list';S.current=null}
 function showList(){S.view='list';S.current=null;S.messages=[];unsubscribeChat();renderList()}
 async function loadConversations(){let c=sb();S.loading=true;renderList();let{data,error}=await c.rpc('student_get_conversations');S.loading=false;if(error){console.error(error);S.conversations=[];renderList();toast(error.message||'\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0627\u062A');return}S.conversations=data||[];renderList();updateBadge()}
@@ -6975,95 +6972,18 @@ async function openChat(value){
     }
 }
 function canPost(){return S.current?.kind!=='channel'||S.current?.my_role==='owner'||S.current?.my_role==='admin'}
-function renderChat(){let p=page();let title=S.current?.title||'\u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629';p.innerHTML=`<div class="sm-chat"><header class="sm-head"><button class="sm-back">\u2039</button>${S.current?.avatar_url?`<img class="sm-avatar" src="${esc(S.current.avatar_url)}">`:`<div class="sm-avatar">${esc(title.slice(0,1))}</div>`}<div style="min-width:0;flex:1"><div class="sm-title">${esc(title)}</div><div class="sm-sub">${esc(S.current?.kind==='channel'?'\u0642\u0646\u0627\u0629':S.current?.kind==='group'?`${S.members.length} \u0623\u0639\u0636\u0627\u0621`:'\u0645\u062D\u0627\u062F\u062B\u0629 \u062E\u0627\u0635\u0629')}</div></div><button class="sm-icon" id="sm-info">\u22EE</button></header><div class="sm-msgs" id="sm-msgs"></div><div class="sm-replybar" id="sm-replybar"></div>${canPost()?`<div class="sm-compose"><button class="sm-icon" id="sm-attach">\uFF0B</button><textarea id="sm-input" placeholder="\u0627\u0643\u062A\u0628 \u0631\u0633\u0627\u0644\u0629..."></textarea><button class="sm-send" id="sm-send">\u27A4</button><input type="file" id="sm-file" hidden></div>`:`<div class="sm-compose" style="justify-content:center;color:#758091">\u0627\u0644\u0646\u0634\u0631 \u0644\u0644\u0645\u0634\u0631\u0641\u064A\u0646 \u0641\u0642\u0637</div>`}</div>`;p.querySelector('.sm-back').onclick=()=>history.back();p.querySelector('#sm-info').onclick=openInfo;let box=p.querySelector('#sm-msgs');box.innerHTML=S.messages.map(messageHtml).join('')||'<div class="sm-empty">\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629 \u0627\u0644\u0622\u0646</div>';box.scrollTop=box.scrollHeight;bindMessageActions(box);if(canPost()){p.querySelector('#sm-send').onclick=send;p.querySelector('#sm-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};p.querySelector('#sm-attach').onclick=()=>p.querySelector('#sm-file').click();p.querySelector('#sm-file').onchange=e=>upload(e.target.files[0])}}
-function messageHtml(m){if(m.message_type==='system')return`<div class="sm-msg system">${esc(m.body)}</div>`;let mine=m.sender_id===S.user.id;let media='';if(m.media_url){if(m.message_type==='image')media=`<img class="sm-media" loading="lazy" decoding="async" src="${esc(m.media_url)}">`;else if(m.message_type==='video')media=`<video class="sm-media" controls preload="metadata" playsinline src="${esc(m.media_url)}"></video>`;else if(m.message_type==='audio')media=`<audio controls src="${esc(m.media_url)}"></audio>`;else media=`<a class="sm-file" href="${esc(m.media_url)}" target="_blank">\uD83D\uDCCE ${esc(m.file_name||'\u0645\u0644\u0641')}</a>`}return`<article class="sm-msg ${mine?'mine':''}" data-message-id="${esc(m.id)}" tabindex="0">${S.current?.kind!=='direct'&&!mine?`<div class="sm-author">${esc(m.sender_name||m.sender_username||'\u0645\u0633\u062A\u062E\u062F\u0645')}</div>`:''}${m.reply_body?`<div class="sm-reply">${esc(m.reply_body)}</div>`:''}<div class="sm-text">${esc(m.deleted_at?'\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629':m.body||'')}</div>${media}<div class="sm-meta">${esc(fmt(m.created_at))}${m.edited_at?' \u00B7 \u0645\u0639\u062F\u0644\u0629':''}${mine?m.read_count>0?' \u00B7 \u2713\u2713':' \u00B7 \u2713':''}</div>${!m.deleted_at?`<div class="sm-actions"><button class="sm-mini" data-action="reply" data-id="${m.id}">\u21A9</button>${mine?`<button class="sm-mini" data-action="edit" data-id="${m.id}">\u270E</button><button class="sm-mini" data-action="delete" data-id="${m.id}">\uD83D\uDDD1</button>`:''}${S.current?.my_role==='owner'||S.current?.my_role==='admin'?`<button class="sm-mini" data-action="pin" data-id="${m.id}">\uD83D\uDCCC</button>`:''}</div>`:''}</article>`}
-function bindMessageActions(root){
-    root?.querySelectorAll('[data-action]').forEach(button=>{
-        button.onclick=()=>messageAction(button.dataset.action,button.dataset.id)
-    })
-}
-function scrollMessagesToBottom(force=false){
-    const box=document.getElementById('sm-msgs');
-    if(!box)return;
-    const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<180;
-    if(force||nearBottom)requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight})
-}
-function appendMessage(message){
-    if(!message||S.messages.some(item=>String(item.id)===String(message.id)))return;
-    S.messages.push(message);
-    const box=document.getElementById('sm-msgs');
-    if(!box)return;
-    box.querySelector('.sm-empty')?.remove();
-    const wrap=document.createElement('div');
-    wrap.innerHTML=messageHtml(message);
-    const node=wrap.firstElementChild;
-    if(!node)return;
-    box.appendChild(node);
-    bindMessageActions(node);
-    scrollMessagesToBottom(message.sender_id===S.user?.id)
-}
-function replaceMessage(message){
-    if(!message?.id)return;
-    const index=S.messages.findIndex(item=>String(item.id)===String(message.id));
-    if(index>=0)S.messages[index]={...S.messages[index],...message};else S.messages.push(message);
-    const old=document.querySelector(`[data-message-id="${CSS.escape(String(message.id))}"]`);
-    if(!old){appendMessage(message);return}
-    const wrap=document.createElement('div');
-    wrap.innerHTML=messageHtml(S.messages[index>=0?index:S.messages.length-1]);
-    const node=wrap.firstElementChild;
-    if(node){old.replaceWith(node);bindMessageActions(node)}
-}
-function removeMessageNode(id){
-    S.messages=S.messages.filter(item=>String(item.id)!==String(id));
-    document.querySelector(`[data-message-id="${CSS.escape(String(id))}"]`)?.remove()
-}
-async function fetchRealtimeMessage(id){
-    if(!id||!S.current?.id)return null;
-    const {data,error}=await sb().rpc('student_get_messages',{p_conversation:S.current.id,p_before:null,p_limit:20});
-    if(error)return null;
-    return (data||[]).find(item=>String(item.id)===String(id))||null
-}
+function renderChat(){let p=page();let title=S.current?.title||'\u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629';p.innerHTML=`<div class="sm-chat"><header class="sm-head"><button class="sm-back">\u2039</button>${S.current?.avatar_url?`<img class="sm-avatar" src="${esc(S.current.avatar_url)}">`:`<div class="sm-avatar">${esc(title.slice(0,1))}</div>`}<div style="min-width:0;flex:1"><div class="sm-title">${esc(title)}</div><div class="sm-sub">${esc(S.current?.kind==='channel'?'\u0642\u0646\u0627\u0629':S.current?.kind==='group'?`${S.members.length} \u0623\u0639\u0636\u0627\u0621`:'\u0645\u062D\u0627\u062F\u062B\u0629 \u062E\u0627\u0635\u0629')}</div></div><button class="sm-icon" id="sm-info">\u22EE</button></header><div class="sm-msgs" id="sm-msgs"></div><div class="sm-replybar" id="sm-replybar"></div>${canPost()?`<div class="sm-compose"><button class="sm-icon" id="sm-attach">\uFF0B</button><textarea id="sm-input" placeholder="\u0627\u0643\u062A\u0628 \u0631\u0633\u0627\u0644\u0629..."></textarea><button class="sm-send" id="sm-send">\u27A4</button><input type="file" id="sm-file" hidden></div>`:`<div class="sm-compose" style="justify-content:center;color:#758091">\u0627\u0644\u0646\u0634\u0631 \u0644\u0644\u0645\u0634\u0631\u0641\u064A\u0646 \u0641\u0642\u0637</div>`}</div>`;p.querySelector('.sm-back').onclick=handleBack;p.querySelector('#sm-info').onclick=openInfo;let box=p.querySelector('#sm-msgs');box.innerHTML=S.messages.map(messageHtml).join('')||'<div class="sm-empty">\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629 \u0627\u0644\u0622\u0646</div>';box.scrollTop=box.scrollHeight;box.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>messageAction(b.dataset.action,b.dataset.id));if(canPost()){p.querySelector('#sm-send').onclick=send;p.querySelector('#sm-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};p.querySelector('#sm-attach').onclick=()=>p.querySelector('#sm-file').click();p.querySelector('#sm-file').onchange=e=>upload(e.target.files[0])}}
+function messageHtml(m){if(m.message_type==='system')return`<div class="sm-msg system">${esc(m.body)}</div>`;let mine=m.sender_id===S.user.id;let media='';if(m.media_url){if(m.message_type==='image')media=`<img class="sm-media" src="${esc(m.media_url)}">`;else if(m.message_type==='video')media=`<video class="sm-media" controls src="${esc(m.media_url)}"></video>`;else if(m.message_type==='audio')media=`<audio controls src="${esc(m.media_url)}"></audio>`;else media=`<a class="sm-file" href="${esc(m.media_url)}" target="_blank">\uD83D\uDCCE ${esc(m.file_name||'\u0645\u0644\u0641')}</a>`}return`<article class="sm-msg ${mine?'mine':''}" tabindex="0">${S.current?.kind!=='direct'&&!mine?`<div class="sm-author">${esc(m.sender_name||m.sender_username||'\u0645\u0633\u062A\u062E\u062F\u0645')}</div>`:''}${m.reply_body?`<div class="sm-reply">${esc(m.reply_body)}</div>`:''}<div class="sm-text">${esc(m.deleted_at?'\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629':m.body||'')}</div>${media}<div class="sm-meta">${esc(fmt(m.created_at))}${m.edited_at?' \u00B7 \u0645\u0639\u062F\u0644\u0629':''}${mine?m.read_count>0?' \u00B7 \u2713\u2713':' \u00B7 \u2713':''}</div>${!m.deleted_at?`<div class="sm-actions"><button class="sm-mini" data-action="reply" data-id="${m.id}">\u21A9</button>${mine?`<button class="sm-mini" data-action="edit" data-id="${m.id}">\u270E</button><button class="sm-mini" data-action="delete" data-id="${m.id}">\uD83D\uDDD1</button>`:''}${S.current?.my_role==='owner'||S.current?.my_role==='admin'?`<button class="sm-mini" data-action="pin" data-id="${m.id}">\uD83D\uDCCC</button>`:''}</div>`:''}</article>`}
 function messageAction(a,id){let m=S.messages.find(x=>String(x.id)===String(id));if(!m)return;if(a==='reply'){S.reply=m;showReply('\u0631\u062F \u0639\u0644\u0649: '+(m.body||m.file_name||'\u0631\u0633\u0627\u0644\u0629'))}if(a==='edit'){S.editing=m;let i=document.getElementById('sm-input');i.value=m.body||'';i.focus();showReply('\u062A\u0639\u062F\u064A\u0644 \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}if(a==='delete')removeMessage(id);if(a==='pin')pinMessage(id)}
 function showReply(t){let b=document.getElementById('sm-replybar');if(!b)return;b.classList.add('show');b.innerHTML=`<div style="flex:1">${esc(t)}</div><button class="sm-mini" id="sm-cancel-reply">\u2715</button>`;b.querySelector('#sm-cancel-reply').onclick=()=>{S.reply=null;S.editing=null;b.classList.remove('show')}}
 async function send(){let i=document.getElementById('sm-input'),body=i?.value.trim();if(!body)return;let c=sb();if(S.editing){let{error}=await c.rpc('student_edit_message',{p_message:S.editing.id,p_body:body});if(error){toast(error.message);return}S.editing=null}else{let{error}=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:body,p_reply_to:S.reply?.id||null,p_message_type:'text',p_media_url:null,p_file_name:null,p_file_size:null});if(error){toast(error.message);return}}i.value='';S.reply=null;document.getElementById('sm-replybar')?.classList.remove('show')}
 async function upload(file){if(!file)return;if(file.size>20*1024*1024){toast('\u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 20MB');return}let c=sb(),ext=file.name.split('.').pop(),path=`${S.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;toast('\u062C\u0627\u0631\u064D \u0627\u0644\u0631\u0641\u0639...');let{error}=await c.storage.from('chat-media').upload(path,file);if(error){toast(error.message);return}let{data}=c.storage.from('chat-media').getPublicUrl(path);let type=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';let r=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:'',p_reply_to:S.reply?.id||null,p_message_type:type,p_media_url:data.publicUrl,p_file_name:file.name,p_file_size:file.size});if(r.error)toast(r.error.message);S.reply=null}
 async function removeMessage(id){if(!confirm('\u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629\u061F'))return;let{error}=await sb().rpc('student_delete_message',{p_message:id});if(error)toast(error.message)}
 async function pinMessage(id){let{error}=await sb().rpc('student_pin_message',{p_conversation:S.current.id,p_message:id});if(error)toast(error.message);else toast('\u062A\u0645 \u062A\u062B\u0628\u064A\u062A \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}
-function markRead(){clearTimeout(S.readTimer);S.readTimer=setTimeout(async()=>{if(!S.current?.id)return;await sb().rpc('student_mark_conversation_read',{p_conversation:S.current.id});updateBadge()},180)}
-function subscribeChat(id){
-    unsubscribeChat();
-    S.channel=sb().channel('student-chat-'+id)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},async payload=>{
-          const message=await fetchRealtimeMessage(payload.new?.id)||payload.new;
-          appendMessage(message);
-          markRead()
-      })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},async payload=>{
-          const message=await fetchRealtimeMessage(payload.new?.id)||payload.new;
-          replaceMessage(message)
-      })
-      .on('postgres_changes',{event:'DELETE',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},payload=>{
-          removeMessageNode(payload.old?.id)
-      })
-      .subscribe(status=>{if(status==='CHANNEL_ERROR')toast('تعذر الاتصال الفوري بالرسائل')})
-}
-function unsubscribeChat(){
-    clearTimeout(S.readTimer);S.readTimer=null;
-    if(S.channel){sb()?.removeChannel(S.channel);S.channel=null}
-}
-function scheduleConversationRefresh(){
-    clearTimeout(S.globalRefreshTimer);
-    S.globalRefreshTimer=setTimeout(()=>{
-        if(S.view==='list')loadConversations();else updateBadge()
-    },180)
-}
-function subscribeGlobal(){
-    if(S.globalChannel)return;
-    S.globalChannel=sb().channel('student-messages-global')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_messages'},scheduleConversationRefresh)
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'chat_messages'},scheduleConversationRefresh)
-      .subscribe()
-}
+async function markRead(){await sb().rpc('student_mark_conversation_read',{p_conversation:S.current.id});updateBadge()}
+function subscribeChat(id){unsubscribeChat();S.channel=sb().channel('student-chat-'+id).on('postgres_changes',{event:'*',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},async()=>{let{data}=await sb().rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:100});S.messages=(data||[]).reverse();renderChat();await markRead()}).subscribe()}
+function unsubscribeChat(){if(S.channel){sb()?.removeChannel(S.channel);S.channel=null}}
+function subscribeGlobal(){if(window.__studentMessagesGlobal)return;window.__studentMessagesGlobal=sb().channel('student-messages-global').on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>{if(S.view==='list')loadConversations();else updateBadge()}).subscribe()}
 async function updateBadge(){if(!S.user)S.user=await user();if(!S.user)return;let{data}=await sb().rpc('student_unread_messages_count');let n=Number(data||0);document.querySelectorAll('[data-section="messages"]').forEach(a=>{a.style.position='relative';a.querySelector('.sm-badge')?.remove();if(n>0){let b=document.createElement('span');b.className='sm-badge';b.textContent=n>99?'99+':n;a.appendChild(b)}})}
 function openCreate(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0646\u0634\u0627\u0621 \u062C\u062F\u064A\u062F</h3><div class="sm-actions-row" style="justify-content:stretch"><button class="sm-btn" id="sm-direct" style="flex:1">\u0645\u062D\u0627\u062F\u062B\u0629</button><button class="sm-btn" id="sm-group" style="flex:1">\u0645\u062C\u0645\u0648\u0639\u0629</button><button class="sm-btn" id="sm-channel" style="flex:1">\u0642\u0646\u0627\u0629</button></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close">\u0625\u0644\u063A\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close').onclick=()=>sh.remove();sh.querySelector('#sm-direct').onclick=()=>{sh.remove();openUserSearch('direct')};sh.querySelector('#sm-group').onclick=()=>{sh.remove();createCommunity('group')};sh.querySelector('#sm-channel').onclick=()=>{sh.remove();createCommunity('channel')}}
 function openUserSearch(){let i=document.getElementById('sm-search-users');i?.focus()}
@@ -7073,11 +6993,7 @@ function addMemberSheet(){let sh=document.createElement('div');sh.className='sm-
 
 window.addEventListener('popstate',()=>{
     if(!S.historyOpen)return;
-    if(S.view==='chat'){
-        showList();
-        return;
-    }
-    hidePage();
+    handleBack();
 });
-window.StudentMessages={open,close,updateBadge};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
+window.StudentMessages={open,close,handleBack,updateBadge};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
 })();
