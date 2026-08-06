@@ -20,7 +20,7 @@
         orders: [],
         balance: 0,
         currentOrder: null,
-        activeTab: "products",
+        activeTab: "home",
         isAdmin: false,
         user: null,
         historyActive: false,
@@ -324,11 +324,43 @@
             .student-store-ledger-row .minus{color:#c62828;font-weight:900}
             .student-store-cod-form{display:grid;gap:9px}
             .student-store-cod-form input,.student-store-cod-form textarea{width:100%;box-sizing:border-box;border:1px solid #dfe4ea;border-radius:11px;padding:11px;font:inherit}
+            .student-store-tabs{display:none!important}
+            .student-store-home{max-width:920px;margin:0 auto;display:grid;gap:16px}
+            .student-store-hero{position:relative;overflow:hidden;padding:22px;border-radius:24px;background:linear-gradient(135deg,#0878d1,#00a6ff);color:#fff;box-shadow:0 14px 34px rgba(0,149,246,.22)}
+            .student-store-hero:after{content:"";position:absolute;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.12);left:-45px;top:-75px}
+            .student-store-hero h2{margin:0 0 7px;font-size:22px;font-weight:950}
+            .student-store-hero p{margin:0;max-width:520px;line-height:1.8;font-size:13px;color:rgba(255,255,255,.9)}
+            .student-store-home-balance{margin-top:15px;display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:14px;background:rgba(255,255,255,.16);font-weight:900}
+            .student-store-sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+            .student-store-section-card{position:relative;min-width:0;min-height:138px;padding:16px;border:1px solid #e7ebf0;border-radius:20px;background:#fff;text-align:right;cursor:pointer;box-shadow:0 7px 22px rgba(15,23,42,.055);transition:transform .16s ease,box-shadow .16s ease}
+            .student-store-section-card:active{transform:scale(.98)}
+            .student-store-section-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:linear-gradient(135deg,#edf7ff,#dff1ff);color:#0878d1;font-size:22px;margin-bottom:12px}
+            .student-store-section-card strong{display:block;font-size:15px;color:#162033}
+            .student-store-section-card span{display:block;margin-top:5px;color:#798394;font-size:11px;line-height:1.6}
+            .student-store-section-count{position:absolute;top:13px;left:13px;min-width:24px;height:24px;padding:0 7px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:#eff7ff;color:#0878d1;font-size:11px;font-weight:900}
+            .student-store-page-head{max-width:920px;margin:0 auto 14px;display:flex;align-items:center;gap:10px}
+            .student-store-page-head h2{flex:1;margin:0;font-size:20px;color:#172033}
+            .student-store-page-head p{margin:4px 0 0;color:#7b8492;font-size:12px}
+            .student-store-page-back{width:42px;height:42px;border:0;border-radius:14px;background:#edf5ff;color:#0878d1;font-size:22px;cursor:pointer}
+            .student-store-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+            .student-store-card{border-radius:18px;box-shadow:0 8px 25px rgba(15,23,42,.07)}
+            .student-store-image,.student-store-image-placeholder{aspect-ratio:4/3}
+            .student-store-card-body{padding:12px}
+            .student-store-product-name{font-size:14px}
+            .student-store-description{font-size:11px;min-height:36px}
+            .student-store-price{font-size:11px;padding:6px 8px}
+            .student-store-buy{min-height:40px;font-size:13px}
+            .student-store-task-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+            .student-store-task{padding:14px;border-radius:18px}
+            .student-store-task-icon{width:44px;height:44px}
+            .student-store-section{max-width:920px;margin:0 auto 18px}
+            @media(max-width:700px){.student-store-sections{grid-template-columns:repeat(2,minmax(0,1fr))}.student-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
             @media(max-width:420px){
               .student-store-body{padding:8px}
-              .student-store-grid,.student-store-task-list{gap:6px}
-              .student-store-card-body{padding:6px}
-              .student-store-product-name{font-size:11px}
+              .student-store-grid,.student-store-task-list{gap:8px}
+              .student-store-card-body{padding:9px}
+              .student-store-product-name{font-size:13px}
+              .student-store-section-card{min-height:128px;padding:13px}
               .student-store-tabs{overflow-x:auto;display:flex}
               .student-store-tab{min-width:76px;padding:0 8px}
               .student-store-wallet-summary{grid-template-columns:1fr}
@@ -348,7 +380,7 @@
         overlay.innerHTML = `
             <header class="student-store-header">
                 <button id="student-store-close" class="student-store-close" type="button" aria-label="رجوع">‹</button>
-                <div class="student-store-title">المتجر</div>
+                <div id="student-store-title" class="student-store-title">المتجر</div>
                 <button id="student-store-admin-add" class="student-store-admin-add" type="button">
                     <i class="fa-solid fa-plus"></i><span id="student-store-admin-add-label">منتج</span>
                 </button>
@@ -371,7 +403,8 @@
 
         document.getElementById("student-store-close")?.addEventListener("click", function (event) {
             event.preventDefault();
-            close();
+            if (state.activeTab !== "home") setSection("home", false);
+            else close();
         });
 
         document.getElementById("student-store-admin-add")?.addEventListener("click", function (event) {
@@ -383,9 +416,7 @@
 
         overlay.querySelectorAll("[data-store-tab]").forEach(function (button) {
             button.addEventListener("click", function () {
-                state.activeTab = this.dataset.storeTab || "products";
-                updateTabs();
-                render();
+                setSection(this.dataset.storeTab || "home");
             });
         });
 
@@ -415,7 +446,7 @@
         const button = document.getElementById("student-store-admin-add");
         button?.classList.toggle("show", state.isAdmin);
         const label = document.getElementById("student-store-admin-add-label");
-        if (button) button.style.visibility = ["orders","diamonds"].includes(state.activeTab) ? "hidden" : "visible";
+        if (button) button.style.visibility = ["home","orders","diamonds","wallet","agency"].includes(state.activeTab) ? "hidden" : "visible";
         if (label) label.textContent = state.activeTab === "tasks" ? "مهمة" : "منتج";
     }
 
@@ -424,6 +455,57 @@
             button.classList.toggle("active", button.dataset.storeTab === state.activeTab);
         });
         updateAdminUI();
+    }
+
+    const STORE_SECTION_META = {
+        home: ["المتجر", ""],
+        products: ["المنتجات", "تصفّح المنتجات الرقمية والحقيقية"],
+        tasks: ["المهام والمكافآت", "أكمل المهام واجمع الألماس"],
+        wallet: ["المحفظة", "رصيدك وسجل جميع الحركات"],
+        diamonds: ["شراء الألماس", "اختر الباقة المناسبة واشحن محفظتك"],
+        agency: ["الوكالة", "الوكلاء المعتمدون والتقديم على وكالة"],
+        orders: [state.isAdmin ? "إدارة الطلبات" : "طلباتي", "تابع حالة الطلبات والمشتريات"]
+    };
+
+    function setSection(section, pushHistory = true) {
+        state.activeTab = section || "home";
+        updateTabs();
+        updateStoreHeader();
+        render();
+        document.getElementById("student-store-body")?.scrollTo({ top: 0, behavior: "instant" });
+        if (pushHistory && state.activeTab !== "home") {
+            try { history.pushState({ studentStore: state.activeTab }, "", location.href); } catch (_) {}
+        }
+    }
+
+    function updateStoreHeader() {
+        const title = document.getElementById("student-store-title");
+        const closeButton = document.getElementById("student-store-close");
+        const meta = STORE_SECTION_META[state.activeTab] || STORE_SECTION_META.home;
+        if (title) title.textContent = meta[0];
+        if (closeButton) closeButton.setAttribute("aria-label", state.activeTab === "home" ? "إغلاق المتجر" : "الرجوع إلى أقسام المتجر");
+    }
+
+    function pageHead(icon, title, description) {
+        return `<div class="student-store-page-head"><button class="student-store-page-back" type="button" data-store-home aria-label="رجوع">‹</button><div><h2><i class="${icon}"></i> ${title}</h2><p>${description}</p></div></div>`;
+    }
+
+    function renderHome() {
+        const body = document.getElementById("student-store-body");
+        if (!body) return;
+        const pendingOrders = (state.orders || []).filter(order => !["completed","cancelled","refunded"].includes(order.status)).length;
+        const sections = [
+            ["products","fa-solid fa-bag-shopping","المنتجات","منتجات رقمية وحقيقية بطرق دفع متعددة",state.products.length],
+            ["tasks","fa-solid fa-list-check","المهام","نفّذ المهام واحصل على مكافآت ألماس",state.tasks.length],
+            ["wallet","fa-solid fa-wallet","المحفظة","الرصيد المتاح وسجل الإضافة والخصم",Number(state.balance||0).toLocaleString("ar-IQ")],
+            ["diamonds","fa-solid fa-gem","شراء الألماس","باقات الشحن المباشر من التطبيق",state.diamondPackages.length],
+            ["agency","fa-solid fa-user-shield","الوكالة","الوكلاء المعتمدون وطلبات الوكالة",state.agents.length],
+            ["orders","fa-solid fa-box","الطلبات",state.isAdmin?"مراجعة وإدارة طلبات المستخدمين":"متابعة مشترياتك وحالة التوصيل",pendingOrders]
+        ];
+        body.innerHTML = `<div class="student-store-home">
+            <section class="student-store-hero"><h2>مرحبًا بك في متجر Student</h2><p>كل ما تحتاجه من منتجات ومزايا رقمية، مع محفظة ألماس ونظام وكلاء وطلبات آمن.</p><div class="student-store-home-balance"><i class="fa-solid fa-gem"></i>${Number(state.balance||0).toLocaleString("ar-IQ")} ألماسة</div></section>
+            <div class="student-store-sections">${sections.map(item=>`<button class="student-store-section-card" type="button" data-store-section="${item[0]}"><span class="student-store-section-count">${item[4]}</span><span class="student-store-section-icon"><i class="${item[1]}"></i></span><strong>${item[2]}</strong><span>${item[3]}</span></button>`).join("")}</div>
+        </div>`;
     }
 
     function renderLoading() {
@@ -437,7 +519,7 @@
         if (!body) return;
 
         if (!state.products.length) {
-            body.innerHTML = `
+            body.innerHTML = `${pageHead("fa-solid fa-bag-shopping", "المنتجات", "منتجات مختارة بعرض واضح وطرق دفع متعددة")}
                 <div class="student-store-empty">
                     <i class="fa-solid fa-store"></i>
                     <strong>لا توجد منتجات حاليًا</strong>
@@ -448,7 +530,7 @@
             return;
         }
 
-        body.innerHTML = `
+        body.innerHTML = `${pageHead("fa-solid fa-bag-shopping", "المنتجات", "منتجات مختارة بعرض واضح وطرق دفع متعددة")}
             <div class="student-store-grid">
                 ${state.products.map(function (product) {
                     const soldOut = product.stock !== null && Number(product.stock) <= 0;
@@ -489,7 +571,7 @@
         if (!body) return;
 
         if (!state.tasks.length) {
-            body.innerHTML = `<div class="student-store-empty"><i class="fa-solid fa-list-check"></i><strong>لا توجد مهام متاحة حاليًا</strong>${state.isAdmin ? `<button class="student-store-empty-add" type="button" data-store-add-task>إضافة مهمة</button>` : ""}</div>`;
+            body.innerHTML = `${pageHead("fa-solid fa-list-check", "المهام والمكافآت", "أكمل المهام واجمع الألماس")} <div class="student-store-empty"><i class="fa-solid fa-list-check"></i><strong>لا توجد مهام متاحة حاليًا</strong>${state.isAdmin ? `<button class="student-store-empty-add" type="button" data-store-add-task>إضافة مهمة</button>` : ""}</div>`;
             return;
         }
 
@@ -524,28 +606,30 @@
     function renderDiamonds() {
         const body = document.getElementById("student-store-body");
         if (!body) return;
-        const status = state.agencyStatus || {};
-        const isAgent = Boolean(status.is_agent);
-        const agent = status.agent || {};
-        const application = status.application || null;
         const packages = state.diamondPackages || [];
-        const agents = state.agents || [];
-        const adminArea = state.isAdmin ? renderDiamondAdminArea() : "";
-        body.innerHTML = `
-            <section class="student-store-guide">
-                <h3><i class="fa-solid fa-gem"></i> نظام الألماس والوكالة</h3>
-                <p><strong>سعر المستخدم:</strong> كل 1,000 دينار = 5,000 ألماسة حسب الباقات المعروضة.</p>
-                <p><strong>فائدة الوكالة:</strong> الوكيل يشتري الألماس من خزنة التطبيق بسعر أقل، ثم يبيعه للمستخدم بالسعر الرسمي ويكون فرق السعر ربحه.</p>
-                <p><strong>نظام العمل:</strong> المستخدم يشتري من التطبيق أو من وكيل معتمد. الوكيل لا يستطيع شراء منتجات المتجر، وخزنته منفصلة عن رصيده الشخصي.</p>
-                <div class="student-store-info-grid">
-                    <div class="student-store-info-box"><strong>شراء آمن</strong><span>لا يضاف الألماس إلا بعد موافقة الأدمن أو تحويل الوكيل المعتمد.</span></div>
-                    <div class="student-store-info-box"><strong>وكيل معتمد</strong><span>كل وكيل يظهر باسمه ومحافظته وطرق التواصل الرسمية.</span></div>
-                    <div class="student-store-info-box"><strong>سجل كامل</strong><span>كل عملية شراء أو بيع أو شحن خزنة تبقى محفوظة.</span></div>
-                </div>
-            </section>
-            ${isAgent ? renderAgentDashboard(agent, packages) : renderUserDiamondArea(packages, agents, application)}
-            ${adminArea}
-        `;
+        body.innerHTML = `${pageHead("fa-solid fa-gem", "شراء الألماس", "اختر باقة الشحن المناسبة وسيُراجع طلبك بأمان")}
+            <section class="student-store-section"><div class="student-store-guide"><h3>سعر الألماس</h3><p>السعر الرسمي المعتمد داخل التطبيق يظهر داخل كل باقة. بعد إرسال الطلب تتم مراجعته وإضافة الألماس إلى محفظتك.</p></div></section>
+            <section class="student-store-section"><div class="student-store-grid">${packages.map(p=>`<article class="student-store-package"><strong>${esc(p.title)}</strong><div class="student-store-package-row"><span>${Number(p.diamonds).toLocaleString('ar-IQ')} ألماسة</span><b>${Number(p.user_price_iqd).toLocaleString('ar-IQ')} د.ع</b></div><button class="student-store-primary" data-store-buy-diamond="${esc(p.id)}">شراء الباقة</button></article>`).join('') || '<div class="student-store-empty">لا توجد باقات حاليًا.</div>'}</div></section>`;
+    }
+
+    function renderAgency() {
+        const body = document.getElementById("student-store-body");
+        if (!body) return;
+        const status = state.agencyStatus || {};
+        let content = '';
+        if (state.isAdmin) content = renderDiamondAdminArea();
+        else if (status.is_agent) content = renderAgentDashboard(status, state.diamondPackages || []);
+        else content = renderUserAgencyArea(state.agents || [], status.application || null);
+        body.innerHTML = `${pageHead("fa-solid fa-user-shield", "الوكالة", "الوكلاء المعتمدون، الأرباح، والتقديم على وكالة")}<section class="student-store-section"><div class="student-store-guide"><h3>كيف تعمل الوكالة؟</h3><p>الوكيل يشتري الألماس من خزنة التطبيق بسعر مخفّض ثم يبيعه بالسعر الرسمي، ويكون فرق السعر هو ربحه. حساب الوكيل مخصص للبيع ولا يشتري منتجات المتجر.</p></div></section>${content}`;
+    }
+
+    function renderUserAgencyArea(agents, application) {
+        const applicationBox = application?.status === 'pending'
+            ? `<div class="student-store-guide"><h3>طلبك قيد المراجعة</h3><p>سيظهر لك إشعار بعد مراجعة طلب الوكالة.</p></div>`
+            : application?.status === 'rejected'
+                ? `<div class="student-store-guide"><h3>تم رفض الطلب السابق</h3><p>${esc(application.admin_note || "يمكنك تقديم طلب جديد بعد مراجعة البيانات.")}</p><button class="student-store-primary" data-store-open-agency-form>تقديم طلب جديد</button></div>`
+                : `<div class="student-store-guide"><h3>هل تريد العمل كوكيل؟</h3><p>قدّم معلوماتك ووسائل التواصل وخطة العمل، ثم ينتقل الطلب إلى مراجعة الأدمن.</p><button class="student-store-primary" data-store-open-agency-form>تقديم على وكالة</button></div>`;
+        return `<section class="student-store-section"><h3 class="student-store-section-title">الوكلاء المعتمدون</h3><div class="student-store-grid">${agents.map(a=>`<article class="student-store-agent-card"><h4><i class="fa-solid fa-user-shield"></i> ${esc(a.display_name)}</h4><div class="student-store-description">${esc(a.province)} · وكيل معتمد</div><div class="student-store-agent-actions">${a.whatsapp?`<a href="https://wa.me/${esc(String(a.whatsapp).replace(/\D/g,''))}" target="_blank">واتساب</a>`:''}${a.telegram?`<a href="https://t.me/${esc(String(a.telegram).replace(/^@/,''))}" target="_blank">تيليغرام</a>`:''}${a.phone?`<a href="tel:${esc(a.phone)}">اتصال</a>`:''}</div></article>`).join('') || '<div class="student-store-empty">لا يوجد وكلاء متاحون حاليًا.</div>'}</div></section>${applicationBox}`;
     }
 
     function renderUserDiamondArea(packages, agents, application) {
@@ -578,7 +662,7 @@
         if (!body) return;
         const s = state.walletSummary || {};
         const tx = state.walletTransactions || [];
-        body.innerHTML = `
+        body.innerHTML = `${pageHead("fa-solid fa-wallet", "المحفظة", "رصيدك وسجل جميع الحركات المالية")}
           <section class="student-store-section">
             <h3 class="student-store-section-title">محفظتي</h3>
             <div class="student-store-wallet-summary">
@@ -614,7 +698,9 @@
         updateBalance();
         updateAdminUI();
         if (state.loading) return renderLoading();
-        if (state.activeTab === "diamonds") renderDiamonds();
+        if (state.activeTab === "home") renderHome();
+        else if (state.activeTab === "diamonds") renderDiamonds();
+        else if (state.activeTab === "agency") renderAgency();
         else if (state.activeTab === "wallet") renderWallet();
         else if (state.activeTab === "tasks") renderTasks();
         else if (state.activeTab === "orders") renderOrders();
@@ -772,6 +858,8 @@
         if (typeof closeFloatingPanel === "function") closeFloatingPanel();
 
         state.historyActive = true;
+        state.activeTab = "home";
+        updateStoreHeader();
         refresh();
     }
 
@@ -1241,6 +1329,10 @@
     async function handleBodySubmit(event){if(event.target.id!=="student-store-agent-sale-form")return;event.preventDefault();const client=db();const b=event.submitter;b.disabled=true;try{const {data,error}=await client.rpc("store_agent_sell_diamonds",{p_customer_username:document.getElementById('student-store-sale-username').value,p_diamonds:Number(document.getElementById('student-store-sale-diamonds').value),p_sale_amount_iqd:Number(document.getElementById('student-store-sale-amount').value)});if(error)throw error;toast("تم تحويل الألماس للمستخدم.");event.target.reset();await refresh();}catch(e){toast(e.message||"تعذر تنفيذ البيع.");b.disabled=false;}}
 
     function handleBodyClick(event) {
+        const sectionButton = event.target.closest("[data-store-section]");
+        if (sectionButton) { event.preventDefault(); setSection(sectionButton.dataset.storeSection); return; }
+        const homeButton = event.target.closest("[data-store-home]");
+        if (homeButton) { event.preventDefault(); setSection("home", false); return; }
         const buyDiamond = event.target.closest("[data-store-buy-diamond]");
         if (buyDiamond) { event.preventDefault(); requestDiamondPackage(buyDiamond.dataset.storeBuyDiamond, buyDiamond); return; }
         const agencyForm = event.target.closest("[data-store-open-agency-form]");
@@ -1411,8 +1503,15 @@
         }
     }
 
+    window.addEventListener("popstate", function () {
+        if (!overlay?.classList.contains("show")) return;
+        if (state.activeTab !== "home") {
+            setSection("home", false);
+        }
+    });
+
     window.StudentStore = {
-        version: "2.1.0",
+        version: "2.2.0",
         open,
         close,
         refresh
