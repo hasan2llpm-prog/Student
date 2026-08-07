@@ -1,16 +1,13 @@
 (function(){
 "use strict";
-/* =========================================================
-   STUDENT - PROFILE SYSTEM
-   ملف مستقل عن app.js
-========================================================= */
-
 
 /* =========================================================
-   أدوات مساعدة
+   Student - Internal Profile + Suggestions
 ========================================================= */
 
-function profileEscapeHTML(value) {
+const PROFILE_VERSION = 2;
+
+function esc(value) {
     return String(value ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
@@ -19,12 +16,7 @@ function profileEscapeHTML(value) {
         .replace(/'/g, "&#039;");
 }
 
-
-function profileEscapeAttribute(value) {
-    return profileEscapeHTML(value);
-}
-
-function studentVerificationBadge(profile, size = 15) {
+function verificationBadge(profile, size = 15) {
     if (!profile || profile.is_verified !== true) return "";
 
     const colorName = String(profile.verification_color || "").toLowerCase();
@@ -40,10 +32,9 @@ function studentVerificationBadge(profile, size = 15) {
 
     const px = Math.max(12, Number(size) || 15);
 
-    return `<span
-        class="student-verification-badge"
-        title="${profileEscapeAttribute(label)}"
-        aria-label="${profileEscapeAttribute(label)}"
+    return `<span class="student-verification-badge"
+        title="${esc(label)}"
+        aria-label="${esc(label)}"
         style="
             --verification-color:${color};
             --verification-size:${px}px;
@@ -56,1254 +47,553 @@ function studentVerificationBadge(profile, size = 15) {
             align-items:center;
             justify-content:center;
             flex:0 0 auto;
-        "
-    >
-        <span
-            aria-hidden="true"
-            style="
-                position:absolute;
-                inset:1px;
-                background:var(--verification-color);
-                clip-path:polygon(
-                    50% 0%,61% 8%,74% 5%,82% 18%,95% 26%,92% 40%,
-                    100% 50%,92% 61%,95% 74%,82% 82%,74% 95%,61% 92%,
-                    50% 100%,39% 92%,26% 95%,18% 82%,5% 74%,8% 61%,
-                    0% 50%,8% 40%,5% 26%,18% 18%,26% 5%,39% 8%
-                );
-            "
-        ></span>
-        <i
-            class="fa-solid fa-check"
-            aria-hidden="true"
-            style="
-                position:relative;
-                z-index:1;
-                color:#fff;
-                font-size:calc(var(--verification-size) * .55);
-                line-height:1;
-                font-weight:900;
-            "
-        ></i>
+        ">
+        <span aria-hidden="true" style="
+            position:absolute;
+            inset:1px;
+            background:var(--verification-color);
+            clip-path:polygon(
+                50% 0%,61% 8%,74% 5%,82% 18%,95% 26%,92% 40%,
+                100% 50%,92% 61%,95% 74%,82% 82%,74% 95%,61% 92%,
+                50% 100%,39% 92%,26% 95%,18% 82%,5% 74%,8% 61%,
+                0% 50%,8% 40%,5% 26%,18% 18%,26% 5%,39% 8%
+            );
+        "></span>
+        <i class="fa-solid fa-check" aria-hidden="true" style="
+            position:relative;
+            z-index:1;
+            color:#fff;
+            font-size:calc(var(--verification-size) * .55);
+            line-height:1;
+        "></i>
     </span>`;
 }
 
+window.studentVerificationBadge = verificationBadge;
 
-/* =========================================================
-   تحميل بيانات الملف
-========================================================= */
+function db() {
+    return typeof supabaseClient !== "undefined" ? supabaseClient : null;
+}
 
-async function profileLoad(userId) {
+async function sessionUser() {
+    if (typeof currentUser !== "undefined" && currentUser) return currentUser;
+    const client = db();
+    if (!client) return null;
+    const { data } = await client.auth.getUser();
+    return data?.user || null;
+}
 
-    if (!supabaseClient || !userId) {
-        return null;
+function injectStyles() {
+    if (document.getElementById("student-profile-v2-style")) return;
+
+    const style = document.createElement("style");
+    style.id = "student-profile-v2-style";
+    style.textContent = `
+        .sp2-wrap{
+            width:min(860px,100%);
+            margin:0 auto;
+            padding:14px 14px 90px;
+            direction:rtl;
+            color:#172033;
+        }
+        .sp2-card{
+            background:#fff;
+            border:1px solid #e6ebf0;
+            border-radius:18px;
+            padding:16px;
+            margin-bottom:12px;
+        }
+        .sp2-head{
+            display:grid;
+            grid-template-columns:88px 1fr;
+            gap:14px;
+            align-items:center;
+        }
+        .sp2-avatar{
+            width:88px;height:88px;border-radius:50%;object-fit:cover;
+            background:#eef3f7;display:grid;place-items:center;
+            color:#0095f6;font-size:34px;
+        }
+        .sp2-name{font-size:21px;font-weight:900;display:flex;align-items:center;flex-wrap:wrap}
+        .sp2-user{color:#77818c;font-size:13px;margin-top:4px;direction:ltr;text-align:right}
+        .sp2-role{
+            display:inline-flex;margin-top:8px;padding:5px 9px;border-radius:9px;
+            background:#eef7ff;color:#0878c9;font-size:12px;font-weight:800;
+        }
+        .sp2-stats{
+            display:grid;grid-template-columns:repeat(3,1fr);
+            border-top:1px solid #edf0f3;margin-top:15px;padding-top:14px;
+        }
+        .sp2-stat{text-align:center}
+        .sp2-stat strong{display:block;font-size:18px}
+        .sp2-stat span{display:block;color:#7c8792;font-size:11px;margin-top:2px}
+        .sp2-actions{display:flex;gap:9px;margin-top:14px}
+        .sp2-btn{
+            flex:1;border:0;border-radius:12px;padding:11px 12px;
+            font:inherit;font-weight:800;cursor:pointer;background:#0095f6;color:#fff;
+        }
+        .sp2-btn.secondary{background:#eef2f5;color:#263442}
+        .sp2-btn.following{background:#eef2f5;color:#263442}
+        .sp2-title{font-size:15px;font-weight:900;margin-bottom:11px}
+        .sp2-bio{line-height:1.8;color:#44515f;white-space:pre-wrap}
+        .sp2-info{
+            display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;
+        }
+        .sp2-info-item{
+            min-width:0;border:1px solid #edf0f3;background:#fafbfc;
+            border-radius:13px;padding:11px;
+        }
+        .sp2-info-item small{display:block;color:#8a949e;font-size:10px;margin-bottom:4px}
+        .sp2-info-item strong{font-size:13px;overflow-wrap:anywhere}
+        .sp2-note{
+            background:#fff8df;border:1px solid #f3df91;color:#725b00;
+            border-radius:14px;padding:13px 14px;line-height:1.7;margin-bottom:12px;
+        }
+        .sp2-form{display:grid;gap:11px}
+        .sp2-field label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}
+        .sp2-field input,.sp2-field textarea,.sp2-field select{
+            width:100%;box-sizing:border-box;border:1px solid #dce2e8;background:#fff;
+            border-radius:12px;padding:11px 12px;font:inherit;outline:0;
+        }
+        .sp2-field textarea{min-height:82px;resize:vertical}
+        .sp2-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .sp2-save{border:0;border-radius:13px;background:#0095f6;color:#fff;padding:13px;font:inherit;font-weight:900}
+        .sp2-message{min-height:22px;text-align:center;font-size:12px}
+        .sp2-suggestions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+        .sp2-suggestion{
+            background:#fff;border:1px solid #e6ebf0;border-radius:16px;padding:12px;min-width:0;
+        }
+        .sp2-suggestion-top{display:flex;gap:9px;align-items:center;cursor:pointer}
+        .sp2-suggestion-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#eef3f7;display:grid;place-items:center}
+        .sp2-suggestion-name{font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .sp2-suggestion-user{font-size:11px;color:#89939d;direction:ltr;text-align:right}
+        .sp2-reasons{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+        .sp2-reason{font-size:10px;background:#eef7ff;color:#0878c9;border-radius:8px;padding:4px 6px}
+        .sp2-empty{text-align:center;color:#7b8590;padding:55px 15px}
+        @media(max-width:520px){
+            .sp2-wrap{padding:10px 10px 85px}
+            .sp2-head{grid-template-columns:74px 1fr}
+            .sp2-avatar{width:74px;height:74px}
+            .sp2-info,.sp2-grid{grid-template-columns:1fr 1fr}
+            .sp2-suggestions{grid-template-columns:1fr}
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function roleLabel(role) {
+    const value = String(role || "student").toLowerCase();
+    if (value === "admin") return "أدمن";
+    if (value === "teacher" || value === "instructor" || value === "professor") return "مدرس";
+    return "طالب";
+}
+
+function avatarHTML(profile, cls = "sp2-avatar") {
+    if (profile?.avatar_url) {
+        return `<img class="${cls}" src="${esc(profile.avatar_url)}" alt="" loading="lazy" decoding="async">`;
     }
+    return `<div class="${cls}"><i class="fa-solid fa-user"></i></div>`;
+}
 
-    const { data, error } =
-        await supabaseClient
-            .from("profiles")
-            .select(`
-                id,
-                full_name,
-                username,
-                email,
-                bio,
-                avatar_url,
-                account_status,
-                role,
-                is_verified,
-                verification_color,
-                verified_at
-            `)
-            .eq("id", userId)
-            .maybeSingle();
+async function getStats(userId) {
+    const client = db();
+    if (!client || !userId) return { followers:0, following:0, posts:0 };
 
+    const [statsRes, postsRes] = await Promise.all([
+        client.rpc("get_profile_stats", { p_user_id:userId }),
+        client.from("posts").select("id", { count:"exact", head:true }).eq("user_id", userId)
+    ]);
+
+    const row = Array.isArray(statsRes.data) ? statsRes.data[0] : statsRes.data;
+    return {
+        followers:Number(row?.followers_count || 0),
+        following:Number(row?.following_count || 0),
+        posts:Number(postsRes.count || 0)
+    };
+}
+
+async function getOwnProfile(userId) {
+    const client = db();
+    if (!client) return null;
+
+    const fields = [
+        "id","full_name","username","email","bio","avatar_url","account_status","role",
+        "is_verified","verification_color","verified_at",
+        "school_name","education_stage","grade_name","favorite_subject",
+        "teaching_subject","city","hobbies","profile_version"
+    ].join(",");
+
+    const { data, error } = await client.from("profiles").select(fields).eq("id", userId).maybeSingle();
     if (error) {
-        console.error(
-            "Profile load error:",
-            error
-        );
-
+        console.error("Own profile:", error);
         return null;
     }
-
-    if (typeof currentProfile !== "undefined") {
-        currentProfile = data;
-    }
-
+    if (typeof currentProfile !== "undefined") currentProfile = data;
     return data;
 }
 
+async function getPublicProfile(userId) {
+    const client = db();
+    if (!client) return null;
 
-/* =========================================================
-   إحصائيات المتابعة
-========================================================= */
+    try {
+        const { data, error } = await client.rpc("student_get_public_profile", { p_user_id:userId });
+        if (!error && data) return Array.isArray(data) ? data[0] : data;
+    } catch (_) {}
 
-async function profileGetStats(userId) {
+    const safe = [
+        "id","full_name","username","bio","avatar_url","account_status","role",
+        "is_verified","verification_color","school_name","education_stage",
+        "grade_name","favorite_subject","teaching_subject","city","hobbies"
+    ].join(",");
 
-    const emptyStats = {
-        followers: 0,
-        following: 0
-    };
+    const { data, error } = await client.from("profiles").select(safe).eq("id", userId).maybeSingle();
+    if (error) return null;
+    return data;
+}
 
-    if (!supabaseClient || !userId) {
-        return emptyStats;
-    }
+async function isFollowing(userId) {
+    const me = await sessionUser();
+    const client = db();
+    if (!me || !client || String(me.id) === String(userId)) return false;
 
-    const { data, error } =
-        await supabaseClient.rpc(
-            "get_profile_stats",
-            {
-                p_user_id: userId
+    const { data } = await client.from("follows")
+        .select("follower_id")
+        .eq("follower_id", me.id)
+        .eq("following_id", userId)
+        .maybeSingle();
+
+    return !!data;
+}
+
+async function toggleFollow(userId, button) {
+    const me = await sessionUser();
+    const client = db();
+    if (!me || !client || String(me.id) === String(userId)) return;
+
+    button && (button.disabled = true);
+    try {
+        const following = await isFollowing(userId);
+        if (following) {
+            const { error } = await client.from("follows")
+                .delete()
+                .eq("follower_id", me.id)
+                .eq("following_id", userId);
+            if (error) throw error;
+            if (button) {
+                button.textContent = "متابعة";
+                button.classList.remove("following");
             }
-        );
-
-    if (error) {
-
-        console.error(
-            "Profile stats error:",
-            error
-        );
-
-        return emptyStats;
+        } else {
+            const { error } = await client.from("follows")
+                .insert({ follower_id:me.id, following_id:userId });
+            if (error && String(error.code) !== "23505") throw error;
+            if (button) {
+                button.textContent = "متابَع";
+                button.classList.add("following");
+            }
+        }
+    } catch (error) {
+        console.error("Follow:", error);
+    } finally {
+        if (button) button.disabled = false;
     }
-
-    const row =
-        Array.isArray(data)
-            ? data[0]
-            : data;
-
-    return {
-        followers:
-            Number(row?.followers_count || 0),
-
-        following:
-            Number(row?.following_count || 0)
-    };
 }
 
-
-/* =========================================================
-   الصورة الافتراضية
-========================================================= */
-
-function profileAvatarHTML(profile) {
-
-    if (profile?.avatar_url) {
-
-        return `
-            <img
-                src="${profileEscapeAttribute(profile.avatar_url)}"
-                alt="الصورة الشخصية"
-                style="
-                    width:100px;
-                    height:100px;
-                    border-radius:50%;
-                    object-fit:cover;
-                    display:block;
-                    margin:auto;
-                "
-            >
-        `;
-    }
-
-    return `
-        <div style="
-            width:100px;
-            height:100px;
-            border-radius:50%;
-            background:#eaf5ff;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            margin:auto;
-            color:#0095f6;
-            font-size:42px;
-        ">
-            <i class="fa-solid fa-user"></i>
-        </div>
-    `;
+function infoItem(label, value) {
+    if (!value) return "";
+    return `<div class="sp2-info-item"><small>${esc(label)}</small><strong>${esc(value)}</strong></div>`;
 }
 
+function openInternal(title, id) {
+    injectStyles();
+    try { window.closeStudentMenu?.(); } catch (_) {}
 
-/* =========================================================
-   الصفحة الشخصية
-========================================================= */
-
-async function profileOpen() {
-
-    if (
-        typeof currentUser === "undefined" ||
-        !currentUser
-    ) {
-        return;
+    if (window.StudentNavigation?.openPage) {
+        const page = window.StudentNavigation.openPage({ id, title, html:"" });
+        return page.querySelector(".student-internal-body");
     }
 
+    const old = document.getElementById("student-profile-fallback");
+    old?.remove();
+    const section = document.createElement("section");
+    section.id = "student-profile-fallback";
+    section.style.cssText = "position:fixed;inset:0;z-index:2147482200;background:#f7f9fb;overflow:auto";
+    section.innerHTML = `<div style="height:60px;background:#fff;border-bottom:1px solid #e5e9ed;display:flex;align-items:center;padding:0 12px;gap:10px"><button data-sp2-fallback-back style="width:40px;height:40px;border:0;border-radius:50%;background:#eef2f5">←</button><strong>${esc(title)}</strong></div><div class="student-internal-body"></div>`;
+    document.body.appendChild(section);
+    section.querySelector("[data-sp2-fallback-back]").onclick = () => section.remove();
+    return section.querySelector(".student-internal-body");
+}
 
-    /* =====================================================
-       إذا كان الملف الشخصي مفتوحًا من داخل القائمة
-       الرئيسية، لا نغلق القائمة.
-    ===================================================== */
+async function renderProfile(userId) {
+    const me = await sessionUser();
+    if (!me) return;
 
-    const mainMenu =
-        document.getElementById(
-            "student-main-menu"
-        );
+    const targetId = userId || me.id;
+    const own = String(targetId) === String(me.id);
+    const body = openInternal("الملف الشخصي", `profile-${targetId}`);
+    body.innerHTML = `<div class="sp2-wrap"><div class="sp2-card" style="text-align:center">جارٍ تحميل الملف...</div></div>`;
 
-
-    const openedInsideMainMenu =
-        !!(
-            mainMenu &&
-            mainMenu.classList.contains(
-                "is-open"
-            )
-        );
-
-
-    if (
-        !openedInsideMainMenu &&
-        typeof closeFloatingPanel ===
-        "function"
-    ) {
-
-        closeFloatingPanel();
-    }
-
-
-    const profile =
-        await profileLoad(
-            currentUser.id
-        );
-
+    const [profile, stats, following] = await Promise.all([
+        own ? getOwnProfile(targetId) : getPublicProfile(targetId),
+        getStats(targetId),
+        own ? Promise.resolve(false) : isFollowing(targetId)
+    ]);
 
     if (!profile) {
-
-        showFloatingPanel(
-            "الملف الشخصي",
-            `
-            <div style="
-                text-align:center;
-                padding:30px 10px;
-                color:#d93025;
-            ">
-                تعذر تحميل الملف الشخصي.
-            </div>
-            `
-        );
-
+        body.innerHTML = `<div class="sp2-wrap"><div class="sp2-empty">تعذر تحميل الملف الشخصي.</div></div>`;
         return;
     }
 
+    const oldNotice = own && Number(profile.profile_version || 1) < PROFILE_VERSION
+        ? `<div class="sp2-note"><strong>ملفك الشخصي صار أكثر تفصيلاً.</strong><br>حدّث المدرسة والمرحلة أو الصف والمادة المفضلة والهوايات حتى تظهر لك اقتراحات طلاب أدق.</div>`
+        : "";
 
-    const stats =
-        await profileGetStats(
-            currentUser.id
-        );
+    const role = roleLabel(profile.role);
+    const academic = `
+        ${infoItem("الصفة", role)}
+        ${infoItem("المدرسة / المؤسسة", profile.school_name)}
+        ${infoItem("المرحلة", profile.education_stage)}
+        ${infoItem("الصف", profile.grade_name)}
+        ${infoItem("المادة المفضلة", profile.favorite_subject)}
+        ${infoItem("مادة التدريس", profile.teaching_subject)}
+        ${infoItem("المدينة", profile.city)}
+        ${infoItem("الهوايات", profile.hobbies)}
+    `;
 
-
-    const fullName =
-        profile.full_name ||
-        "بدون اسم";
-
-
-    const username =
-        profile.username ||
-        "username";
-
-
-    const bio =
-        profile.bio ||
-        "لا توجد نبذة بعد.";
-
-
-    const email =
-        profile.email ||
-        currentUser.email ||
-        "";
-
-
-    const isPrivate =
-        profile.account_status ===
-        "private";
-
-
-    showFloatingPanel(
-        "الملف الشخصي",
-
-        `
-        <div style="
-            padding-bottom:5px;
-        ">
-
-            <!-- الصورة -->
-
-            <div style="
-                text-align:center;
-                margin-bottom:14px;
-            ">
-
-                ${profileAvatarHTML(profile)}
-
-            </div>
-
-
-            <!-- الاسم -->
-
-            <div style="
-                text-align:center;
-                font-size:21px;
-                font-weight:700;
-                color:#222;
-            ">
-                ${profileEscapeHTML(fullName)}
-                ${studentVerificationBadge(profile, 18)}
-            </div>
-
-
-            <!-- username -->
-
-            <div style="
-                text-align:center;
-                color:#777;
-                font-size:14px;
-                margin-top:5px;
-                direction:ltr;
-            ">
-                @${profileEscapeHTML(username)}
-            </div>
-
-
-            <!-- الإحصائيات -->
-
-            <div style="
-                display:flex;
-                justify-content:space-around;
-                text-align:center;
-                border-top:1px solid #eee;
-                border-bottom:1px solid #eee;
-                margin:20px 0;
-                padding:15px 5px;
-            ">
-
-                <div>
-
-                    <strong style="
-                        display:block;
-                        font-size:20px;
-                        color:#222;
-                    ">
-                        0
-                    </strong>
-
-                    <span style="
-                        color:#777;
-                        font-size:13px;
-                    ">
-                        المنشورات
-                    </span>
-
-                </div>
-
-
-                <div>
-
-                    <strong style="
-                        display:block;
-                        font-size:20px;
-                        color:#222;
-                    ">
-                        ${stats.followers}
-                    </strong>
-
-                    <span style="
-                        color:#777;
-                        font-size:13px;
-                    ">
-                        المتابعون
-                    </span>
-
-                </div>
-
-
-                <div>
-
-                    <strong style="
-                        display:block;
-                        font-size:20px;
-                        color:#222;
-                    ">
-                        ${stats.following}
-                    </strong>
-
-                    <span style="
-                        color:#777;
-                        font-size:13px;
-                    ">
-                        يتابعهم
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <!-- Bio -->
-
-            <div style="
-                background:#f7f8fa;
-                border-radius:14px;
-                padding:14px;
-                margin-bottom:10px;
-            ">
-
-                <div style="
-                    font-weight:700;
-                    margin-bottom:6px;
-                ">
-                    النبذة
-                </div>
-
-                <div style="
-                    color:#666;
-                    line-height:1.7;
-                ">
-                    ${profileEscapeHTML(bio)}
-                </div>
-
-            </div>
-
-
-            <!-- البريد -->
-
-            <div style="
-                background:#f7f8fa;
-                border-radius:14px;
-                padding:14px;
-                margin-bottom:10px;
-            ">
-
-                <div style="
-                    font-weight:700;
-                    margin-bottom:6px;
-                ">
-                    البريد الإلكتروني
-                </div>
-
-                <div style="
-                    color:#666;
-                    direction:ltr;
-                    text-align:right;
-                ">
-                    ${profileEscapeHTML(email)}
-                </div>
-
-            </div>
-
-
-            <!-- الخصوصية -->
-
-            <div style="
-                display:flex;
-                align-items:center;
-                justify-content:space-between;
-                gap:12px;
-                background:#f7f8fa;
-                border-radius:14px;
-                padding:14px;
-                margin-bottom:14px;
-            ">
-
-                <div>
-
-                    <div style="
-                        font-weight:700;
-                    ">
-                        خصوصية الحساب
+    body.innerHTML = `
+        <div class="sp2-wrap">
+            ${oldNotice}
+            <section class="sp2-card">
+                <div class="sp2-head">
+                    ${avatarHTML(profile)}
+                    <div>
+                        <div class="sp2-name">${esc(profile.full_name || profile.username || "مستخدم")}${verificationBadge(profile,18)}</div>
+                        <div class="sp2-user">@${esc(profile.username || "user")}</div>
+                        <span class="sp2-role">${esc(role)}</span>
                     </div>
-
-                    <div
-                        id="profile-privacy-text"
-                        style="
-                            color:#777;
-                            font-size:13px;
-                            margin-top:4px;
-                        "
-                    >
-                        ${isPrivate ? "حساب خاص" : "حساب عام"}
-                    </div>
-
                 </div>
 
+                <div class="sp2-stats">
+                    <div class="sp2-stat"><strong>${stats.posts}</strong><span>المنشورات</span></div>
+                    <div class="sp2-stat"><strong>${stats.followers}</strong><span>المتابعون</span></div>
+                    <div class="sp2-stat"><strong>${stats.following}</strong><span>يتابع</span></div>
+                </div>
 
-                <button
-                    id="profile-privacy-btn"
-                    type="button"
-                    style="
-                        border:none;
-                        background:#0095f6;
-                        color:#fff;
-                        padding:9px 13px;
-                        border-radius:10px;
-                        cursor:pointer;
-                    "
-                >
-                    ${isPrivate ? "جعله عامًا" : "جعله خاصًا"}
-                </button>
+                <div class="sp2-actions">
+                    ${own
+                        ? `<button class="sp2-btn" type="button" data-sp2-edit>تعديل الملف</button>`
+                        : `<button class="sp2-btn ${following ? "following" : ""}" type="button" data-sp2-follow="${esc(targetId)}">${following ? "متابَع" : "متابعة"}</button>`
+                    }
+                </div>
+            </section>
 
-            </div>
+            ${profile.bio ? `<section class="sp2-card"><div class="sp2-title">نبذة</div><div class="sp2-bio">${esc(profile.bio)}</div></section>` : ""}
 
-
-            <!-- الأزرار -->
-
-            <div style="
-                display:grid;
-                grid-template-columns:1fr;
-                gap:10px;
-            ">
-
-                <button
-                    id="profile-edit-btn"
-                    type="button"
-                    style="
-                        border:none;
-                        background:#0095f6;
-                        color:#fff;
-                        padding:13px;
-                        border-radius:12px;
-                        font-size:15px;
-                        cursor:pointer;
-                    "
-                >
-                    <i class="fa-solid fa-pen"></i>
-                    تعديل الملف الشخصي
-                </button>
-
-
-                <button
-                    id="profile-close-btn"
-                    type="button"
-                    style="
-                        border:none;
-                        background:#f1f3f5;
-                        color:#333;
-                        padding:13px;
-                        border-radius:12px;
-                        font-size:15px;
-                        cursor:pointer;
-                        display:none;
-                    "
-                >
-                    إغلاق
-                </button>
-
-            </div>
-
+            <section class="sp2-card">
+                <div class="sp2-title">المعلومات</div>
+                <div class="sp2-info">${academic || `<div style="color:#8a949e">لم تُضف معلومات دراسية بعد.</div>`}</div>
+            </section>
         </div>
-        `
-    );
+    `;
 
+    body.querySelector("[data-sp2-edit]")?.addEventListener("click", () => renderEdit(body, profile));
+    const followButton = body.querySelector("[data-sp2-follow]");
+    followButton?.addEventListener("click", async () => {
+        await toggleFollow(targetId, followButton);
+        const freshStats = await getStats(targetId);
+        const nodes = body.querySelectorAll(".sp2-stat strong");
+        if (nodes[1]) nodes[1].textContent = freshStats.followers;
+    });
+}
 
-    document
-        .getElementById("profile-edit-btn")
-        ?.addEventListener(
-            "click",
-            function() {
+function renderEdit(body, profile) {
+    const teacher = ["teacher","instructor","professor"].includes(String(profile.role || "").toLowerCase());
 
-                profileOpenEdit(
-                    profile
-                );
+    body.innerHTML = `
+        <div class="sp2-wrap">
+            <section class="sp2-card">
+                <div class="sp2-title">تعديل الملف الشخصي</div>
+                <form class="sp2-form" id="sp2-edit-form">
+                    <div style="text-align:center">
+                        <div id="sp2-avatar-preview">${avatarHTML(profile)}</div>
+                        <label class="sp2-btn secondary" style="display:inline-block;margin-top:10px;cursor:pointer">
+                            تغيير الصورة
+                            <input id="sp2-avatar-input" type="file" accept="image/*" hidden>
+                        </label>
+                    </div>
 
-            }
-        );
+                    <div class="sp2-grid">
+                        <div class="sp2-field"><label>الاسم</label><input id="sp2-name" maxlength="70" value="${esc(profile.full_name || "")}" required></div>
+                        <div class="sp2-field"><label>اسم المستخدم</label><input id="sp2-username" maxlength="30" value="${esc(profile.username || "")}" required></div>
+                    </div>
 
+                    <div class="sp2-field"><label>النبذة</label><textarea id="sp2-bio" maxlength="240">${esc(profile.bio || "")}</textarea></div>
 
-    /*
-       زر الإغلاق مخفي داخل القائمة،
-       لذلك لا نستخدمه للتنقل.
-    */
+                    <div class="sp2-grid">
+                        <div class="sp2-field"><label>المدرسة / المؤسسة</label><input id="sp2-school" maxlength="100" value="${esc(profile.school_name || "")}" placeholder="مثال: مدرسة المثنى"></div>
+                        <div class="sp2-field"><label>المدينة</label><input id="sp2-city" maxlength="70" value="${esc(profile.city || "")}"></div>
+                    </div>
 
-    document
-        .getElementById("profile-close-btn")
-        ?.addEventListener(
-            "click",
-            function () {
+                    <div class="sp2-grid">
+                        <div class="sp2-field"><label>${teacher ? "المرحلة التي تدرّسها" : "المرحلة الدراسية"}</label><input id="sp2-stage" maxlength="70" value="${esc(profile.education_stage || "")}" placeholder="ابتدائي، إعدادي، ثانوي، جامعة"></div>
+                        <div class="sp2-field"><label>${teacher ? "الصفوف التي تدرّسها" : "الصف"}</label><input id="sp2-grade" maxlength="70" value="${esc(profile.grade_name || "")}"></div>
+                    </div>
 
-                if (
-                    openedInsideMainMenu
-                ) {
-
-                    if (
-                        typeof window.goBackInsideMenu ===
-                        "function"
-                    ) {
-
-                        window.goBackInsideMenu();
+                    ${teacher
+                        ? `<div class="sp2-field"><label>مادة التدريس</label><input id="sp2-teaching-subject" maxlength="80" value="${esc(profile.teaching_subject || "")}"></div>`
+                        : `<div class="sp2-field"><label>المادة المفضلة</label><input id="sp2-favorite-subject" maxlength="80" value="${esc(profile.favorite_subject || "")}"></div>`
                     }
 
-                    return;
-                }
+                    <div class="sp2-field"><label>الهوايات والاهتمامات</label><input id="sp2-hobbies" maxlength="180" value="${esc(profile.hobbies || "")}" placeholder="مثال: القراءة، البرمجة، كرة القدم"></div>
 
+                    <button class="sp2-save" id="sp2-save" type="submit">حفظ التغييرات</button>
+                    <div class="sp2-message" id="sp2-message"></div>
+                </form>
+            </section>
+        </div>
+    `;
 
-                if (
-                    typeof closeFloatingPanel ===
-                    "function"
-                ) {
+    const fileInput = body.querySelector("#sp2-avatar-input");
+    fileInput?.addEventListener("change", () => {
+        const file = fileInput.files?.[0];
+        if (!file || !file.type.startsWith("image/") || file.size > 5*1024*1024) return;
+        const url = URL.createObjectURL(file);
+        body.querySelector("#sp2-avatar-preview").innerHTML = `<img class="sp2-avatar" src="${url}" alt="">`;
+    });
 
-                    closeFloatingPanel();
-                }
-
-            }
-        );
-
-
-    document
-        .getElementById("profile-privacy-btn")
-        ?.addEventListener(
-            "click",
-            function() {
-
-                profileTogglePrivacy(
-                    profile.account_status
-                );
-
-            }
-        );
+    body.querySelector("#sp2-edit-form")?.addEventListener("submit", event => saveProfile(event, body, profile));
 }
 
-
-/* =========================================================
-   تعديل الملف
-========================================================= */
-
-function profileOpenEdit(profile) {
-
-    const fullName =
-        profile?.full_name || "";
-
-    const username =
-        profile?.username || "";
-
-    const bio =
-        profile?.bio || "";
-
-    const avatar =
-        profile?.avatar_url || "";
-
-
-    showFloatingPanel(
-        "تعديل الملف الشخصي",
-
-        `
-        <form
-            id="profile-edit-form"
-            style="
-                display:flex;
-                flex-direction:column;
-                gap:11px;
-            "
-        >
-
-            <!-- الصورة -->
-
-            <div style="
-                text-align:center;
-                margin-bottom:5px;
-            ">
-
-                <div
-                    id="profile-edit-avatar"
-                    style="
-                        width:100px;
-                        height:100px;
-                        margin:auto;
-                    "
-                >
-                    ${
-                        avatar
-                            ? `
-                                <img
-                                    src="${profileEscapeAttribute(avatar)}"
-                                    style="
-                                        width:100px;
-                                        height:100px;
-                                        border-radius:50%;
-                                        object-fit:cover;
-                                    "
-                                >
-                              `
-                            : `
-                                <div style="
-                                    width:100px;
-                                    height:100px;
-                                    border-radius:50%;
-                                    background:#eaf5ff;
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    color:#0095f6;
-                                    font-size:40px;
-                                ">
-                                    <i class="fa-solid fa-user"></i>
-                                </div>
-                              `
-                    }
-                </div>
-
-                <label
-                    for="profile-image-input"
-                    style="
-                        display:inline-block;
-                        margin-top:10px;
-                        color:#0095f6;
-                        font-weight:600;
-                        cursor:pointer;
-                    "
-                >
-                    <i class="fa-solid fa-camera"></i>
-                    تغيير الصورة
-                </label>
-
-                <input
-                    id="profile-image-input"
-                    type="file"
-                    accept="image/*"
-                    style="display:none;"
-                >
-
-            </div>
-
-
-            <label>
-                الاسم
-            </label>
-
-            <input
-                id="profile-name-input"
-                type="text"
-                value="${profileEscapeAttribute(fullName)}"
-                required
-                style="
-                    padding:13px;
-                    border:1px solid #ddd;
-                    border-radius:10px;
-                    font-size:15px;
-                "
-            >
-
-
-            <label>
-                اسم المستخدم
-            </label>
-
-            <input
-                id="profile-username-input"
-                type="text"
-                value="${profileEscapeAttribute(username)}"
-                minlength="3"
-                required
-                style="
-                    padding:13px;
-                    border:1px solid #ddd;
-                    border-radius:10px;
-                    font-size:15px;
-                    direction:ltr;
-                "
-            >
-
-
-            <label>
-                النبذة
-            </label>
-
-            <textarea
-                id="profile-bio-input"
-                maxlength="200"
-                placeholder="اكتب نبذة عنك..."
-                style="
-                    min-height:90px;
-                    resize:none;
-                    padding:13px;
-                    border:1px solid #ddd;
-                    border-radius:10px;
-                    font-size:15px;
-                "
-            >${profileEscapeHTML(bio)}</textarea>
-
-
-            <button
-                id="profile-save-btn"
-                type="submit"
-                style="
-                    border:none;
-                    background:#0095f6;
-                    color:#fff;
-                    padding:13px;
-                    border-radius:12px;
-                    font-size:16px;
-                    cursor:pointer;
-                "
-            >
-                حفظ التغييرات
-            </button>
-
-
-            <div
-                id="profile-edit-message"
-                style="
-                    min-height:22px;
-                    text-align:center;
-                    font-size:14px;
-                "
-            ></div>
-
-        </form>
-        `
-    );
-
-
-    document
-        .getElementById("profile-image-input")
-        ?.addEventListener(
-            "change",
-            profilePreviewImage
-        );
-
-
-    document
-        .getElementById("profile-edit-form")
-        ?.addEventListener(
-            "submit",
-            profileSave
-        );
-}
-
-
-/* =========================================================
-   معاينة الصورة
-========================================================= */
-
-function profilePreviewImage(event) {
-
-    const file =
-        event.target.files?.[0];
-
-    if (!file) {
-        return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-
-        event.target.value = "";
-
-        return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-
-        event.target.value = "";
-
-        showFloatingPanel(
-            "الصورة",
-            `
-            <div style="
-                text-align:center;
-                padding:25px;
-                color:#d93025;
-            ">
-                يجب أن يكون حجم الصورة أقل من 5MB.
-            </div>
-            `
-        );
-
-        return;
-    }
-
-    const reader =
-        new FileReader();
-
-    reader.onload =
-        function(loadEvent) {
-
-            const container =
-                document.getElementById(
-                    "profile-edit-avatar"
-                );
-
-            if (!container) {
-                return;
-            }
-
-            container.innerHTML = `
-                <img
-                    src="${loadEvent.target.result}"
-                    style="
-                        width:100px;
-                        height:100px;
-                        border-radius:50%;
-                        object-fit:cover;
-                    "
-                >
-            `;
-        };
-
-    reader.readAsDataURL(file);
-}
-
-
-/* =========================================================
-   حفظ الملف
-========================================================= */
-
-async function profileSave(event) {
-
+async function saveProfile(event, body, oldProfile) {
     event.preventDefault();
+    const client = db();
+    const me = await sessionUser();
+    if (!client || !me) return;
 
-    if (
-        !supabaseClient ||
-        !currentUser
-    ) {
-        return;
-    }
-
-    const message =
-        document.getElementById(
-            "profile-edit-message"
-        );
-
-    const button =
-        document.getElementById(
-            "profile-save-btn"
-        );
-
-    const fullName =
-        document.getElementById(
-            "profile-name-input"
-        )?.value.trim();
-
-    const username =
-        document.getElementById(
-            "profile-username-input"
-        )?.value.trim()
-        .toLowerCase();
-
-    const bio =
-        document.getElementById(
-            "profile-bio-input"
-        )?.value.trim();
-
-    const image =
-        document.getElementById(
-            "profile-image-input"
-        )?.files?.[0];
-
-
-    if (!fullName || !username) {
-
-        if (message) {
-            message.style.color =
-                "#d93025";
-
-            message.textContent =
-                "الاسم واسم المستخدم مطلوبان.";
-        }
-
-        return;
-    }
-
+    const msg = body.querySelector("#sp2-message");
+    const save = body.querySelector("#sp2-save");
+    save.disabled = true;
+    save.textContent = "جارٍ الحفظ...";
 
     try {
-
-        if (button) {
-            button.disabled = true;
-            button.textContent =
-                "جارٍ الحفظ...";
-        }
-
-
-        let avatarURL =
-            (
-                typeof currentProfile !== "undefined"
-                ? currentProfile?.avatar_url
-                : null
-            ) || null;
-
-
-        /* رفع الصورة */
+        let avatarUrl = oldProfile.avatar_url || null;
+        const image = body.querySelector("#sp2-avatar-input")?.files?.[0];
 
         if (image) {
-
-            const extension =
-                image.name
-                    .split(".")
-                    .pop()
-                    .toLowerCase();
-
-            const filePath =
-                `${currentUser.id}/${Date.now()}.${extension}`;
-
-
-            const { error: uploadError } =
-                await supabaseClient
-                    .storage
-                    .from("avatars")
-                    .upload(
-                        filePath,
-                        image,
-                        {
-                            cacheControl: "3600",
-                            upsert: false,
-                            contentType: image.type
-                        }
-                    );
-
-
-            if (uploadError) {
-                throw uploadError;
+            if (!image.type.startsWith("image/") || image.size > 5*1024*1024) {
+                throw new Error("الصورة يجب أن تكون أقل من 5MB.");
             }
-
-
-            const { data: publicURL } =
-                supabaseClient
-                    .storage
-                    .from("avatars")
-                    .getPublicUrl(
-                        filePath
-                    );
-
-
-            avatarURL =
-                publicURL?.publicUrl ||
-                avatarURL;
+            const ext = (image.name.split(".").pop() || "jpg").toLowerCase();
+            const path = `${me.id}/${Date.now()}.${ext}`;
+            const { error: uploadError } = await client.storage.from("avatars").upload(path, image, {
+                cacheControl:"3600", upsert:false, contentType:image.type
+            });
+            if (uploadError) throw uploadError;
+            avatarUrl = client.storage.from("avatars").getPublicUrl(path).data?.publicUrl || avatarUrl;
         }
 
+        const name = body.querySelector("#sp2-name").value.trim();
+        const username = body.querySelector("#sp2-username").value.trim().toLowerCase();
+        const bio = body.querySelector("#sp2-bio").value.trim();
 
-        /* تحديث بيانات الملف */
+        const base = await client.rpc("update_profile", {
+            p_full_name:name,
+            p_username:username,
+            p_bio:bio,
+            p_avatar_url:avatarUrl
+        });
+        if (base.error) throw base.error;
+        if (base.data === "username_taken") throw new Error("اسم المستخدم مستخدم بالفعل.");
+        if (base.data === "invalid_username") throw new Error("اسم المستخدم غير صالح.");
 
-        const { data, error } =
-            await supabaseClient.rpc(
-                "update_profile",
-                {
-                    p_full_name:
-                        fullName,
+        const extended = await client.rpc("student_update_extended_profile", {
+            p_school_name:body.querySelector("#sp2-school").value.trim(),
+            p_education_stage:body.querySelector("#sp2-stage").value.trim(),
+            p_grade_name:body.querySelector("#sp2-grade").value.trim(),
+            p_favorite_subject:body.querySelector("#sp2-favorite-subject")?.value.trim() || "",
+            p_teaching_subject:body.querySelector("#sp2-teaching-subject")?.value.trim() || "",
+            p_city:body.querySelector("#sp2-city").value.trim(),
+            p_hobbies:body.querySelector("#sp2-hobbies").value.trim()
+        });
+        if (extended.error) throw extended.error;
 
-                    p_username:
-                        username,
-
-                    p_bio:
-                        bio || "",
-
-                    p_avatar_url:
-                        avatarURL
-                }
-            );
-
-
-        if (error) {
-            throw error;
-        }
-
-
-        if (data !== "updated") {
-
-            if (
-                data ===
-                "username_taken"
-            ) {
-                throw new Error(
-                    "اسم المستخدم مستخدم بالفعل."
-                );
-            }
-
-            if (
-                data ===
-                "invalid_username"
-            ) {
-                throw new Error(
-                    "اسم المستخدم غير صالح."
-                );
-            }
-
-            throw new Error(
-                "تعذر تحديث الملف الشخصي."
-            );
-        }
-
-
-        /* تحديث بيانات الذاكرة */
-
-        const newProfile =
-            await profileLoad(
-                currentUser.id
-            );
-
-
-        if (
-            typeof currentProfile !==
-            "undefined"
-        ) {
-            currentProfile =
-                newProfile;
-        }
-
-
-        if (message) {
-
-            message.style.color =
-                "#16803c";
-
-            message.textContent =
-                "تم حفظ التغييرات بنجاح.";
-        }
-
-
-        setTimeout(
-            profileOpen,
-            700
-        );
-
-
+        msg.style.color = "#16803c";
+        msg.textContent = "تم حفظ الملف.";
+        setTimeout(() => renderProfile(me.id), 450);
     } catch (error) {
-
-        console.error(
-            "Profile save error:",
-            error
-        );
-
-        if (message) {
-
-            message.style.color =
-                "#d93025";
-
-            message.textContent =
-                error?.message ||
-                "تعذر حفظ التغييرات.";
-        }
-
+        console.error("Profile save:", error);
+        msg.style.color = "#c62828";
+        msg.textContent = error?.message || "تعذر حفظ الملف.";
     } finally {
-
-        if (button) {
-
-            button.disabled = false;
-
-            button.textContent =
-                "حفظ التغييرات";
-        }
+        save.disabled = false;
+        save.textContent = "حفظ التغييرات";
     }
 }
 
+async function openSuggestions() {
+    const me = await sessionUser();
+    const client = db();
+    if (!me || !client) return;
 
-/* =========================================================
-   الخصوصية
-========================================================= */
+    const body = openInternal("اقتراحات المتابعة", "profile-suggestions");
+    body.innerHTML = `<div class="sp2-wrap"><div class="sp2-card" style="text-align:center">جارٍ البحث عن طلاب يشتركون معك باهتمامات ومعلومات دراسية...</div></div>`;
 
-async function profileTogglePrivacy(
-    currentStatus
-) {
+    let rows = [];
+    const { data, error } = await client.rpc("student_get_profile_suggestions", { p_limit:30 });
+    if (!error) rows = data || [];
 
-    if (
-        !supabaseClient ||
-        !currentUser
-    ) {
+    if (!rows.length) {
+        body.innerHTML = `<div class="sp2-wrap"><div class="sp2-empty">لا توجد اقتراحات كافية حاليًا.<br>حدّث المدرسة والمرحلة والصف والمادة المفضلة والهوايات حتى تصبح الاقتراحات أدق.</div></div>`;
         return;
     }
 
-    const newStatus =
-        currentStatus === "private"
-            ? "public"
-            : "private";
-
-
-    try {
-
-        const { data, error } =
-            await supabaseClient.rpc(
-                "set_account_status",
-                {
-                    p_status:
-                        newStatus
-                }
-            );
-
-
-        if (error) {
-            throw error;
-        }
-
-
-        if (
-            data !== "public" &&
-            data !== "private"
-        ) {
-            throw new Error(
-                "تعذر تغيير الخصوصية."
-            );
-        }
-
-
-        await profileLoad(
-            currentUser.id
-        );
-
-
-        profileOpen();
-
-
-    } catch (error) {
-
-        console.error(
-            "Privacy error:",
-            error
-        );
-
-        showFloatingPanel(
-            "الخصوصية",
-            `
-            <div style="
-                text-align:center;
-                padding:25px;
-                color:#d93025;
-            ">
-                تعذر تغيير خصوصية الحساب.
+    body.innerHTML = `
+        <div class="sp2-wrap">
+            <section class="sp2-card">
+                <div class="sp2-title">طلاب قد تعرفهم</div>
+                <div style="font-size:12px;color:#7c8792;line-height:1.7">الاقتراحات مبنية على المعلومات المشتركة في الملف الدراسي والهوايات، ولا تستخدم البريد الإلكتروني أو أي معلومات سرية.</div>
+            </section>
+            <div class="sp2-suggestions">
+                ${rows.map(row => {
+                    const reasons = Array.isArray(row.common_reasons) ? row.common_reasons : [];
+                    return `<article class="sp2-suggestion">
+                        <div class="sp2-suggestion-top" data-sp2-open-profile="${esc(row.id)}">
+                            ${avatarHTML(row,"sp2-suggestion-avatar")}
+                            <div style="min-width:0;flex:1">
+                                <div class="sp2-suggestion-name">${esc(row.full_name || row.username || "طالب")}${verificationBadge(row,13)}</div>
+                                <div class="sp2-suggestion-user">@${esc(row.username || "user")}</div>
+                            </div>
+                        </div>
+                        <div class="sp2-reasons">${reasons.slice(0,4).map(x => `<span class="sp2-reason">${esc(x)}</span>`).join("")}</div>
+                        <button type="button" class="sp2-btn ${row.is_following ? "following" : ""}" style="margin-top:10px;width:100%" data-sp2-suggest-follow="${esc(row.id)}">${row.is_following ? "متابَع" : "متابعة"}</button>
+                    </article>`;
+                }).join("")}
             </div>
-            `
-        );
-    }
+        </div>
+    `;
+
+    body.querySelectorAll("[data-sp2-open-profile]").forEach(el => {
+        el.addEventListener("click", () => renderProfile(el.dataset.sp2OpenProfile));
+    });
+    body.querySelectorAll("[data-sp2-suggest-follow]").forEach(button => {
+        button.addEventListener("click", () => toggleFollow(button.dataset.sp2SuggestFollow, button));
+    });
 }
 
-
-/* =========================================================
-   ربط الملف الشخصي بالتطبيق
-========================================================= */
-
-window.showProfilePanel =
-    profileOpen;
-
-
+window.showProfilePanel = renderProfile;
 window.StudentProfile = {
-
-    open:
-        profileOpen,
-
-    edit:
-        profileOpenEdit,
-
-    refresh:
-        async function() {
-
-            if (
-                typeof currentUser !==
-                "undefined" &&
-                currentUser
-            ) {
-
-                return profileLoad(
-                    currentUser.id
-                );
-            }
-
-            return null;
-        }
-
+    open: renderProfile,
+    edit: async function() {
+        const me = await sessionUser();
+        if (me) renderProfile(me.id);
+    },
+    refresh: async function() {
+        const me = await sessionUser();
+        return me ? getOwnProfile(me.id) : null;
+    }
 };
+window.StudentSuggestions = { open:openSuggestions };
 
 })();
 
@@ -6049,7 +5339,10 @@ window.StudentProfile = {
 
                 <div class="
                     student-feed-header
-                ">
+                "
+                data-feed-profile="${escapeHTML(post.user_id)}"
+                style="cursor:pointer"
+                >
 
                     ${avatarHTML(
                         profile
@@ -6602,6 +5895,18 @@ window.StudentProfile = {
         }
 
 
+        /* فتح ملف صاحب المنشور */
+
+        feedContainer
+            .querySelectorAll("[data-feed-profile]")
+            .forEach(function(element) {
+                element.addEventListener("click", function(event) {
+                    if (event.target.closest("button")) return;
+                    window.StudentProfile?.open?.(element.dataset.feedProfile);
+                });
+            });
+
+
         /* إعجاب */
 
         feedContainer
@@ -6932,7 +6237,7 @@ function ensure(){
  page.style.cssText="position:fixed;inset:0;z-index:2147482400;background:#f7f8fb;display:none;flex-direction:column;direction:rtl";
  page.innerHTML=`<header style="height:62px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;padding:0 14px"><button data-search-back style="border:0;background:#eef2f6;width:40px;height:40px;border-radius:50%;font-size:22px">‹</button><strong style="font-size:19px">البحث</strong></header><div style="padding:12px"><input id="student-search-input" placeholder="ابحث بالاسم أو اسم المستخدم" style="width:100%;box-sizing:border-box;border:1px solid #dfe3e8;border-radius:14px;padding:13px;font:inherit;background:#fff"></div><div id="student-search-results" style="padding:0 12px 90px;overflow:auto;display:grid;gap:8px"></div>`;
  document.body.appendChild(page);
- page.addEventListener("click",e=>{const b=e.target.closest("[data-search-back]");if(b){close();return;}const r=e.target.closest("[data-profile-id]");if(r){window.StudentProfile?.open?.(r.dataset.profileId);window.showProfilePanel?.(r.dataset.profileId);}});
+ page.addEventListener("click",e=>{const b=e.target.closest("[data-search-back]");if(b){close();return;}const r=e.target.closest("[data-profile-id]");if(r){window.StudentProfile?.open?.(r.dataset.profileId);}});
  page.querySelector("#student-search-input").addEventListener("input",e=>{clearTimeout(timer);timer=setTimeout(()=>run(e.target.value),300);});
  return page;
 }
