@@ -89,6 +89,32 @@ function injectStyles() {
     const style = document.createElement("style");
     style.id = "student-profile-v2-style";
     style.textContent = `
+        .sp2-internal-page{
+            position:fixed !important;
+            inset:0 !important;
+            width:100% !important;
+            height:100% !important;
+            z-index:2147482200 !important;
+            background:#f7f9fb !important;
+            display:flex !important;
+            flex-direction:column !important;
+            overflow:hidden !important;
+        }
+        .sp2-internal-page[hidden]{
+            display:none !important;
+        }
+        .sp2-internal-page .student-internal-header{
+            flex:0 0 auto !important;
+            background:#fff !important;
+            border-bottom:1px solid #e5e9ed !important;
+        }
+        .sp2-internal-page .student-internal-body{
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            overflow-y:auto !important;
+            background:#f7f9fb !important;
+            -webkit-overflow-scrolling:touch;
+        }
         .sp2-wrap{
             width:min(860px,100%);
             margin:0 auto;
@@ -312,7 +338,34 @@ function openInternal(title, id) {
 
     if (window.StudentNavigation?.openPage) {
         const page = window.StudentNavigation.openPage({ id, title, html:"" });
-        body = page?.querySelector(".student-internal-body") || null;
+
+        if (page) {
+            page.classList.add("sp2-internal-page");
+            page.style.position = "fixed";
+            page.style.inset = "0";
+            page.style.zIndex = "2147482200";
+            page.style.background = "#f7f9fb";
+            page.style.display = "flex";
+            page.style.flexDirection = "column";
+            page.style.overflow = "hidden";
+
+            const header = page.querySelector(".student-internal-header");
+            if (header) {
+                header.style.flex = "0 0 auto";
+                header.style.background = "#ffffff";
+                header.style.borderBottom = "1px solid #e5e9ed";
+                header.style.zIndex = "2";
+            }
+
+            body = page.querySelector(".student-internal-body") || null;
+            if (body) {
+                body.style.flex = "1 1 auto";
+                body.style.minHeight = "0";
+                body.style.overflowY = "auto";
+                body.style.background = "#f7f9fb";
+                body.style.webkitOverflowScrolling = "touch";
+            }
+        }
     } else {
         const old = document.getElementById("student-profile-fallback");
         old?.remove();
