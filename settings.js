@@ -546,14 +546,7 @@
                 width:
                     min(88vw,390px);
 
-                background:
-                    linear-gradient(
-                        180deg,
-                        #063b73 0%,
-                        #0a5ca8 38%,
-                        #dcecff 72%,
-                        #ffffff 100%
-                    );
+                background:#ffffff;
 
                 box-shadow:
                     12px 0 35px
@@ -606,16 +599,10 @@
                     15px
                     12px;
 
-                background:
-                    linear-gradient(
-                        180deg,
-                        #042f5c,
-                        #075a9f
-                    );
+                background:#ffffff;
 
                 border-bottom:
-                    1px solid
-                    rgba(255,255,255,.20);
+                    1px solid #e5e9ed;
 
                 flex-shrink:0;
             }
@@ -628,10 +615,9 @@
                 border:0;
                 border-radius:50%;
 
-                background:
-                    rgba(255,255,255,.88);
+                background:#eef3f7;
 
-                color:#063b73;
+                color:#0878c9;
 
                 display:flex;
                 align-items:center;
@@ -658,7 +644,7 @@
             .student-menu-title {
                 flex:1;
 
-                color:#ffffff;
+                color:#172033;
 
                 font-size:19px;
 
@@ -675,10 +661,9 @@
                 border:0;
                 border-radius:50%;
 
-                background:
-                    rgba(255,255,255,.88);
+                background:#eef3f7;
 
-                color:#063b73;
+                color:#0878c9;
 
                 display:flex;
                 align-items:center;
@@ -712,17 +697,9 @@
             .student-menu-item {
                 width:100%;
 
-                border:
-                    1px solid
-                    rgba(255,255,255,.75);
+                border:1px solid #e6ebf0;
 
-                background:
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        .92
-                    );
+                background:#ffffff;
 
                 color:#18324a;
 
@@ -747,9 +724,7 @@
 
                 margin-bottom:9px;
 
-                box-shadow:
-                    0 3px 10px
-                    rgba(0,55,110,.10);
+                box-shadow:none;
 
                 transition:
                     transform .10s ease,
@@ -792,13 +767,7 @@
 
                 color:#9b2525;
 
-                background:
-                    rgba(
-                        255,
-                        245,
-                        245,
-                        .96
-                    );
+                background:#fff7f7;
             }
 
 
@@ -2088,6 +2057,7 @@
                             "function"
                         ) {
 
+                            window.closeStudentMenu?.();
                             window.showProfilePanel();
 
                         } else {
@@ -2101,6 +2071,21 @@
 
             });
         }
+
+
+        items.push({
+            id:"menu-suggestions",
+            icon:"fa-solid fa-user-group",
+            text:"اقتراحات المتابعة",
+            action:function(){
+                if (window.StudentSuggestions?.open) {
+                    window.closeStudentMenu?.();
+                    window.StudentSuggestions.open();
+                } else {
+                    menuToast("اقتراحات المتابعة غير متاحة.");
+                }
+            }
+        });
 
 
         if (
