@@ -2057,7 +2057,6 @@
                             "function"
                         ) {
 
-                            window.closeStudentMenu?.();
                             window.showProfilePanel();
 
                         } else {
@@ -2079,7 +2078,6 @@
             text:"اقتراحات المتابعة",
             action:function(){
                 if (window.StudentSuggestions?.open) {
-                    window.closeStudentMenu?.();
                     window.StudentSuggestions.open();
                 } else {
                     menuToast("اقتراحات المتابعة غير متاحة.");
