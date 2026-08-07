@@ -24,6 +24,28 @@ function profileEscapeAttribute(value) {
     return profileEscapeHTML(value);
 }
 
+function studentVerificationBadge(profile, size = 15) {
+    if (!profile || profile.is_verified !== true) return "";
+
+    const colorName = String(profile.verification_color || "").toLowerCase();
+    const color =
+        colorName === "orange" ? "#ff8a00" :
+        colorName === "red" ? "#e53935" :
+        "#0095f6";
+
+    const label =
+        colorName === "orange" ? "حساب أدمن موثّق" :
+        colorName === "red" ? "حساب أستاذ موثّق" :
+        "حساب موثّق";
+
+    return `<i
+        class="fa-solid fa-circle-check student-verification-badge"
+        title="${profileEscapeAttribute(label)}"
+        aria-label="${profileEscapeAttribute(label)}"
+        style="color:${color};font-size:${Number(size) || 15}px;margin-inline-start:4px;vertical-align:middle"
+    ></i>`;
+}
+
 
 /* =========================================================
    تحميل بيانات الملف
@@ -45,7 +67,11 @@ async function profileLoad(userId) {
                 email,
                 bio,
                 avatar_url,
-                account_status
+                account_status,
+                role,
+                is_verified,
+                verification_color,
+                verified_at
             `)
             .eq("id", userId)
             .maybeSingle();
@@ -288,6 +314,7 @@ async function profileOpen() {
                 color:#222;
             ">
                 ${profileEscapeHTML(fullName)}
+                ${studentVerificationBadge(profile, 18)}
             </div>
 
 
@@ -5730,7 +5757,10 @@ window.StudentProfile = {
                     id,
                     full_name,
                     username,
-                    avatar_url
+                    avatar_url,
+                    role,
+                    is_verified,
+                    verification_color
                 `)
                 .in(
                     "id",
@@ -5996,6 +6026,7 @@ window.StudentProfile = {
                             ${escapeHTML(
                                 name
                             )}
+                            ${studentVerificationBadge(profile, 14)}
 
                         </div>
 
@@ -6868,7 +6899,7 @@ async function run(value){
  const q=String(value||"").trim(); const box=page.querySelector("#student-search-results");
  if(q.length<2){box.innerHTML='<div style="text-align:center;color:#7b8491;padding:45px 12px">اكتب حرفين على الأقل</div>';return;}
  controller?.abort(); controller=new AbortController(); box.innerHTML='<div style="text-align:center;padding:35px;color:#777">جارٍ البحث...</div>';
- try{const client=db(); if(!client) throw new Error("Supabase غير جاهز"); const safe=q.replace(/[,%()]/g,""); const {data,error}=await client.from("profiles").select("id,full_name,username,avatar_url,role,is_verified,verification_color").or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30); if(error) throw error; box.innerHTML=(data||[]).map(x=>`<button data-profile-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;display:grid;grid-template-columns:48px 1fr;gap:10px;text-align:right;align-items:center"><img src="${esc(x.avatar_url||'')}" onerror="this.style.visibility='hidden'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5"><span><strong>${esc(x.full_name||x.username||'مستخدم')}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
+ try{const client=db(); if(!client) throw new Error("Supabase غير جاهز"); const safe=q.replace(/[,%()]/g,""); const {data,error}=await client.from("profiles").select("id,full_name,username,avatar_url,role,is_verified,verification_color").or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30); if(error) throw error; box.innerHTML=(data||[]).map(x=>`<button data-profile-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;display:grid;grid-template-columns:48px 1fr;gap:10px;text-align:right;align-items:center"><img src="${esc(x.avatar_url||'')}" onerror="this.style.visibility='hidden'" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5"><span><strong>${esc(x.full_name||x.username||'مستخدم')}${studentVerificationBadge(x,14)}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
  }catch(err){if(err.name!=="AbortError") box.innerHTML='<div style="text-align:center;color:#b3261e;padding:35px">تعذر البحث حاليًا</div>';}
 }
 function open(){ensure();page.style.display="flex";history.pushState({studentPage:"search"},"","#search");setTimeout(()=>page.querySelector("#student-search-input")?.focus(),50);}
@@ -6919,7 +6950,7 @@ function renderList(){let p=page();p.innerHTML=`<header class="sm-head"><button 
         e.onclick=activate;
         e.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate()}}
     })}
-async function searchUsers(q){let box=document.getElementById('sm-user-search');if(!box)return;q=q.trim();if(q.length<2){box.innerHTML='';return}let c=sb();let{data}=await c.from('profiles').select('id,full_name,username,avatar_url').neq('id',S.user.id).or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(25);box.innerHTML=`<div class="sm-list">${(data||[]).map(p=>`<article class="sm-row" data-user="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div><button class="sm-icon">\u2709</button></article>`).join('')}</div>`;box.querySelectorAll('[data-user]').forEach(e=>e.onclick=()=>startDirect(e.dataset.user))}
+async function searchUsers(q){let box=document.getElementById('sm-user-search');if(!box)return;q=q.trim();if(q.length<2){box.innerHTML='';return}let c=sb();let{data}=await c.from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').neq('id',S.user.id).or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(25);box.innerHTML=`<div class="sm-list">${(data||[]).map(p=>`<article class="sm-row" data-user="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}${studentVerificationBadge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div><button class="sm-icon">\u2709</button></article>`).join('')}</div>`;box.querySelectorAll('[data-user]').forEach(e=>e.onclick=()=>startDirect(e.dataset.user))}
 function conversationId(value){
     if(!value)return null;
     if(typeof value==='string')return value;
@@ -6989,7 +7020,7 @@ function openCreate(){let sh=document.createElement('div');sh.className='sm-shee
 function openUserSearch(){let i=document.getElementById('sm-search-users');i?.focus()}
 function createCommunity(kind){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>${kind==='group'?'\u0625\u0646\u0634\u0627\u0621 \u0645\u062C\u0645\u0648\u0639\u0629':'\u0625\u0646\u0634\u0627\u0621 \u0642\u0646\u0627\u0629'}</h3><div class="sm-field"><label>\u0627\u0644\u0627\u0633\u0645</label><input id="sm-name"></div><div class="sm-field"><label>\u0627\u0644\u0648\u0635\u0641</label><textarea id="sm-desc"></textarea></div><div class="sm-field"><label>\u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629</label><select id="sm-public"><option value="false">\u062E\u0627\u0635\u0629</option><option value="true">\u0639\u0627\u0645\u0629</option></select></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-cancel">\u0625\u0644\u063A\u0627\u0621</button><button class="sm-btn" id="sm-save">\u0625\u0646\u0634\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-cancel').onclick=()=>sh.remove();sh.querySelector('#sm-save').onclick=async()=>{let name=sh.querySelector('#sm-name').value.trim();if(!name)return toast('\u0627\u0643\u062A\u0628 \u0627\u0644\u0627\u0633\u0645');let{data,error}=await sb().rpc('student_create_community',{p_kind:kind,p_title:name,p_description:sh.querySelector('#sm-desc').value.trim(),p_is_public:sh.querySelector('#sm-public').value==='true'});if(error)return toast(error.message);sh.remove();openChat(data)}}
 function openInfo(){let sh=document.createElement('div');sh.className='sm-sheet';let admin=S.current?.my_role==='owner'||S.current?.my_role==='admin';sh.innerHTML=`<div class="sm-card"><h3>${esc(S.current.title)}</h3><p>${esc(S.current.description||'')}</p>${S.current.kind!=='direct'?`<h4>\u0627\u0644\u0623\u0639\u0636\u0627\u0621 (${S.members.length})</h4><div class="sm-user-results">${S.members.map(m=>`<div class="sm-row">${avatar(m)}<div class="sm-main"><div class="sm-name">${esc(m.full_name||m.username)}</div><div class="sm-preview">${esc(m.role)}</div></div>${admin&&m.user_id!==S.user.id?`<button class="sm-mini" data-remove="${m.user_id}">\u062D\u0630\u0641</button>`:''}</div>`).join('')}</div>${admin?`<button class="sm-btn" id="sm-add-member">\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</button>`:''}<button class="sm-btn danger" id="sm-leave">\u0645\u063A\u0627\u062F\u0631\u0629</button>`:''}<div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close-info">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close-info').onclick=()=>sh.remove();sh.querySelector('#sm-leave')&&(sh.querySelector('#sm-leave').onclick=async()=>{let{error}=await sb().rpc('student_leave_conversation',{p_conversation:S.current.id});if(error)return toast(error.message);sh.remove();showList();loadConversations()});sh.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_remove_member',{p_conversation:S.current.id,p_user:b.dataset.remove});if(error)toast(error.message);else{sh.remove();openChat(S.current.id)}});sh.querySelector('#sm-add-member')&&(sh.querySelector('#sm-add-member').onclick=()=>{sh.remove();addMemberSheet()})}
-function addMemberSheet(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</h3><div class="sm-field"><input id="sm-member-search" placeholder="\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div><div id="sm-member-results"></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-member-close">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-member-close').onclick=()=>sh.remove();let t;sh.querySelector('#sm-member-search').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{let q=e.target.value.trim();if(q.length<2)return;let{data}=await sb().from('profiles').select('id,full_name,username,avatar_url').or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);let box=sh.querySelector('#sm-member-results');box.innerHTML=(data||[]).map(p=>`<div class="sm-row" data-add="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div></div>`).join('');box.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_add_member',{p_conversation:S.current.id,p_user:b.dataset.add});if(error)toast(error.message);else{toast('\u062A\u0645\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629');sh.remove();openChat(S.current.id)}});},300);};}
+function addMemberSheet(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</h3><div class="sm-field"><input id="sm-member-search" placeholder="\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div><div id="sm-member-results"></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-member-close">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-member-close').onclick=()=>sh.remove();let t;sh.querySelector('#sm-member-search').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{let q=e.target.value.trim();if(q.length<2)return;let{data}=await sb().from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);let box=sh.querySelector('#sm-member-results');box.innerHTML=(data||[]).map(p=>`<div class="sm-row" data-add="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}${studentVerificationBadge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div></div>`).join('');box.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_add_member',{p_conversation:S.current.id,p_user:b.dataset.add});if(error)toast(error.message);else{toast('\u062A\u0645\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629');sh.remove();openChat(S.current.id)}});},300);};}
 
 window.addEventListener('popstate',()=>{
     if(!S.historyOpen)return;
