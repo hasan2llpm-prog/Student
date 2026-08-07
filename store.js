@@ -127,11 +127,12 @@
             }
             .student-store-grid {
                 width:100%; max-width:920px; margin:0 auto; display:grid;
-                grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px;
+                grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:stretch;
             }
             .student-store-card {
-                min-width:0; overflow:hidden; border:1px solid #e2e5e9; border-radius:13px;
-                background:#fff; box-shadow:0 4px 16px rgba(15,23,42,.04);
+                min-width:0; overflow:hidden; position:relative;
+                border:1px solid #e2e5e9; border-radius:16px;
+                background:#fff; box-shadow:0 3px 12px rgba(15,23,42,.06);
             }
             .student-store-card.inactive { opacity:.72; }
             .student-store-image {
@@ -142,33 +143,38 @@
                 justify-content:center; background:linear-gradient(135deg,#edf6ff,#f6f8fb);
                 color:#0095f6; font-size:42px;
             }
-            .student-store-card-body { padding:8px; }
+            .student-store-card-body { padding:9px 10px 11px; }
             .student-store-card-top { display:flex; align-items:flex-start; gap:8px; }
             .student-store-product-name {
-                flex:1; font-size:12px; font-weight:900; line-height:1.5; color:#17202a;
+                flex:1; min-width:0; font-size:14px; font-weight:800; line-height:1.55; color:#222;
+                display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
             }
             .student-store-status {
                 padding:5px 8px; border-radius:999px; background:#fff2dc;
                 color:#98610b; font-size:11px; font-weight:900; white-space:nowrap;
             }
             .student-store-description {
-                margin-top:4px; min-height:30px; color:#697386; font-size:10px;
-                line-height:1.7; display:-webkit-box; -webkit-line-clamp:2;
+                margin-top:5px; min-height:20px; color:#777; font-size:11px;
+                line-height:1.55; display:-webkit-box; -webkit-line-clamp:1;
                 -webkit-box-orient:vertical; overflow:hidden;
             }
-            .student-store-prices { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
+            .student-store-prices { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
             .student-store-price {
-                display:inline-flex; align-items:center; gap:6px; padding:5px 6px;
-                border-radius:12px; background:#f6f7f9; color:#263238;
+                display:inline-flex; align-items:center; gap:4px; padding:4px 6px;
+                border-radius:9px; background:#f6f7f9; color:#263238;
                 font-size:10px; font-weight:800;
             }
             .student-store-price.diamonds { background:#eef8ff; color:#096aa8; }
-            .student-store-stock { margin-top:8px; font-size:12px; color:#7b8491; }
+            .student-store-stock { margin-top:6px; font-size:10px; color:#8a8a8a; }
             .student-store-buy {
-                width:100%; min-height:34px; margin-top:7px; border:0;
-                border-radius:13px; background:#0095f6; color:#fff;
-                font-size:14px; font-weight:900; cursor:pointer;
+                position:absolute; left:10px; top:calc(50% - 9px);
+                width:42px; height:42px; min-height:42px; margin:0; border:0;
+                border-radius:12px; background:#f4e9fb; color:#7b2ca0;
+                font-size:0; font-weight:900; cursor:pointer; z-index:2;
+                box-shadow:0 2px 8px rgba(70,30,90,.08);
             }
+            .student-store-buy::before { content:"+"; font-size:28px; font-weight:400; line-height:1; }
+            .student-store-buy:disabled::before { content:"×"; font-size:24px; }
             .student-store-buy:disabled { opacity:.55; cursor:not-allowed; }
             .student-store-admin-tools { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:9px; }
             .student-store-admin-tool {
@@ -188,7 +194,7 @@
                 margin-top:16px; min-height:43px; padding:0 18px; border:0;
                 border-radius:12px; background:#1473e6; color:#fff; font-weight:900; cursor:pointer;
             }
-            .student-store-task-list { width:100%; max-width:920px; margin:0 auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+            .student-store-task-list { width:100%; max-width:920px; margin:0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:stretch; }
             .student-store-task {
                 min-width:0; display:flex; flex-direction:column; align-items:stretch;
                 gap:7px; padding:9px; border:1px solid #e2e5e9;
@@ -282,7 +288,7 @@
             .student-store-action.primary { background:#1473e6; color:#fff; }
             .student-store-action.whatsapp { background:#20b15a; color:#fff; }
             .student-store-action.light { background:#edf1f5; color:#263442; }
-            .student-store-order-list{width:100%;max-width:760px;margin:0 auto;display:grid;gap:12px}.student-store-order{padding:14px;border:1px solid #e1e6ec;border-radius:16px;background:#fff}.student-store-order-head{display:flex;justify-content:space-between;gap:10px}.student-store-order-status{padding:5px 9px;border-radius:999px;background:#fff3d8;color:#8b5d08;font-size:12px;font-weight:900}.student-store-order-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.student-store-order-actions button{min-height:38px;padding:0 12px;border:0;border-radius:10px;font-weight:900;cursor:pointer}.student-store-order-actions .ok{background:#e8f8ee;color:#15713a}.student-store-order-actions .done{background:#e8f2ff;color:#1a5faf}.student-store-order-actions .no{background:#fff0f0;color:#b3261e}.student-store-paid-check { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:12px; border-radius:12px; background:#fff8e8; color:#71540d; line-height:1.6; font-size:13px; }
+            .student-store-order-list{width:100%;max-width:920px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.student-store-order{padding:14px;border:1px solid #e1e6ec;border-radius:16px;background:#fff}.student-store-order-head{display:flex;justify-content:space-between;gap:10px}.student-store-order-status{padding:5px 9px;border-radius:999px;background:#fff3d8;color:#8b5d08;font-size:12px;font-weight:900}.student-store-order-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.student-store-order-actions button{min-height:38px;padding:0 12px;border:0;border-radius:10px;font-weight:900;cursor:pointer}.student-store-order-actions .ok{background:#e8f8ee;color:#15713a}.student-store-order-actions .done{background:#e8f2ff;color:#1a5faf}.student-store-order-actions .no{background:#fff0f0;color:#b3261e}.student-store-paid-check { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:12px; border-radius:12px; background:#fff8e8; color:#71540d; line-height:1.6; font-size:13px; }
             .student-store-toast {
                 position:fixed; left:50%; bottom:82px; z-index:100000000;
                 transform:translateX(-50%); max-width:88vw; padding:11px 16px;
@@ -292,7 +298,7 @@
 
             .student-store-guide{max-width:920px;margin:0 auto 14px;padding:16px;border-radius:18px;background:linear-gradient(135deg,#eaf5ff,#fff);border:1px solid #d9eaff}
             .student-store-guide h3{margin:0 0 8px;color:#0f5fae;font-size:18px}.student-store-guide p{margin:5px 0;line-height:1.8;color:#536273;font-size:13px}
-            .student-store-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:12px}
+            .student-store-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
             .student-store-info-box{padding:13px;border-radius:15px;background:#fff;border:1px solid #e1e8f0}.student-store-info-box strong{display:block;color:#102a43;margin-bottom:5px}
             .student-store-section{max-width:920px;margin:0 auto 18px}.student-store-section-title{font-size:17px;font-weight:900;margin:0 0 10px;color:#17202a}
             .student-store-package{padding:14px;border:1px solid #dfe5ec;border-radius:16px;background:#fff;display:grid;gap:8px}
@@ -308,17 +314,17 @@
                 .student-store-title { font-size:17px; }
                 .student-store-admin-add { padding-inline:9px; font-size:12px; }
                 .student-store-balance { min-width:58px; padding-inline:7px; font-size:12px; }
-                .student-store-grid { grid-template-columns:1fr; }
+                .student-store-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
                 .student-store-task { grid-template-columns:48px 1fr; }
                 .student-store-claim { grid-column:1/-1; width:100%; }
                 .student-store-form-row { grid-template-columns:1fr; }
             }
 
-            .student-store-wallet-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+            .student-store-wallet-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
             .student-store-wallet-box{background:#fff;border:1px solid #e2e5e9;border-radius:14px;padding:12px;text-align:center}
             .student-store-wallet-box strong{display:block;font-size:18px;color:#0878bd}
             .student-store-wallet-box span{font-size:11px;color:#6b7280}
-            .student-store-ledger{display:grid;gap:8px}
+            .student-store-ledger{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
             .student-store-ledger-row{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:11px;display:grid;grid-template-columns:1fr auto;gap:8px}
             .student-store-ledger-row .plus{color:#14803c;font-weight:900}
             .student-store-ledger-row .minus{color:#c62828;font-weight:900}
@@ -331,7 +337,7 @@
             .student-store-hero h2{margin:0 0 7px;font-size:22px;font-weight:950}
             .student-store-hero p{margin:0;max-width:520px;line-height:1.8;font-size:13px;color:rgba(255,255,255,.9)}
             .student-store-home-balance{margin-top:15px;display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:14px;background:rgba(255,255,255,.16);font-weight:900}
-            .student-store-sections{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+            .student-store-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
             .student-store-section-card{position:relative;min-width:0;min-height:138px;padding:16px;border:1px solid #e7ebf0;border-radius:20px;background:#fff;text-align:right;cursor:pointer;box-shadow:0 7px 22px rgba(15,23,42,.055);transition:transform .16s ease,box-shadow .16s ease}
             .student-store-section-card:active{transform:scale(.98)}
             .student-store-section-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:linear-gradient(135deg,#edf7ff,#dff1ff);color:#0878d1;font-size:22px;margin-bottom:12px}
@@ -342,7 +348,7 @@
             .student-store-page-head h2{flex:1;margin:0;font-size:20px;color:#172033}
             .student-store-page-head p{margin:4px 0 0;color:#7b8492;font-size:12px}
             .student-store-page-back{width:42px;height:42px;border:0;border-radius:14px;background:#edf5ff;color:#0878d1;font-size:22px;cursor:pointer}
-            .student-store-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+            .student-store-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
             .student-store-card{border-radius:18px;box-shadow:0 8px 25px rgba(15,23,42,.07)}
             .student-store-image,.student-store-image-placeholder{aspect-ratio:4/3}
             .student-store-card-body{padding:12px}
@@ -364,6 +370,34 @@
               .student-store-tabs{overflow-x:auto;display:flex}
               .student-store-tab{min-width:76px;padding:0 8px}
               .student-store-wallet-summary{grid-template-columns:1fr}
+            }
+
+
+            .student-store-card-bookmark{
+                position:absolute;top:10px;right:10px;z-index:2;width:34px;height:34px;
+                display:flex;align-items:center;justify-content:center;border-radius:9px;
+                background:rgba(255,255,255,.94);color:#666;font-size:20px;
+                box-shadow:0 2px 8px rgba(0,0,0,.08);pointer-events:none;
+            }
+            .student-store-task{
+                min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:7px;
+                padding:12px 10px;border:1px solid #e2e5e9;border-radius:16px;
+                background:#fff;box-shadow:0 3px 12px rgba(15,23,42,.05)
+            }
+            .student-store-task-icon{width:48px;height:48px;border-radius:14px;font-size:21px}
+            .student-store-task-title{font-size:14px;line-height:1.45}
+            .student-store-package,.student-store-agent-card,.student-store-order,.student-store-ledger-row,.student-store-wallet-box,.student-store-info-box{
+                min-width:0;border-radius:16px;box-shadow:0 3px 12px rgba(15,23,42,.05)
+            }
+            @media(max-width:430px){
+                .student-store-body{padding:10px}
+                .student-store-grid,.student-store-task-list,.student-store-order-list,.student-store-ledger{gap:9px}
+                .student-store-card-body{padding:8px}
+                .student-store-product-name{font-size:13px}
+                .student-store-buy{width:40px;height:40px;min-height:40px;left:8px}
+                .student-store-package,.student-store-agent-card,.student-store-order{padding:10px}
+                .student-store-package strong,.student-store-agent-card strong{font-size:13px}
+                .student-store-package-row{font-size:11px}
             }
 
         `;
@@ -537,8 +571,9 @@
                     const inactive = product.is_active === false;
                     return `
                         <article class="student-store-card ${inactive ? "inactive" : ""}">
+                            <span class="student-store-card-bookmark" aria-hidden="true"><i class="fa-regular fa-bookmark"></i></span>
                             ${product.image_url
-                                ? `<img class="student-store-image" src="${esc(product.image_url)}" alt="${esc(product.name)}" loading="lazy">`
+                                ? `<img class="student-store-image" src="${esc(product.image_url)}" alt="${esc(product.name)}" loading="lazy" decoding="async">`
                                 : `<div class="student-store-image-placeholder"><i class="fa-solid fa-box-open"></i></div>`}
                             <div class="student-store-card-body">
                                 <div class="student-store-card-top">
@@ -575,7 +610,7 @@
             return;
         }
 
-        body.innerHTML = `
+        body.innerHTML = `${pageHead("fa-solid fa-list-check", "المهام والمكافآت", "مهام مرتبة في بطاقات واضحة")}
             <div class="student-store-task-list">
                 ${state.tasks.map(function (task) {
                     const claimable = task.verification_type === "daily_visit";
@@ -600,7 +635,7 @@
         const body=document.getElementById("student-store-body"); if(!body)return;
         if(!state.orders.length){body.innerHTML=`<div class="student-store-empty"><i class="fa-solid fa-receipt"></i><strong>${state.isAdmin?"لا توجد طلبات حاليًا":"لم تنشئ أي طلب بعد"}</strong></div>`;return;}
         const labels={pending:"قيد المراجعة",confirmed:"مقبول",completed:"تم التسليم",cancelled:"مرفوض",refunded:"مسترجع"};
-        body.innerHTML=`<div class="student-store-order-list">${state.orders.map(o=>`<article class="student-store-order"><div class="student-store-order-head"><strong>${esc(o.product_name)}</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status)}</span></div><div class="student-store-description">رقم الطلب: ${esc(o.id)}</div><div class="student-store-prices"><span class="student-store-price">${o.payment_method==='diamonds'?`${Number(o.diamond_amount||0)} ألماسة`:money(o.money_amount,o.currency)}</span></div><div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div>${state.isAdmin&&o.status==='pending'?`<div class="student-store-order-actions"><button class="ok" data-store-order-status="confirmed" data-order-id="${esc(o.id)}">قبول</button><button class="no" data-store-order-status="cancelled" data-order-id="${esc(o.id)}">رفض</button></div>`:''}${state.isAdmin&&o.status==='confirmed'?`<div class="student-store-order-actions"><button class="done" data-store-order-status="completed" data-order-id="${esc(o.id)}">تم التسليم</button></div>`:''}</article>`).join('')}</div>`;
+        body.innerHTML=`${pageHead("fa-solid fa-receipt", state.isAdmin ? "طلبات المتجر" : "طلباتي", "تابع الطلبات وحالتها بسهولة")}<div class="student-store-order-list">${state.orders.map(o=>`<article class="student-store-order"><div class="student-store-order-head"><strong>${esc(o.product_name)}</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status)}</span></div><div class="student-store-description">رقم الطلب: ${esc(o.id)}</div><div class="student-store-prices"><span class="student-store-price">${o.payment_method==='diamonds'?`${Number(o.diamond_amount||0)} ألماسة`:money(o.money_amount,o.currency)}</span></div><div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div>${state.isAdmin&&o.status==='pending'?`<div class="student-store-order-actions"><button class="ok" data-store-order-status="confirmed" data-order-id="${esc(o.id)}">قبول</button><button class="no" data-store-order-status="cancelled" data-order-id="${esc(o.id)}">رفض</button></div>`:''}${state.isAdmin&&o.status==='confirmed'?`<div class="student-store-order-actions"><button class="done" data-store-order-status="completed" data-order-id="${esc(o.id)}">تم التسليم</button></div>`:''}</article>`).join('')}</div>`;
     }
 
     function renderDiamonds() {
