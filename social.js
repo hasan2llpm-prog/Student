@@ -307,22 +307,35 @@ function infoItem(label, value) {
 
 function openInternal(title, id) {
     injectStyles();
-    try { window.closeStudentMenu?.(); } catch (_) {}
+
+    let body = null;
 
     if (window.StudentNavigation?.openPage) {
         const page = window.StudentNavigation.openPage({ id, title, html:"" });
-        return page.querySelector(".student-internal-body");
+        body = page?.querySelector(".student-internal-body") || null;
+    } else {
+        const old = document.getElementById("student-profile-fallback");
+        old?.remove();
+
+        const section = document.createElement("section");
+        section.id = "student-profile-fallback";
+        section.style.cssText = "position:fixed;inset:0;z-index:2147482200;background:#f7f9fb;overflow:auto";
+        section.innerHTML = `<div style="height:60px;background:#fff;border-bottom:1px solid #e5e9ed;display:flex;align-items:center;padding:0 12px;gap:10px"><button data-sp2-fallback-back style="width:40px;height:40px;border:0;border-radius:50%;background:#eef2f5">←</button><strong>${esc(title)}</strong></div><div class="student-internal-body"></div>`;
+        document.body.appendChild(section);
+        section.querySelector("[data-sp2-fallback-back]").onclick = () => section.remove();
+        body = section.querySelector(".student-internal-body");
     }
 
-    const old = document.getElementById("student-profile-fallback");
-    old?.remove();
-    const section = document.createElement("section");
-    section.id = "student-profile-fallback";
-    section.style.cssText = "position:fixed;inset:0;z-index:2147482200;background:#f7f9fb;overflow:auto";
-    section.innerHTML = `<div style="height:60px;background:#fff;border-bottom:1px solid #e5e9ed;display:flex;align-items:center;padding:0 12px;gap:10px"><button data-sp2-fallback-back style="width:40px;height:40px;border:0;border-radius:50%;background:#eef2f5">←</button><strong>${esc(title)}</strong></div><div class="student-internal-body"></div>`;
-    document.body.appendChild(section);
-    section.querySelector("[data-sp2-fallback-back]").onclick = () => section.remove();
-    return section.querySelector(".student-internal-body");
+    /*
+       مهم للموبايل/WebView:
+       لا نغلق القائمة قبل إنشاء الصفحة حتى لا تمر نفس اللمسة
+       إلى زر الرئيسية الموجود خلف القائمة.
+    */
+    requestAnimationFrame(() => {
+        try { window.closeStudentMenu?.(); } catch (_) {}
+    });
+
+    return body;
 }
 
 async function renderProfile(userId) {
@@ -332,6 +345,7 @@ async function renderProfile(userId) {
     const targetId = userId || me.id;
     const own = String(targetId) === String(me.id);
     const body = openInternal("الملف الشخصي", `profile-${targetId}`);
+    if (!body) return;
     body.innerHTML = `<div class="sp2-wrap"><div class="sp2-card" style="text-align:center">جارٍ تحميل الملف...</div></div>`;
 
     const [profile, stats, following] = await Promise.all([
@@ -537,6 +551,7 @@ async function openSuggestions() {
     if (!me || !client) return;
 
     const body = openInternal("اقتراحات المتابعة", "profile-suggestions");
+    if (!body) return;
     body.innerHTML = `<div class="sp2-wrap"><div class="sp2-card" style="text-align:center">جارٍ البحث عن طلاب يشتركون معك باهتمامات ومعلومات دراسية...</div></div>`;
 
     let rows = [];
