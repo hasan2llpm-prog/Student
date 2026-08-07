@@ -38,12 +38,53 @@ function studentVerificationBadge(profile, size = 15) {
         colorName === "red" ? "حساب أستاذ موثّق" :
         "حساب موثّق";
 
-    return `<i
-        class="fa-solid fa-circle-check student-verification-badge"
+    const px = Math.max(12, Number(size) || 15);
+
+    return `<span
+        class="student-verification-badge"
         title="${profileEscapeAttribute(label)}"
         aria-label="${profileEscapeAttribute(label)}"
-        style="color:${color};font-size:${Number(size) || 15}px;margin-inline-start:4px;vertical-align:middle"
-    ></i>`;
+        style="
+            --verification-color:${color};
+            --verification-size:${px}px;
+            display:inline-flex;
+            width:var(--verification-size);
+            height:var(--verification-size);
+            margin-inline-start:4px;
+            vertical-align:-2px;
+            position:relative;
+            align-items:center;
+            justify-content:center;
+            flex:0 0 auto;
+        "
+    >
+        <span
+            aria-hidden="true"
+            style="
+                position:absolute;
+                inset:1px;
+                background:var(--verification-color);
+                clip-path:polygon(
+                    50% 0%,61% 8%,74% 5%,82% 18%,95% 26%,92% 40%,
+                    100% 50%,92% 61%,95% 74%,82% 82%,74% 95%,61% 92%,
+                    50% 100%,39% 92%,26% 95%,18% 82%,5% 74%,8% 61%,
+                    0% 50%,8% 40%,5% 26%,18% 18%,26% 5%,39% 8%
+                );
+            "
+        ></span>
+        <i
+            class="fa-solid fa-check"
+            aria-hidden="true"
+            style="
+                position:relative;
+                z-index:1;
+                color:#fff;
+                font-size:calc(var(--verification-size) * .55);
+                line-height:1;
+                font-weight:900;
+            "
+        ></i>
+    </span>`;
 }
 
 
