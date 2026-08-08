@@ -31,11 +31,11 @@
     }
 
     function panel(title, body) {
-        if (typeof showFloatingPanel === "function") {
-            showFloatingPanel(title, body);
-            return true;
+        if (window.StudentNavigation?.openPage) {
+            return window.StudentNavigation.openPage({ id:"education-browser", title:title || "التعليم", html:body || "", reuse:true, onClose:function(){ state.history=[]; } });
         }
-        return false;
+        if (typeof showFloatingPanel === "function") return showFloatingPanel(title, body);
+        return null;
     }
 
     function loading(title) {
@@ -197,7 +197,7 @@
                 [["eq", "level_id", level.id]]
             );
 
-            renderList(level.name, tracks.map((x) => ({ ...x, icon: "🧭" })), "لا توجد فروع مضافة لهذا الصف.", (track) => {
+            renderList(level.name, tracks.map((x) => ({ ...x, level_id: level.id, icon: "🧭" })), "لا توجد فروع مضافة لهذا الصف.", (track) => {
                 pushHistory(() => openTracks(level));
                 openTrackSubjects(track);
             });
@@ -236,7 +236,7 @@
             const subjects = await resolveSubjects("education_subjects", links);
             renderSubjects(track.name, subjects, {
                 education_type: "school",
-                level_id: level.id,
+                level_id: track.level_id || null,
                 track_id: track.id
             });
         } catch (error) {
@@ -261,29 +261,7 @@
     }
 
     function loadTeachersEducation() {
-        return new Promise(function (resolve, reject) {
-            if (window.StudentTeachersEducation) return resolve();
-
-            const existing = document.querySelector(
-                'script[data-student-teachers-education="true"]'
-            );
-
-            if (existing) {
-                existing.addEventListener("load", resolve, { once: true });
-                existing.addEventListener("error", reject, { once: true });
-                return;
-            }
-
-            const script = document.createElement("script");
-            script.src = "education-admin.js?v=1.0.0";
-            script.async = true;
-            script.dataset.studentTeachersEducation = "true";
-            script.onload = resolve;
-            script.onerror = function () {
-                reject(new Error("تعذر تحميل teachers-education.js"));
-            };
-            document.body.appendChild(script);
-        });
+        return window.StudentTeachersEducation ? Promise.resolve() : Promise.reject(new Error("وحدة المدرسين غير جاهزة"));
     }
 
     function renderSubjects(title, subjects, context) {
@@ -981,53 +959,44 @@
             .ste-material{display:block;text-decoration:none;color:inherit}.ste-material:hover{border-color:#bfdbfe}
             .ste-confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100140;display:flex;align-items:center;justify-content:center;padding:18px;direction:rtl}
             .ste-confirm-box{background:#fff;width:min(420px,100%);border-radius:18px;padding:18px;box-shadow:0 20px 55px rgba(0,0,0,.25)}
+            .ste-content-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+            .ste-content-card{background:#fff;border:1px solid #e5e9ed;border-radius:15px;padding:12px;min-width:0}
+            .ste-content-icon{width:42px;height:42px;border-radius:12px;background:#eef7ff;color:#0878c9;display:grid;place-items:center;font-size:19px}
+            .ste-upload-card{background:#fff;border:1px solid #d9e8f5;border-radius:16px;padding:14px;margin-bottom:14px}
+            .ste-file-input{width:100%;padding:10px;border:1px dashed #b7c6d4;border-radius:12px;background:#f9fbfd}
+            @media(max-width:480px){.ste-content-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ste-content-card{padding:10px}}
 
         `;
         document.head.appendChild(style);
     }
 
-    function ensureOverlay() {
+    function ensureOverlay(title = "المدرسون") {
         injectStyles();
-        let overlay = document.getElementById("student-teachers-education-overlay");
-        if (overlay) return overlay;
-        overlay = document.createElement("div");
-        overlay.id = "student-teachers-education-overlay";
-        overlay.className = "ste-overlay student-fullscreen-page";
-        overlay.innerHTML = `
-            <section class="ste-panel" role="dialog" aria-modal="true">
-                <header class="ste-head">
-                    <button class="ste-back" id="ste-back" type="button" style="display:none">→</button>
-                    <div class="ste-title" id="ste-title">المدرسون</div>
-                    <button class="ste-close" id="ste-close" type="button">×</button>
-                </header>
-                <div class="ste-body" id="ste-body"></div>
-            </section>`;
-        document.body.appendChild(overlay);
-        overlay.querySelector("#ste-close").addEventListener("click", close);
-
-        return overlay;
+        if (window.StudentNavigation?.openPage) {
+            const page=window.StudentNavigation.openPage({id:"teachers-education",title,html:`<div class="ste-body" id="ste-body"></div>`,reuse:true,onClose:function(){const cb=closeCallback;closeCallback=null;try{cb?.()}catch(_){}}});
+            page.classList.add("ste-page");
+            return page;
+        }
+        let page=document.getElementById("student-teachers-education-overlay");
+        if(page)return page;
+        page=document.createElement("section"); page.id="student-teachers-education-overlay"; page.className="student-internal-page";
+        page.innerHTML=`<header class="student-internal-header"><button class="student-internal-back" type="button">→</button><div class="student-internal-title">${esc(title)}</div></header><div class="student-internal-body"><div class="ste-body" id="ste-body"></div></div>`;
+        document.body.appendChild(page); page.querySelector(".student-internal-back").onclick=close; return page;
     }
-
     function openPanel(title, html, backAction) {
-        const overlay = ensureOverlay();
-        overlay.querySelector("#ste-title").textContent = title;
-        overlay.querySelector("#ste-body").innerHTML = html;
-        const back = overlay.querySelector("#ste-back");
-        back.style.display = backAction ? "inline-grid" : "none";
-        back.onclick = backAction || null;
-        overlay.classList.add("show");
-        return overlay;
+        const page=ensureOverlay(title);
+        const t=page.querySelector(".student-internal-title"); if(t)t.textContent=title;
+        let body=page.querySelector("#ste-body"); if(!body){const host=page.querySelector(".student-internal-body")||page;host.innerHTML=`<div class="ste-body" id="ste-body"></div>`;body=page.querySelector("#ste-body");}
+        body.innerHTML=html;
+        page.querySelector("[data-ste-local-back]")?.remove();
+        if(backAction){const b=document.createElement("button");b.type="button";b.dataset.steLocalBack="1";b.className="ste-btn secondary";b.textContent="رجوع";b.style.margin="12px 14px 0";b.onclick=backAction;body.parentElement?.insertBefore(b,body);}
+        return page;
     }
-
     function close() {
-        const overlay = document.getElementById("student-teachers-education-overlay");
-        if (overlay) overlay.classList.remove("show");
-        const callback = closeCallback;
-        closeCallback = null;
-        try { callback?.(); } catch (_) {}
-        return true;
+        if(window.StudentNavigation?.closeById)return window.StudentNavigation.closeById("teachers-education");
+        document.getElementById("student-teachers-education-overlay")?.remove();
+        const cb=closeCallback;closeCallback=null;try{cb?.()}catch(_){} return true;
     }
-
     window.closeStudentTeachersEducation = close;
 
     function loading(title) {
@@ -1088,36 +1057,25 @@
         return new Map((data || []).map((row) => [row.id, row]));
     }
 
-    async function openSubject(context) {
-        currentContext = context;
-        const database = db(context && context.client);
-        if (!database) return showError("المدرسون", new Error("Supabase غير جاهز"));
-        loading(context.title || "المدرسون");
-        try {
-            const table = context.education_type === "university" ? "teacher_university_assignments" : "teacher_school_assignments";
-            let query = database.from(table).select("id,teacher_id,subject_id,level_id,track_id,university_level_id").eq("subject_id", context.subject_id);
-            if (context.education_type === "university") query = query.eq("university_level_id", context.university_level_id);
-            else {
-                query = query.eq("level_id", context.level_id);
-                query = context.track_id ? query.eq("track_id", context.track_id) : query.is("track_id", null);
-            }
-            const { data: assignments, error } = await query;
-            if (error) throw error;
-            const rows = assignments || [];
-            const profiles = await profileMap(rows.map((x) => x.teacher_id));
-            const cards = rows.map((assignment) => {
-                const p = profiles.get(assignment.teacher_id) || {};
-                return `<button type="button" class="ste-card ste-row" data-assignment="${esc(assignment.id)}" style="width:100%;text-align:right;cursor:pointer">
-                    <span class="ste-avatar">${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : "👨‍🏫"}</span>
-                    <span class="ste-grow"><span class="ste-name">${esc(p.full_name || p.username || "مدرس")}</span><span class="ste-muted" style="display:block">${esc(p.bio || "اضغط لعرض الملفات والشروحات")}</span></span><span>‹</span>
-                </button>`;
-            }).join("");
-            const overlay = openPanel(context.title || "المدرسون", cards || `<div class="ste-empty">لا يوجد مدرسون معتمدون لهذه المادة حاليًا.</div>`);
-            overlay.querySelectorAll("[data-assignment]").forEach((button) => {
-                button.onclick = () => openTeacherMaterials(rows.find((x) => x.id === button.dataset.assignment), context, profiles);
-            });
-        } catch (error) { showError(context.title || "المدرسون", error); }
+    function materialIcon(type){return ({pdf:"fa-solid fa-file-pdf",image:"fa-solid fa-image",video:"fa-solid fa-circle-play",book:"fa-solid fa-book",summary:"fa-solid fa-note-sticky",text:"fa-solid fa-align-right",link:"fa-solid fa-link"})[type]||"fa-solid fa-file";}
+    function materialCard(m){return `<article class="ste-content-card" data-edu-material="${esc(m.id)}" style="cursor:pointer"><div class="ste-row"><span class="ste-content-icon"><i class="${materialIcon(m.material_type)}"></i></span><span class="ste-grow"><span class="ste-name">${esc(m.title)}</span><span class="ste-muted" style="display:block">${esc(m.material_type||"محتوى")}</span></span></div>${m.description?`<div class="ste-muted" style="margin-top:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(m.description)}</div>`:""}</article>`;}
+    async function canAddMaterial(context,user){if(!user)return false;const d=db();const{data:p}=await d.from("profiles").select("role").eq("id",user.id).maybeSingle();if(String(p?.role||"").toLowerCase()==="admin")return true;const{data,error}=await d.rpc("student_can_add_education_material",{p_education_type:context.education_type,p_subject_id:context.subject_id,p_level_id:context.level_id||null,p_track_id:context.track_id||null,p_university_level_id:context.university_level_id||null});return !error&&data===true;}
+    async function openSubject(context){
+        currentContext=context;const d=db(context&&context.client);if(!d)return showError("المادة",new Error("Supabase غير جاهز"));loading(context.title||"المادة");
+        try{const user=await sessionUser();let mq=d.from("education_materials").select("id,title,description,material_type,file_url,external_url,file_name,mime_type,file_size,created_by,created_at").eq("education_type",context.education_type).eq("subject_id",context.subject_id).eq("status","published").order("created_at",{ascending:false});
+        if(context.education_type==="university")mq=mq.eq("university_level_id",context.university_level_id);else{mq=mq.eq("level_id",context.level_id);mq=context.track_id?mq.eq("track_id",context.track_id):mq.is("track_id",null);}
+        const table=context.education_type==="university"?"teacher_university_assignments":"teacher_school_assignments";let tq=d.from(table).select("id,teacher_id,subject_id,level_id,track_id,university_level_id").eq("subject_id",context.subject_id);
+        if(context.education_type==="university")tq=tq.eq("university_level_id",context.university_level_id);else{tq=tq.eq("level_id",context.level_id);tq=context.track_id?tq.eq("track_id",context.track_id):tq.is("track_id",null);}
+        const[mr,tr,allow]=await Promise.all([mq,tq,canAddMaterial(context,user)]);if(mr.error)throw mr.error;if(tr.error)throw tr.error;const mats=mr.data||[],assign=tr.data||[],profiles=await profileMap(assign.map(x=>x.teacher_id));
+        const upload=allow?`<section class="ste-upload-card"><div class="ste-name">إضافة محتوى للمادة</div><div class="ste-muted">ارفع صورة، PDF/كتاب، ملخص، فيديو، أو أضف شرحًا نصيًا/رابطًا.</div><label class="ste-label">العنوان<input id="edu-material-title" class="ste-input" maxlength="140"></label><label class="ste-label">النوع<select id="edu-material-type" class="ste-select"><option value="summary">ملخص</option><option value="book">كتاب</option><option value="pdf">PDF</option><option value="image">صورة</option><option value="video">فيديو</option><option value="text">شرح نصي</option><option value="link">رابط</option></select></label><label class="ste-label">الوصف / الشرح<textarea id="edu-material-description" class="ste-textarea"></textarea></label><label class="ste-label">ملف من الهاتف<input id="edu-material-file" class="ste-file-input" type="file" accept="image/*,video/*,application/pdf,.pdf"></label><label class="ste-label">رابط خارجي اختياري<input id="edu-material-link" class="ste-input" type="url"></label><div class="ste-actions"><button id="edu-material-save" class="ste-btn">نشر المحتوى</button></div><div id="edu-material-message" class="ste-muted" style="margin-top:8px"></div></section>`:"";
+        const teachers=assign.length?`<div class="ste-name" style="margin:15px 0 8px">مدرسو المادة</div>${assign.map(a=>{const p=profiles.get(a.teacher_id)||{};return `<button type="button" class="ste-card ste-row" data-assignment="${esc(a.id)}" style="width:100%;text-align:right;cursor:pointer"><span class="ste-avatar">${p.avatar_url?`<img src="${esc(p.avatar_url)}" alt="" loading="lazy" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:"👨‍🏫"}</span><span class="ste-grow"><span class="ste-name">${esc(p.full_name||p.username||"مدرس")}</span><span class="ste-muted" style="display:block">${esc(p.bio||"عرض محتوى المدرس")}</span></span><span>‹</span></button>`}).join("")}`:"";
+        const page=openPanel(context.title||"المادة",`${upload}<div class="ste-name" style="margin-bottom:8px">محتوى المادة</div>${mats.length?`<div class="ste-content-grid">${mats.map(materialCard).join("")}</div>`:`<div class="ste-empty">لا يوجد محتوى منشور لهذه المادة بعد.</div>`}${teachers}`);
+        page.querySelectorAll("[data-edu-material]").forEach(c=>{const m=mats.find(x=>String(x.id)===c.dataset.eduMaterial);c.onclick=()=>openMaterial(m,context)});page.querySelectorAll("[data-assignment]").forEach(b=>{const a=assign.find(x=>String(x.id)===b.dataset.assignment);b.onclick=()=>openTeacherMaterials(a,context,profiles)});const save=page.querySelector("#edu-material-save");if(save)save.onclick=()=>saveEducationMaterial(page,context,user);
+        }catch(e){showError(context.title||"المادة",e);}
     }
+    async function saveEducationMaterial(page,context,user){const d=db(),title=page.querySelector("#edu-material-title")?.value.trim(),type=page.querySelector("#edu-material-type")?.value||"summary",description=page.querySelector("#edu-material-description")?.value.trim()||"",link=page.querySelector("#edu-material-link")?.value.trim()||"",file=page.querySelector("#edu-material-file")?.files?.[0]||null,msg=page.querySelector("#edu-material-message"),btn=page.querySelector("#edu-material-save");if(!title){if(msg)msg.textContent="اكتب عنوان المحتوى.";return}if(!file&&!link&&type!=="text"&&!description){if(msg)msg.textContent="أضف ملفًا أو رابطًا أو شرحًا.";return}btn.disabled=true;if(msg)msg.textContent="جارٍ رفع المحتوى...";try{let fileUrl=null,fileName=null,mimeType=null,fileSize=null;if(file){if(file.size>60*1024*1024)throw new Error("حجم الملف الأقصى 60MB.");const safe=file.name.replace(/[^\\w.\\-]+/g,"_");const path=`${user.id}/${Date.now()}-${safe}`;const{error:u}=await d.storage.from("education-content").upload(path,file,{cacheControl:"3600",upsert:false,contentType:file.type||undefined});if(u)throw u;fileUrl=d.storage.from("education-content").getPublicUrl(path).data?.publicUrl||null;fileName=file.name;mimeType=file.type||null;fileSize=file.size;}const{error}=await d.rpc("student_add_education_material",{p_education_type:context.education_type,p_subject_id:context.subject_id,p_level_id:context.level_id||null,p_track_id:context.track_id||null,p_university_level_id:context.university_level_id||null,p_title:title,p_description:description,p_material_type:type,p_file_url:fileUrl,p_external_url:link||null,p_file_name:fileName,p_mime_type:mimeType,p_file_size:fileSize});if(error)throw error;if(msg)msg.textContent="تم نشر المحتوى.";await openSubject(context);}catch(e){console.error(e);if(msg)msg.textContent=e?.message||"تعذر نشر المحتوى.";}finally{btn.disabled=false}}
+    async function downloadMaterial(m){const url=m.file_url||m.external_url;if(!url)return;try{const r=await fetch(url);if(!r.ok)throw 0;const blob=await r.blob(),u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=m.file_name||m.title||"student-file";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}catch(_){window.open(url,"_blank","noopener")}}
+    function openMaterial(m,context){if(!m)return;const url=m.file_url||m.external_url||"",type=m.material_type||"";let viewer;if(url&&(type==="image"||String(m.mime_type||"").startsWith("image/")))viewer=`<img src="${esc(url)}" alt="${esc(m.title)}" style="display:block;max-width:100%;max-height:65vh;margin:auto;border-radius:12px">`;else if(url&&(type==="video"||String(m.mime_type||"").startsWith("video/")))viewer=`<video src="${esc(url)}" controls playsinline preload="metadata" style="width:100%;max-height:65vh;background:#000;border-radius:12px"></video>`;else if(url&&(type==="pdf"||type==="book"||type==="summary"||String(m.mime_type||"").includes("pdf")))viewer=`<iframe src="${esc(url)}" title="${esc(m.title)}" style="width:100%;height:68vh;border:0;border-radius:12px;background:#fff"></iframe>`;else if(url)viewer=`<div class="ste-card"><a href="${esc(url)}" target="_blank" rel="noopener">فتح الرابط</a></div>`;else viewer=`<div class="ste-card"><div class="ste-muted" style="white-space:pre-wrap">${esc(m.description||"لا يوجد ملف مرفق.")}</div></div>`;const page=window.StudentNavigation?.openPage({id:`education-material-${m.id}`,title:m.title,html:`<div style="padding:12px;direction:rtl">${viewer}${m.description?`<div class="ste-card" style="margin-top:12px"><div class="ste-muted" style="white-space:pre-wrap">${esc(m.description)}</div></div>`:""}${url?`<button type="button" class="ste-btn" data-download-material style="width:100%;margin-top:12px">تحميل الملف</button>`:""}</div>`,reuse:true});page?.querySelector("[data-download-material]")?.addEventListener("click",()=>downloadMaterial(m));}
 
     async function openTeacherMaterials(assignment, context, profiles) {
         const database = db();
@@ -1158,7 +1116,7 @@
     }
 
     function renderTeacherRegistration(user) {
-        const overlay = openPanel("طلب اعتماد مدرس", `<div class="ste-status">أدخل معلوماتك بدقة. سيراجع الأدمن الطلب قبل ظهور حسابك للطلاب.</div>
+        const overlay = openPanel("طلب اعتماد مدرس", `<div class="ste-status">إذا كان حسابك طالبًا وتريد أن تصبح مدرسًا، قدّم الطلب هنا. أدخل معلوماتك بدقة وسيحوّل الأدمن حسابك إلى مدرس بعد الاعتماد.</div>
             <label class="ste-label">التخصص<input id="ste-specialization" class="ste-input" placeholder="مثال: اللغة الإنجليزية"></label>
             <label class="ste-label">نبذة<textarea id="ste-bio" class="ste-textarea"></textarea></label>
             <label class="ste-label">المؤهلات<textarea id="ste-qualifications" class="ste-textarea"></textarea></label>
@@ -1269,10 +1227,8 @@
         try {
             const user = await sessionUser();
             const now = new Date().toISOString();
-            const { error: requestError } = await db().from("teacher_verification_requests").update({ status: "approved", reviewed_by: user.id, reviewed_at: now }).eq("id", request.id);
-            if (requestError) throw requestError;
-            const { error: profileError } = await db().from("teacher_profiles").update({ verification_status: "approved", is_visible: true, verified_by: user.id, verified_at: now, rejection_reason: null }).eq("user_id", request.teacher_id);
-            if (profileError) throw profileError;
+            const { error: approveError } = await db().rpc("student_admin_approve_teacher", { p_request_id: request.id });
+            if (approveError) throw approveError;
             await openAdmin();
         } catch (error) { showError("اعتماد المدرس", error); }
     }
