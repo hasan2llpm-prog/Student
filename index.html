@@ -140,22 +140,44 @@
            الصفحة الرئيسية المصغرة + الإعلانات
         ========================= */
         #main-screen .cards-grid {
-            gap: 9px !important;
-            padding: 9px 12px 5px !important;
+            display:grid !important;
+            grid-template-columns:repeat(5,minmax(0,1fr)) !important;
+            gap:5px !important;
+            padding:7px 8px 3px !important;
+            align-items:start !important;
         }
         #main-screen .card {
-            min-height: 105px !important;
-            padding: 9px 7px !important;
-            border-radius: 14px !important;
+            min-height:0 !important;
+            padding:0 !important;
+            border:0 !important;
+            border-radius:0 !important;
+            background:transparent !important;
+            box-shadow:none !important;
+            display:flex !important;
+            flex-direction:column !important;
+            align-items:center !important;
+            justify-content:flex-start !important;
+            gap:3px !important;
         }
         #main-screen .card-icon {
-            width: 58px !important;
-            height: 58px !important;
-            font-size: 25px !important;
+            width:49px !important;
+            height:49px !important;
+            min-width:49px !important;
+            border-radius:50% !important;
+            font-size:20px !important;
+            background:#eef7ff !important;
+            color:#0878c9 !important;
+            border:1px solid #d9ecfb !important;
+            display:grid !important;
+            place-items:center !important;
         }
         #main-screen .card-title {
-            font-size: 17px !important;
-            margin-top: 7px !important;
+            font-size:10px !important;
+            line-height:1.2 !important;
+            font-weight:800 !important;
+            margin-top:2px !important;
+            text-align:center !important;
+            white-space:nowrap !important;
         }
         #student-home-ads {
             margin: 7px 12px 86px;
@@ -505,7 +527,7 @@
     <!-- =========================================
          JavaScript
     ========================================== -->
-    <script src="app.js?v=3.1.0"></script>
+    <script src="app.js?v=3.2.0"></script>
     <script src="social.js?v=1.0.1"></script>
 
 </body>
