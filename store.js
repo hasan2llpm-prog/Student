@@ -613,13 +613,27 @@
         body.innerHTML = `${pageHead("fa-solid fa-list-check", "المهام والمكافآت", "مهام مرتبة في بطاقات واضحة")}
             <div class="student-store-task-list">
                 ${state.tasks.map(function (task) {
-                    const claimable = task.verification_type === "daily_visit";
+                    const claimable = task.verification_type === "daily_visit" && !task.condition_type;
+                    const conditionLabels = {
+                        english_open_daily: "دخول Daily English",
+                        english_open_challenge: "دخول الاختبارات",
+                        english_vocabulary: "تعلم مفردات",
+                        english_grammar: "إكمال قواعد",
+                        english_daily_complete: "إكمال درس اليوم",
+                        english_mcq_answered: "حل أسئلة MCQ",
+                        english_mcq_correct: "إجابات MCQ صحيحة",
+                        english_level_reached: "الوصول إلى Level"
+                    };
+                    const conditionText = task.condition_type
+                        ? `${conditionLabels[task.condition_type] || "مهمة تلقائية"}${Number(task.target_count || 1) > 1 ? ` × ${Number(task.target_count)}` : ""}`
+                        : "";
                     return `
                         <article class="student-store-task">
                             <div class="student-store-task-icon"><i class="fa-solid fa-gem"></i></div>
                             <div>
                                 <div class="student-store-task-title">${esc(task.title)}</div>
                                 <div class="student-store-task-description">${esc(task.description || "")}</div>
+                                ${conditionText ? `<div class="student-store-task-description"><strong>${esc(conditionText)}</strong></div>` : ""}
                                 <div class="student-store-task-reward">+${Number(task.reward_diamonds || 0)} ألماسة</div>
                             </div>
                             ${claimable ? `<button class="student-store-claim" type="button" data-store-task="${esc(task.id)}">استلام</button>` : `<span class="student-store-status">تلقائي</span>`}
@@ -784,7 +798,7 @@
     async function loadTasks(client) {
         let query = client
             .from("store_tasks")
-            .select("id,title,description,reward_diamonds,repeat_kind,verification_type,starts_at,ends_at,sort_order,is_active");
+            .select("id,title,description,reward_diamonds,repeat_kind,verification_type,condition_type,target_count,starts_at,ends_at,sort_order,is_active");
         if (!state.isAdmin) query = query.eq("is_active", true);
         const { data, error } = await query.order("sort_order", { ascending: true });
 
@@ -1038,7 +1052,28 @@
                         <div class="student-store-field"><label>مكافأة الألماس</label><input id="student-store-task-reward" class="student-store-input" type="number" min="1" step="1" value="${task?.reward_diamonds ?? 5}"></div>
                         <div class="student-store-field"><label>التكرار</label><select id="student-store-task-repeat" class="student-store-input"><option value="once" ${task?.repeat_kind === "once" ? "selected" : ""}>مرة واحدة</option><option value="daily" ${task?.repeat_kind === "daily" ? "selected" : ""}>يوميًا</option></select></div>
                     </div>
-                    <div class="student-store-field"><label>نوع التحقق</label><select id="student-store-task-verification" class="student-store-input"><option value="daily_visit" ${task?.verification_type === "daily_visit" ? "selected" : ""}>زيارة المتجر</option><option value="manual" ${task?.verification_type === "manual" ? "selected" : ""}>تحقق يدوي</option></select></div>
+                    <div class="student-store-field"><label>نوع المهمة</label>
+                        <select id="student-store-task-verification" class="student-store-input">
+                            <option value="daily_visit" ${task?.verification_type === "daily_visit" ? "selected" : ""}>زيارة المتجر / استلام يدوي</option>
+                            <option value="automatic" ${task?.verification_type === "automatic" ? "selected" : ""}>تلقائية حسب الإنجاز</option>
+                        </select>
+                    </div>
+                    <div class="student-store-field"><label>شرط المهمة التلقائية</label>
+                        <select id="student-store-task-condition" class="student-store-input">
+                            <option value="">بدون شرط تلقائي</option>
+                            <option value="english_open_daily" ${task?.condition_type === "english_open_daily" ? "selected" : ""}>دخول Daily English</option>
+                            <option value="english_open_challenge" ${task?.condition_type === "english_open_challenge" ? "selected" : ""}>دخول English Challenge</option>
+                            <option value="english_vocabulary" ${task?.condition_type === "english_vocabulary" ? "selected" : ""}>تعلم عدد من المفردات</option>
+                            <option value="english_grammar" ${task?.condition_type === "english_grammar" ? "selected" : ""}>إكمال عدد من القواعد</option>
+                            <option value="english_daily_complete" ${task?.condition_type === "english_daily_complete" ? "selected" : ""}>إكمال درس اليوم</option>
+                            <option value="english_mcq_answered" ${task?.condition_type === "english_mcq_answered" ? "selected" : ""}>حل عدد من أسئلة MCQ</option>
+                            <option value="english_mcq_correct" ${task?.condition_type === "english_mcq_correct" ? "selected" : ""}>إجابات MCQ صحيحة</option>
+                            <option value="english_level_reached" ${task?.condition_type === "english_level_reached" ? "selected" : ""}>الوصول إلى Level</option>
+                        </select>
+                    </div>
+                    <div class="student-store-field"><label>العدد المطلوب / رقم Level</label>
+                        <input id="student-store-task-target" class="student-store-input" type="number" min="1" step="1" value="${Number(task?.target_count || 1)}">
+                    </div>
                     <div class="student-store-form-row"><div class="student-store-field"><label>الترتيب</label><input id="student-store-task-sort" class="student-store-input" type="number" step="1" value="${task?.sort_order ?? 0}"></div><label class="student-store-check"><input id="student-store-task-active" type="checkbox" ${task?.is_active === false ? "" : "checked"}> المهمة مفعلة</label></div>
                     <button class="student-store-save" type="button" data-store-save-task>${editing ? "حفظ التعديلات" : "إضافة المهمة"}</button>
                     <div id="student-store-task-message" class="student-store-form-message"></div>
@@ -1060,7 +1095,9 @@
             description: document.getElementById("student-store-task-description")?.value.trim() || "",
             reward_diamonds: reward,
             repeat_kind: document.getElementById("student-store-task-repeat")?.value || "once",
-            verification_type: document.getElementById("student-store-task-verification")?.value || "manual",
+            verification_type: document.getElementById("student-store-task-verification")?.value || "daily_visit",
+            condition_type: document.getElementById("student-store-task-condition")?.value || null,
+            target_count: Math.max(1, Number(document.getElementById("student-store-task-target")?.value || 1)),
             sort_order: Number(document.getElementById("student-store-task-sort")?.value || 0),
             is_active: Boolean(document.getElementById("student-store-task-active")?.checked)
         };
