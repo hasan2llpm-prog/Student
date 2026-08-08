@@ -856,147 +856,31 @@ function translateAuthError(
 ========================================================= */
 
 function closeFloatingPanel() {
-
-    const panel =
-        document.getElementById(
-            "floating-panel"
-        );
-
-    if (panel) {
-        panel.remove();
+    const panel = document.getElementById("floating-panel");
+    if (panel) panel.remove();
+    if (window.StudentNavigation?.closeById) {
+        window.StudentNavigation.closeById("legacy-floating-page");
     }
 }
 
-
-function showFloatingPanel(
-    title,
-    content
-) {
-
+function showFloatingPanel(title, content) {
+    if (window.StudentNavigation?.openPage) {
+        return window.StudentNavigation.openPage({
+            id: "legacy-floating-page",
+            title: String(title || ""),
+            html: String(content || ""),
+            reuse: true
+        });
+    }
     closeFloatingPanel();
-
-    const panel =
-        document.createElement(
-            "div"
-        );
-
-    panel.id =
-        "floating-panel";
-
-    panel.style.position =
-        "fixed";
-
-    panel.style.inset =
-        "0";
-
-    panel.style.zIndex =
-        "999999";
-
-    panel.style.background =
-        "rgba(0,0,0,0.35)";
-
-    panel.style.display =
-        "flex";
-
-    panel.style.alignItems =
-        "center";
-
-    panel.style.justifyContent =
-        "center";
-
-    panel.style.padding =
-        "20px";
-
-    panel.style.boxSizing =
-        "border-box";
-
-    panel.style.direction =
-        "rtl";
-
-    panel.innerHTML = `
-
-        <div style="
-            width:100%;
-            max-width:450px;
-            max-height:88vh;
-            overflow:auto;
-            background:#fff;
-            border-radius:22px;
-            padding:22px;
-            box-sizing:border-box;
-            box-shadow:
-                0 15px 50px
-                rgba(0,0,0,0.22);
-        ">
-
-            <div style="
-                display:flex;
-                align-items:center;
-                justify-content:space-between;
-                gap:15px;
-                margin-bottom:18px;
-            ">
-
-                <h2 style="
-                    margin:0;
-                    font-size:21px;
-                    color:#222;
-                ">
-                    ${title}
-                </h2>
-
-                <button
-                    id="floating-close"
-                    type="button"
-                    style="
-                        width:40px;
-                        height:40px;
-                        border:none;
-                        border-radius:50%;
-                        background:#f1f3f5;
-                        color:#333;
-                        font-size:22px;
-                        cursor:pointer;
-                    "
-                >
-                    ×
-                </button>
-
-            </div>
-
-            ${content}
-
-        </div>
-    `;
-
-    document.body.appendChild(
-        panel
-    );
-
-    document
-        .getElementById(
-            "floating-close"
-        )
-        ?.addEventListener(
-            "click",
-            closeFloatingPanel
-        );
-
-    panel.addEventListener(
-        "click",
-        function(event) {
-
-            if (
-                event.target ===
-                panel
-            ) {
-
-                closeFloatingPanel();
-            }
-        }
-    );
+    const panel = document.createElement("section");
+    panel.id = "floating-panel";
+    panel.className = "student-internal-page";
+    panel.innerHTML = `<header class="student-internal-header"><button id="floating-close" class="student-internal-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="student-internal-title">${String(title || "")}</div></header><div class="student-internal-body">${String(content || "")}</div>`;
+    document.body.appendChild(panel);
+    panel.querySelector("#floating-close")?.addEventListener("click", closeFloatingPanel);
+    return panel;
 }
-
 
 /* =========================================================
    الملف الشخصي
@@ -2878,7 +2762,65 @@ document.addEventListener(
 (function () {
     "use strict";
 
-    if (window.StudentNavigation?.version === "clean-2") return;
+    if (window.StudentNavigation?.version === "clean-4") return;
+
+    const navStyle = document.createElement("style");
+    navStyle.id = "student-navigation-core-style";
+    navStyle.textContent = `
+        .student-internal-page{
+            position:fixed !important;
+            inset:0 !important;
+            width:100% !important;
+            height:100dvh !important;
+            min-height:100vh !important;
+            z-index:2147482000 !important;
+            background:#f7f9fb !important;
+            display:flex !important;
+            flex-direction:column !important;
+            overflow:hidden !important;
+            box-sizing:border-box !important;
+        }
+        .student-internal-page[hidden]{display:none !important;}
+        .student-internal-header{
+            flex:0 0 auto !important;
+            min-height:60px !important;
+            display:flex !important;
+            align-items:center !important;
+            gap:10px !important;
+            padding:0 12px !important;
+            background:#fff !important;
+            border-bottom:1px solid #e5e9ed !important;
+            box-sizing:border-box !important;
+            z-index:2 !important;
+        }
+        .student-internal-back{
+            width:40px !important;
+            height:40px !important;
+            border:0 !important;
+            border-radius:50% !important;
+            background:#eef2f5 !important;
+            color:#1f2937 !important;
+            display:grid !important;
+            place-items:center !important;
+            flex:0 0 auto !important;
+        }
+        .student-internal-title{
+            font-weight:900 !important;
+            font-size:18px !important;
+            color:#172033 !important;
+        }
+        .student-internal-body{
+            flex:1 1 auto !important;
+            min-height:0 !important;
+            overflow-y:auto !important;
+            overflow-x:hidden !important;
+            -webkit-overflow-scrolling:touch !important;
+            background:#f7f9fb !important;
+            box-sizing:border-box !important;
+        }
+        body.student-internal-page-open{overflow:hidden !important;}
+    `;
+    if (!document.getElementById(navStyle.id)) document.head.appendChild(navStyle);
 
     const pageStack = [];
     let exitDialog = null;
@@ -2944,27 +2886,52 @@ document.addEventListener(
         return false;
     }
 
-    function openPage({ id = "page", title = "", html = "", onClose = null } = {}) {
+    function openPage({ id = "page", title = "", html = "", onClose = null, reuse = true } = {}) {
+        const existingIndex = reuse ? pageStack.findIndex((entry) => entry.id === id && entry.element?.isConnected) : -1;
+        if (existingIndex >= 0) {
+            while (pageStack.length - 1 > existingIndex) {
+                const removed = pageStack.pop();
+                removed?.element?.remove();
+                try { removed?.onClose?.(); } catch (_) {}
+            }
+            const entry = pageStack[existingIndex];
+            const page = entry.element;
+            page.hidden = false;
+            page.querySelector(".student-internal-title").textContent = title;
+            page.querySelector(".student-internal-body").innerHTML = html;
+            entry.onClose = onClose || entry.onClose;
+            document.body.classList.add("student-internal-page-open");
+            return page;
+        }
         const current = pageStack.at(-1);
         if (current?.element) current.element.hidden = true;
-
+        ["#floating-panel","#student-education-overlay","#student-teachers-education-overlay"].forEach((selector) => {
+            const layer = document.querySelector(selector);
+            if (layer && !layer.closest(".student-internal-page")) layer.remove();
+        });
         const page = document.createElement("section");
         page.className = "student-internal-page";
         page.dataset.studentNavPage = id;
-        page.innerHTML = `
-            <header class="student-internal-header">
-                <button class="student-internal-back" type="button" aria-label="رجوع">
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-                <div class="student-internal-title"></div>
-            </header>
-            <div class="student-internal-body"></div>`;
+        page.innerHTML = `<header class="student-internal-header"><button class="student-internal-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="student-internal-title"></div></header><div class="student-internal-body"></div>`;
         page.querySelector(".student-internal-title").textContent = title;
         page.querySelector(".student-internal-body").innerHTML = html;
         page.querySelector(".student-internal-back").addEventListener("click", () => back());
         document.body.appendChild(page);
         pageStack.push({ id, element: page, onClose });
+        document.body.classList.add("student-internal-page-open");
         return page;
+    }
+
+    function closeById(id) {
+        const index = pageStack.findIndex((entry) => entry.id === id);
+        if (index < 0) return false;
+        const wasTop = index === pageStack.length - 1;
+        const [entry] = pageStack.splice(index,1);
+        entry?.element?.remove();
+        try { entry?.onClose?.(); } catch (_) {}
+        if (wasTop) { const prev=pageStack.at(-1); if(prev?.element) prev.element.hidden=false; }
+        if (!pageStack.length) document.body.classList.remove("student-internal-page-open");
+        return true;
     }
 
     function closePage() {
@@ -2974,6 +2941,7 @@ document.addEventListener(
         try { entry.onClose?.(); } catch (_) {}
         const previous = pageStack.at(-1);
         if (previous?.element) previous.element.hidden = false;
+        if (!previous) document.body.classList.remove("student-internal-page-open");
         return true;
     }
 
@@ -2986,7 +2954,6 @@ document.addEventListener(
                 exitDialog = null;
                 return true;
             }
-            if (window.StudentMessages?.handleBack?.()) return true;
             if (closePage()) return true;
             if (closeTopLayer()) return true;
             showExitConfirm();
@@ -3062,10 +3029,11 @@ document.addEventListener(
 
     window.StudentHandleAndroidBack = back;
     window.StudentNavigation = {
-        version: "clean-2",
+        version: "clean-4",
         openPage,
         back,
         closePage,
+        closeById,
         closeTopLayer,
         showExitConfirm
     };
