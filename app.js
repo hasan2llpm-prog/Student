@@ -3875,6 +3875,18 @@ document.addEventListener(
         return `${y}-${m}-${d}`;
     }
 
+    async function processEnglishDiamondTasks(eventType) {
+        const client = sb();
+        if (!client || !eventType) return;
+        try {
+            await client.rpc("student_process_english_auto_tasks", {
+                p_event_type: String(eventType)
+            });
+        } catch (error) {
+            console.warn("English auto tasks:", error);
+        }
+    }
+
     async function getUser() {
         if (state.user) return state.user;
         if (typeof currentUser !== "undefined" && currentUser) {
@@ -4027,8 +4039,13 @@ document.addEventListener(
         });
 
         const target = body.querySelector("#sle-main-content");
-        if (activeTab === "challenge") await renderChallenge(target, body);
-        else await renderDaily(target, body);
+        if (activeTab === "challenge") {
+            await processEnglishDiamondTasks("english_open_challenge");
+            await renderChallenge(target, body);
+        } else {
+            await processEnglishDiamondTasks("english_open_daily");
+            await renderDaily(target, body);
+        }
     }
 
     async function renderDaily(target, mainBody) {
@@ -4092,6 +4109,8 @@ document.addEventListener(
                 if (!error) {
                     btn.closest("[data-vocab-card]")?.remove();
                     await loadStats();
+                    await processEnglishDiamondTasks("english_vocabulary");
+                    await processEnglishDiamondTasks("english_daily_complete");
                     refreshHero(mainBody);
                 } else btn.disabled = false;
             });
@@ -4107,6 +4126,8 @@ document.addEventListener(
                 if (!error) {
                     btn.closest("[data-grammar-card]")?.remove();
                     await loadStats();
+                    await processEnglishDiamondTasks("english_grammar");
+                    await processEnglishDiamondTasks("english_daily_complete");
                     refreshHero(mainBody);
                 } else btn.disabled = false;
             });
@@ -4194,6 +4215,9 @@ document.addEventListener(
                 `;
 
                 await loadStats();
+                await processEnglishDiamondTasks("english_mcq_answered");
+                if (correct) await processEnglishDiamondTasks("english_mcq_correct");
+                await processEnglishDiamondTasks("english_level_reached");
                 refreshHero(mainBody);
                 box.querySelector("#sle-next-question")?.addEventListener("click", () => renderChallenge(target, mainBody));
             });
