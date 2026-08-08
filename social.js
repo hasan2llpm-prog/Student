@@ -449,7 +449,8 @@ async function renderProfile(userId) {
 
                 <div class="sp2-actions">
                     ${own
-                        ? `<button class="sp2-btn" type="button" data-sp2-edit>تعديل الملف</button>`
+                        ? `<button class="sp2-btn" type="button" data-sp2-edit>تعديل الملف</button>
+                           ${String(profile.role || "student").toLowerCase() === "student" ? `<button class="sp2-btn secondary" type="button" data-sp2-apply-teacher>تقديم على مدرس</button>` : ""}`
                         : `<button class="sp2-btn ${following ? "following" : ""}" type="button" data-sp2-follow="${esc(targetId)}">${following ? "متابَع" : "متابعة"}</button>`
                     }
                 </div>
@@ -465,6 +466,12 @@ async function renderProfile(userId) {
     `;
 
     body.querySelector("[data-sp2-edit]")?.addEventListener("click", () => renderEdit(body, profile));
+    body.querySelector("[data-sp2-apply-teacher]")?.addEventListener("click", async () => {
+        try {
+            if (!window.StudentTeachersEducation) throw new Error("وحدة المدرسين غير جاهزة.");
+            await window.StudentTeachersEducation.openTeacherPortal(db());
+        } catch (error) { console.error("Teacher application:", error); }
+    });
     const followButton = body.querySelector("[data-sp2-follow]");
     followButton?.addEventListener("click", async () => {
         await toggleFollow(targetId, followButton);
