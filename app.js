@@ -3837,3 +3837,583 @@ document.addEventListener(
 
     window.StudentAccountRoleOnboarding = { open, close };
 })();
+
+
+/* ===== MODULE: Learn English ===== */
+(function () {
+    "use strict";
+
+    if (window.StudentLearnEnglish) return;
+
+    const state = {
+        user: null,
+        stats: { xp: 0, level: 1, next_level_xp: 100, progress_percent: 0 },
+        dailyVocabulary: [],
+        dailyGrammar: [],
+        currentQuestion: null,
+        isAdmin: false
+    };
+
+    function sb() {
+        return typeof supabaseClient !== "undefined" ? supabaseClient : null;
+    }
+
+    function esc(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function todayLocal() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
+    async function getUser() {
+        if (state.user) return state.user;
+        if (typeof currentUser !== "undefined" && currentUser) {
+            state.user = currentUser;
+            return state.user;
+        }
+        const client = sb();
+        if (!client) return null;
+        const { data } = await client.auth.getUser();
+        state.user = data?.user || null;
+        return state.user;
+    }
+
+    function ensureStyles() {
+        if (document.getElementById("student-learn-english-style")) return;
+
+        const style = document.createElement("style");
+        style.id = "student-learn-english-style";
+        style.textContent = `
+            .sle-wrap{width:min(900px,100%);margin:0 auto;padding:14px 14px 90px;direction:rtl;color:#172033}
+            .sle-hero{background:#fff;border:1px solid #e5e9ed;border-radius:18px;padding:16px;margin-bottom:12px}
+            .sle-hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+            .sle-brand{display:flex;align-items:center;gap:11px}
+            .sle-logo{width:48px;height:48px;border-radius:15px;background:#eef7ff;color:#0878c9;display:grid;place-items:center;font-size:22px}
+            .sle-title{font-size:20px;font-weight:900}
+            .sle-sub{font-size:12px;color:#7a8490;margin-top:3px}
+            .sle-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+            .sle-stat{background:#f7f9fb;border:1px solid #edf0f3;border-radius:13px;padding:10px;text-align:center}
+            .sle-stat strong{display:block;font-size:17px}.sle-stat span{font-size:10px;color:#808a95}
+            .sle-progress{height:8px;background:#e8edf2;border-radius:999px;overflow:hidden;margin-top:12px}
+            .sle-progress>span{display:block;height:100%;background:#0095f6;border-radius:999px}
+            .sle-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+            .sle-tab{border:1px solid #e4e8ec;background:#fff;color:#263442;border-radius:13px;padding:12px;font:inherit;font-weight:900;cursor:pointer}
+            .sle-tab.active{background:#0095f6;color:#fff;border-color:#0095f6}
+            .sle-section{background:#fff;border:1px solid #e5e9ed;border-radius:18px;padding:15px;margin-bottom:12px}
+            .sle-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+            .sle-section-title{font-weight:900;font-size:16px}.sle-date{font-size:11px;color:#7a8490}
+            .sle-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+            .sle-card{border:1px solid #e8ecef;background:#fff;border-radius:15px;padding:13px;min-width:0}
+            .sle-word{font-size:18px;font-weight:900;direction:ltr;text-align:right}.sle-meaning{font-size:13px;color:#44515f;margin-top:5px}
+            .sle-example{font-size:12px;color:#697581;background:#f8fafb;border-radius:10px;padding:9px;margin-top:8px;line-height:1.7}
+            .sle-chip{display:inline-flex;padding:5px 8px;border-radius:8px;background:#eef7ff;color:#0878c9;font-size:10px;font-weight:800;margin-top:7px}
+            .sle-btn{border:0;border-radius:11px;background:#0095f6;color:#fff;padding:10px 12px;font:inherit;font-weight:900;cursor:pointer}
+            .sle-btn.secondary{background:#eef2f5;color:#263442}.sle-btn.danger{background:#fff0f1;color:#c62828}
+            .sle-btn:disabled{opacity:.55;cursor:not-allowed}
+            .sle-empty{text-align:center;color:#7c8792;padding:28px 14px;line-height:1.8}
+            .sle-question{font-size:17px;font-weight:900;line-height:1.8;margin-bottom:13px}
+            .sle-options{display:grid;gap:9px}.sle-option{border:1px solid #dfe5ea;background:#fff;border-radius:13px;padding:12px;text-align:right;font:inherit;cursor:pointer}
+            .sle-option.correct{border-color:#2e9f5b;background:#eefaf2}.sle-option.wrong{border-color:#d84040;background:#fff1f1}
+            .sle-result{margin-top:12px;border-radius:12px;padding:11px;line-height:1.7;font-size:13px}
+            .sle-result.ok{background:#eefaf2;color:#1f7841}.sle-result.bad{background:#fff1f1;color:#ad3030}
+            .sle-admin-row{display:flex;gap:8px;flex-wrap:wrap}.sle-admin-link{border:0;background:#eef2f5;color:#263442;border-radius:10px;padding:9px 11px;font:inherit;font-weight:800}
+            .sle-admin-tabs{display:flex;gap:8px;overflow:auto;margin-bottom:12px}.sle-admin-tab{white-space:nowrap;border:1px solid #e4e8ec;background:#fff;border-radius:11px;padding:9px 12px;font:inherit;font-weight:800}
+            .sle-admin-tab.active{background:#0095f6;color:#fff;border-color:#0095f6}
+            .sle-form{display:grid;gap:10px}.sle-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+            .sle-field label{display:block;font-size:11px;font-weight:800;margin-bottom:5px}.sle-field input,.sle-field textarea,.sle-field select{width:100%;box-sizing:border-box;border:1px solid #dce2e8;border-radius:11px;padding:10px 11px;background:#fff;font:inherit}
+            .sle-field textarea{min-height:78px;resize:vertical}.sle-list{display:grid;gap:8px}.sle-list-item{border:1px solid #e7ebef;border-radius:13px;padding:11px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:center}
+            .sle-list-main{min-width:0}.sle-list-title{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sle-list-meta{font-size:10px;color:#7b8590;margin-top:3px}
+            @media(max-width:560px){.sle-wrap{padding:10px 10px 82px}.sle-grid{grid-template-columns:1fr}.sle-form-grid{grid-template-columns:1fr}.sle-stats{gap:6px}.sle-stat{padding:9px 6px}}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function page(title, id, html = "") {
+        ensureStyles();
+        if (!window.StudentNavigation?.openPage) return null;
+        const el = window.StudentNavigation.openPage({ id, title, html, reuse: true });
+        return el?.querySelector(".student-internal-body") || null;
+    }
+
+    async function loadStats() {
+        const client = sb();
+        if (!client) return state.stats;
+        const { data, error } = await client.rpc("student_english_get_stats");
+        if (!error && data) {
+            const row = Array.isArray(data) ? data[0] : data;
+            state.stats = {
+                xp: Number(row?.xp || 0),
+                level: Number(row?.level || 1),
+                next_level_xp: Number(row?.next_level_xp || 100),
+                progress_percent: Number(row?.progress_percent || 0)
+            };
+        }
+        return state.stats;
+    }
+
+    async function loadIsAdmin() {
+        const client = sb();
+        if (!client) return false;
+        const { data } = await client.from("profiles").select("role").eq("id", (await getUser())?.id).maybeSingle();
+        state.isAdmin = String(data?.role || "").toLowerCase() === "admin";
+        return state.isAdmin;
+    }
+
+    function heroHTML() {
+        const s = state.stats;
+        return `
+            <section class="sle-hero">
+                <div class="sle-hero-top">
+                    <div class="sle-brand">
+                        <div class="sle-logo"><i class="fa-solid fa-language"></i></div>
+                        <div>
+                            <div class="sle-title">Learn English</div>
+                            <div class="sle-sub">تعلّم يوميًا وتقدّم بمستواك خطوة بخطوة</div>
+                        </div>
+                    </div>
+                    ${state.isAdmin ? `<button class="sle-admin-link" type="button" data-sle-admin><i class="fa-solid fa-gear"></i> إدارة</button>` : ""}
+                </div>
+                <div class="sle-stats">
+                    <div class="sle-stat"><strong>${s.level}</strong><span>Level</span></div>
+                    <div class="sle-stat"><strong>${s.xp}</strong><span>XP</span></div>
+                    <div class="sle-stat"><strong>${Math.round(s.progress_percent)}%</strong><span>التقدم للمستوى التالي</span></div>
+                </div>
+                <div class="sle-progress"><span style="width:${Math.max(0, Math.min(100, s.progress_percent))}%"></span></div>
+            </section>
+        `;
+    }
+
+    async function open(defaultTab = "daily") {
+        const user = await getUser();
+        if (!user) return;
+
+        await Promise.all([loadStats(), loadIsAdmin()]);
+        const body = page("Learn English", "learn-english", "");
+        if (!body) return;
+
+        body.dataset.sleTab = defaultTab;
+        await renderMain(body, defaultTab);
+    }
+
+    async function renderMain(body, activeTab = "daily") {
+        body.innerHTML = `
+            <div class="sle-wrap">
+                ${heroHTML()}
+                <div class="sle-tabs">
+                    <button class="sle-tab ${activeTab === "daily" ? "active" : ""}" data-sle-tab="daily" type="button">Daily English</button>
+                    <button class="sle-tab ${activeTab === "challenge" ? "active" : ""}" data-sle-tab="challenge" type="button">English Challenge</button>
+                </div>
+                <div id="sle-main-content"></div>
+            </div>
+        `;
+
+        body.querySelector("[data-sle-admin]")?.addEventListener("click", openAdmin);
+        body.querySelectorAll("[data-sle-tab]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const tab = btn.dataset.sleTab;
+                body.dataset.sleTab = tab;
+                await renderMain(body, tab);
+            });
+        });
+
+        const target = body.querySelector("#sle-main-content");
+        if (activeTab === "challenge") await renderChallenge(target, body);
+        else await renderDaily(target, body);
+    }
+
+    async function renderDaily(target, mainBody) {
+        target.innerHTML = `<section class="sle-section"><div class="sle-empty">جارٍ تحميل درس اليوم...</div></section>`;
+        const client = sb();
+        if (!client) return;
+
+        const date = todayLocal();
+        const [vocabRes, grammarRes] = await Promise.all([
+            client.rpc("student_english_get_daily_vocabulary", { p_day: date }),
+            client.rpc("student_english_get_daily_grammar", { p_day: date })
+        ]);
+
+        state.dailyVocabulary = vocabRes.error ? [] : (vocabRes.data || []);
+        state.dailyGrammar = grammarRes.error ? [] : (grammarRes.data || []);
+
+        target.innerHTML = `
+            <section class="sle-section">
+                <div class="sle-section-head">
+                    <div class="sle-section-title">مفردات اليوم</div>
+                    <div class="sle-date">${esc(date)}</div>
+                </div>
+                <div class="sle-grid" id="sle-vocab-grid">
+                    ${state.dailyVocabulary.length ? state.dailyVocabulary.map(v => `
+                        <article class="sle-card" data-vocab-card="${esc(v.id)}">
+                            <div class="sle-word">${esc(v.word)}</div>
+                            <div class="sle-meaning">${esc(v.meaning_ar || "")}</div>
+                            ${v.pronunciation ? `<span class="sle-chip">${esc(v.pronunciation)}</span>` : ""}
+                            ${v.example_sentence ? `<div class="sle-example" dir="ltr">${esc(v.example_sentence)}</div>` : ""}
+                            <button class="sle-btn" style="width:100%;margin-top:10px" data-learn-vocab="${esc(v.id)}" type="button">تعلمتها</button>
+                        </article>
+                    `).join("") : `<div class="sle-empty">أكملت مفردات اليوم، أو لم يضف الأدمن مفردات لهذا اليوم بعد.</div>`}
+                </div>
+            </section>
+
+            <section class="sle-section">
+                <div class="sle-section-head">
+                    <div class="sle-section-title">قاعدة اليوم</div>
+                    <div class="sle-date">${esc(date)}</div>
+                </div>
+                <div class="sle-grid" id="sle-grammar-grid">
+                    ${state.dailyGrammar.length ? state.dailyGrammar.map(g => `
+                        <article class="sle-card" data-grammar-card="${esc(g.id)}">
+                            <div style="font-weight:900;font-size:16px">${esc(g.title)}</div>
+                            <div style="line-height:1.8;color:#44515f;margin-top:8px;white-space:pre-wrap">${esc(g.explanation || "")}</div>
+                            ${g.example_sentence ? `<div class="sle-example" dir="ltr">${esc(g.example_sentence)}</div>` : ""}
+                            <button class="sle-btn" style="width:100%;margin-top:10px" data-read-grammar="${esc(g.id)}" type="button">فهمت القاعدة</button>
+                        </article>
+                    `).join("") : `<div class="sle-empty">أكملت قاعدة اليوم، أو لم يضف الأدمن قاعدة لهذا اليوم بعد.</div>`}
+                </div>
+            </section>
+        `;
+
+        target.querySelectorAll("[data-learn-vocab]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                btn.disabled = true;
+                const { error } = await client.rpc("student_english_complete_item", {
+                    p_item_type: "vocabulary",
+                    p_item_id: btn.dataset.learnVocab
+                });
+                if (!error) {
+                    btn.closest("[data-vocab-card]")?.remove();
+                    await loadStats();
+                    refreshHero(mainBody);
+                } else btn.disabled = false;
+            });
+        });
+
+        target.querySelectorAll("[data-read-grammar]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                btn.disabled = true;
+                const { error } = await client.rpc("student_english_complete_item", {
+                    p_item_type: "grammar",
+                    p_item_id: btn.dataset.readGrammar
+                });
+                if (!error) {
+                    btn.closest("[data-grammar-card]")?.remove();
+                    await loadStats();
+                    refreshHero(mainBody);
+                } else btn.disabled = false;
+            });
+        });
+    }
+
+    function refreshHero(body) {
+        const oldHero = body.querySelector(".sle-hero");
+        if (!oldHero) return;
+        const temp = document.createElement("div");
+        temp.innerHTML = heroHTML();
+        const fresh = temp.firstElementChild;
+        oldHero.replaceWith(fresh);
+        fresh.querySelector("[data-sle-admin]")?.addEventListener("click", openAdmin);
+    }
+
+    async function renderChallenge(target, mainBody) {
+        target.innerHTML = `<section class="sle-section"><div class="sle-empty">جارٍ تحميل السؤال...</div></section>`;
+        const client = sb();
+        if (!client) return;
+
+        const { data, error } = await client.rpc("student_english_get_next_question");
+        const q = !error && data ? (Array.isArray(data) ? data[0] : data) : null;
+        state.currentQuestion = q || null;
+
+        if (!q?.id) {
+            target.innerHTML = `
+                <section class="sle-section">
+                    <div class="sle-section-title">English Challenge</div>
+                    <div class="sle-empty">لا توجد أسئلة متاحة لمستواك حاليًا.<br>عند إضافة الأدمن أسئلة جديدة ستظهر لك، والأسئلة التي حللتها لن تتكرر.</div>
+                </section>`;
+            return;
+        }
+
+        target.innerHTML = `
+            <section class="sle-section">
+                <div class="sle-section-head">
+                    <div class="sle-section-title">Level ${Number(q.level || 1)}</div>
+                    <span class="sle-chip">+${Number(q.xp_reward || 10)} XP عند الإجابة الصحيحة</span>
+                </div>
+                <div class="sle-question">${esc(q.question_text)}</div>
+                <div class="sle-options">
+                    ${["A","B","C","D"].map(letter => `
+                        <button class="sle-option" type="button" data-answer="${letter}">
+                            <strong>${letter}.</strong>
+                            ${esc(q[`option_${letter.toLowerCase()}`] || "")}
+                        </button>
+                    `).join("")}
+                </div>
+                <div id="sle-answer-result"></div>
+            </section>
+        `;
+
+        target.querySelectorAll("[data-answer]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const buttons = [...target.querySelectorAll("[data-answer]")];
+                buttons.forEach(x => x.disabled = true);
+
+                const { data: answerData, error: answerError } = await client.rpc("student_english_answer_question", {
+                    p_question_id: q.id,
+                    p_answer: btn.dataset.answer
+                });
+
+                if (answerError) {
+                    buttons.forEach(x => x.disabled = false);
+                    return;
+                }
+
+                const result = Array.isArray(answerData) ? answerData[0] : answerData;
+                const correct = !!result?.is_correct;
+                const correctOption = String(result?.correct_option || "").toUpperCase();
+
+                buttons.forEach(x => {
+                    if (x.dataset.answer === correctOption) x.classList.add("correct");
+                    else if (x === btn && !correct) x.classList.add("wrong");
+                });
+
+                const box = target.querySelector("#sle-answer-result");
+                box.innerHTML = `
+                    <div class="sle-result ${correct ? "ok" : "bad"}">
+                        <strong>${correct ? "إجابة صحيحة" : "إجابة غير صحيحة"}</strong>
+                        ${result?.explanation ? `<div style="margin-top:5px">${esc(result.explanation)}</div>` : ""}
+                    </div>
+                    <button class="sle-btn" id="sle-next-question" style="width:100%;margin-top:10px" type="button">السؤال التالي</button>
+                `;
+
+                await loadStats();
+                refreshHero(mainBody);
+                box.querySelector("#sle-next-question")?.addEventListener("click", () => renderChallenge(target, mainBody));
+            });
+        });
+    }
+
+    async function openAdmin() {
+        if (!(await loadIsAdmin())) return;
+        const body = page("إدارة Learn English", "learn-english-admin", "");
+        if (!body) return;
+        await renderAdmin(body, "vocabulary");
+    }
+
+    async function renderAdmin(body, tab = "vocabulary") {
+        body.innerHTML = `
+            <div class="sle-wrap">
+                <section class="sle-hero">
+                    <div class="sle-title">إدارة Learn English</div>
+                    <div class="sle-sub">إضافة وحذف المحتوى. هذه الصفحة متاحة للأدمن فقط.</div>
+                </section>
+                <div class="sle-admin-tabs">
+                    <button class="sle-admin-tab ${tab==="vocabulary"?"active":""}" data-admin-tab="vocabulary" type="button">المفردات</button>
+                    <button class="sle-admin-tab ${tab==="grammar"?"active":""}" data-admin-tab="grammar" type="button">القواعد</button>
+                    <button class="sle-admin-tab ${tab==="questions"?"active":""}" data-admin-tab="questions" type="button">MCQ</button>
+                </div>
+                <div id="sle-admin-content"></div>
+            </div>`;
+
+        body.querySelectorAll("[data-admin-tab]").forEach(btn => {
+            btn.addEventListener("click", () => renderAdmin(body, btn.dataset.adminTab));
+        });
+
+        const target = body.querySelector("#sle-admin-content");
+        if (tab === "grammar") await renderGrammarAdmin(target, body);
+        else if (tab === "questions") await renderQuestionsAdmin(target, body);
+        else await renderVocabularyAdmin(target, body);
+    }
+
+    async function adminList(type) {
+        const client = sb();
+        if (!client) return [];
+        const { data, error } = await client.rpc("student_english_admin_list", { p_type: type });
+        return error ? [] : (data || []);
+    }
+
+    async function renderVocabularyAdmin(target, body) {
+        const rows = await adminList("vocabulary");
+        target.innerHTML = `
+            <section class="sle-section">
+                <div class="sle-section-title" style="margin-bottom:12px">إضافة مفردة</div>
+                <form class="sle-form" id="sle-vocab-form">
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>الكلمة</label><input name="word" required maxlength="80"></div>
+                        <div class="sle-field"><label>المعنى بالعربي</label><input name="meaning" required maxlength="180"></div>
+                    </div>
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>النطق (اختياري)</label><input name="pronunciation" maxlength="80"></div>
+                        <div class="sle-field"><label>تاريخ الظهور</label><input name="day" type="date" value="${todayLocal()}" required></div>
+                    </div>
+                    <div class="sle-field"><label>مثال</label><textarea name="example" maxlength="400"></textarea></div>
+                    <button class="sle-btn" type="submit">إضافة المفردة</button>
+                </form>
+            </section>
+            ${adminItemsSection(rows, "vocabulary")}
+        `;
+        bindAdminDelete(target, body, "vocabulary");
+        target.querySelector("#sle-vocab-form")?.addEventListener("submit", async e => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const client = sb();
+            const { error } = await client.rpc("student_english_admin_add_vocabulary", {
+                p_word: String(f.get("word")||"").trim(),
+                p_meaning_ar: String(f.get("meaning")||"").trim(),
+                p_example_sentence: String(f.get("example")||"").trim(),
+                p_pronunciation: String(f.get("pronunciation")||"").trim(),
+                p_available_date: String(f.get("day")||todayLocal())
+            });
+            if (!error) await renderAdmin(body, "vocabulary");
+        });
+    }
+
+    async function renderGrammarAdmin(target, body) {
+        const rows = await adminList("grammar");
+        target.innerHTML = `
+            <section class="sle-section">
+                <div class="sle-section-title" style="margin-bottom:12px">إضافة قاعدة</div>
+                <form class="sle-form" id="sle-grammar-form">
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>عنوان القاعدة</label><input name="title" required maxlength="120"></div>
+                        <div class="sle-field"><label>تاريخ الظهور</label><input name="day" type="date" value="${todayLocal()}" required></div>
+                    </div>
+                    <div class="sle-field"><label>الشرح</label><textarea name="explanation" required maxlength="2000"></textarea></div>
+                    <div class="sle-field"><label>مثال</label><textarea name="example" maxlength="400"></textarea></div>
+                    <button class="sle-btn" type="submit">إضافة القاعدة</button>
+                </form>
+            </section>
+            ${adminItemsSection(rows, "grammar")}
+        `;
+        bindAdminDelete(target, body, "grammar");
+        target.querySelector("#sle-grammar-form")?.addEventListener("submit", async e => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const client = sb();
+            const { error } = await client.rpc("student_english_admin_add_grammar", {
+                p_title: String(f.get("title")||"").trim(),
+                p_explanation: String(f.get("explanation")||"").trim(),
+                p_example_sentence: String(f.get("example")||"").trim(),
+                p_available_date: String(f.get("day")||todayLocal())
+            });
+            if (!error) await renderAdmin(body, "grammar");
+        });
+    }
+
+    async function renderQuestionsAdmin(target, body) {
+        const rows = await adminList("questions");
+        target.innerHTML = `
+            <section class="sle-section">
+                <div class="sle-section-title" style="margin-bottom:12px">إضافة سؤال MCQ</div>
+                <form class="sle-form" id="sle-question-form">
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>Level</label><select name="level">${[1,2,3,4,5].map(x=>`<option value="${x}">${x}</option>`).join("")}</select></div>
+                        <div class="sle-field"><label>XP</label><input name="xp" type="number" min="1" max="100" value="10"></div>
+                    </div>
+                    <div class="sle-field"><label>السؤال</label><textarea name="question" required maxlength="1000"></textarea></div>
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>A</label><input name="a" required maxlength="400"></div>
+                        <div class="sle-field"><label>B</label><input name="b" required maxlength="400"></div>
+                        <div class="sle-field"><label>C</label><input name="c" required maxlength="400"></div>
+                        <div class="sle-field"><label>D</label><input name="d" required maxlength="400"></div>
+                    </div>
+                    <div class="sle-form-grid">
+                        <div class="sle-field"><label>الإجابة الصحيحة</label><select name="correct"><option>A</option><option>B</option><option>C</option><option>D</option></select></div>
+                        <div class="sle-field"><label>التفسير بعد الحل</label><input name="explanation" maxlength="600"></div>
+                    </div>
+                    <button class="sle-btn" type="submit">إضافة السؤال</button>
+                </form>
+            </section>
+            ${adminItemsSection(rows, "questions")}
+        `;
+        bindAdminDelete(target, body, "questions");
+        target.querySelector("#sle-question-form")?.addEventListener("submit", async e => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const client = sb();
+            const { error } = await client.rpc("student_english_admin_add_question", {
+                p_level: Number(f.get("level")||1),
+                p_question_text: String(f.get("question")||"").trim(),
+                p_option_a: String(f.get("a")||"").trim(),
+                p_option_b: String(f.get("b")||"").trim(),
+                p_option_c: String(f.get("c")||"").trim(),
+                p_option_d: String(f.get("d")||"").trim(),
+                p_correct_option: String(f.get("correct")||"A"),
+                p_explanation: String(f.get("explanation")||"").trim(),
+                p_xp_reward: Number(f.get("xp")||10)
+            });
+            if (!error) await renderAdmin(body, "questions");
+        });
+    }
+
+    function adminItemsSection(rows, type) {
+        return `
+            <section class="sle-section">
+                <div class="sle-section-head">
+                    <div class="sle-section-title">المحتوى الحالي</div>
+                    <span class="sle-date">${rows.length} عنصر</span>
+                </div>
+                <div class="sle-list">
+                    ${rows.length ? rows.map(row => `
+                        <div class="sle-list-item">
+                            <div class="sle-list-main">
+                                <div class="sle-list-title">${esc(row.title)}</div>
+                                <div class="sle-list-meta">${esc(row.meta || "")}</div>
+                            </div>
+                            <button class="sle-btn danger" type="button" data-admin-delete="${esc(row.id)}" data-admin-delete-type="${esc(type)}">حذف</button>
+                        </div>
+                    `).join("") : `<div class="sle-empty">لا يوجد محتوى بعد.</div>`}
+                </div>
+            </section>
+        `;
+    }
+
+    function bindAdminDelete(target, body, tab) {
+        target.querySelectorAll("[data-admin-delete]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                btn.disabled = true;
+                const client = sb();
+                const { error } = await client.rpc("student_english_admin_delete", {
+                    p_type: btn.dataset.adminDeleteType,
+                    p_id: btn.dataset.adminDelete
+                });
+                if (!error) await renderAdmin(body, tab);
+                else btn.disabled = false;
+            });
+        });
+    }
+
+    function attachAdminDashboardButton() {
+        const tryAttach = () => {
+            const tools = document.querySelector(".student-admin-tools");
+            if (!tools || document.getElementById("student-open-english-management")) return false;
+
+            const btn = document.createElement("button");
+            btn.className = "student-admin-tool-button";
+            btn.id = "student-open-english-management";
+            btn.type = "button";
+            btn.innerHTML = `<i class="fa-solid fa-language"></i> إدارة Learn English`;
+            btn.addEventListener("click", openAdmin);
+            tools.appendChild(btn);
+            return true;
+        };
+
+        if (tryAttach()) return;
+        const observer = new MutationObserver(() => {
+            if (tryAttach()) observer.disconnect();
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        setTimeout(() => observer.disconnect(), 60000);
+    }
+
+    attachAdminDashboardButton();
+
+    window.StudentLearnEnglish = { open, openAdmin };
+})();
