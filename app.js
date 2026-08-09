@@ -1,4 +1,136 @@
 /* =========================================================
+   Student - Client Security Utilities
+   XSS hardening + safe URL handling + lightweight a11y runtime
+========================================================= */
+(function () {
+    "use strict";
+
+    if (window.StudentSecurity) return;
+
+    const SAFE_PROTOCOLS = new Set(["http:", "https:", "blob:"]);
+    const SAFE_IMAGE_PROTOCOLS = new Set(["http:", "https:", "blob:", "data:"]);
+
+    function escapeHTML(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function safeURL(value, options = {}) {
+        const raw = String(value ?? "").trim();
+        if (!raw) return "";
+
+        // Local app paths are allowed.
+        if (/^(?:\.?\.?\/|\/)(?!\/)/.test(raw) || raw.startsWith("#")) {
+            return raw;
+        }
+
+        try {
+            const url = new URL(raw, window.location.origin);
+            const allowed = options.allowData ? SAFE_IMAGE_PROTOCOLS : SAFE_PROTOCOLS;
+            return allowed.has(url.protocol) ? url.href : "";
+        } catch (_) {
+            return "";
+        }
+    }
+
+    function sanitizeSearchTerm(value) {
+        return String(value ?? "")
+            .normalize("NFKC")
+            .replace(/[,%()]/g, " ")
+            .replace(/[\u0000-\u001F\u007F]/g, "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 80);
+    }
+
+    function sanitizeHTML(html) {
+        const template = document.createElement("template");
+        template.innerHTML = String(html ?? "");
+
+        template.content.querySelectorAll("script,object,embed,base,meta").forEach((node) => node.remove());
+
+        const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
+        let node = walker.nextNode();
+        while (node) {
+            for (const attr of Array.from(node.attributes)) {
+                const name = attr.name.toLowerCase();
+                const value = attr.value;
+
+                if (name.startsWith("on") || name === "srcdoc") {
+                    node.removeAttribute(attr.name);
+                    continue;
+                }
+
+                if (["href", "src", "action", "formaction", "poster"].includes(name)) {
+                    const isImageLike = name === "src" && ["IMG", "SOURCE"].includes(node.tagName);
+                    const cleaned = safeURL(value, { allowData: isImageLike });
+                    if (cleaned) node.setAttribute(attr.name, cleaned);
+                    else node.removeAttribute(attr.name);
+                }
+            }
+
+            if (node.tagName === "A" && node.getAttribute("target") === "_blank") {
+                const rel = new Set((node.getAttribute("rel") || "").split(/\s+/).filter(Boolean));
+                rel.add("noopener");
+                rel.add("noreferrer");
+                node.setAttribute("rel", Array.from(rel).join(" "));
+            }
+            node = walker.nextNode();
+        }
+        return template.innerHTML;
+    }
+
+    function setHTML(element, html) {
+        if (!element) return;
+        element.innerHTML = sanitizeHTML(html);
+    }
+
+    function enhanceAccessibility(root = document) {
+        root.querySelectorAll("img:not([alt])").forEach((img) => img.setAttribute("alt", ""));
+        root.querySelectorAll("button:not([type])").forEach((button) => button.setAttribute("type", "button"));
+
+        root.querySelectorAll("[role='dialog']").forEach((dialog) => {
+            if (!dialog.hasAttribute("aria-modal")) dialog.setAttribute("aria-modal", "true");
+        });
+
+        root.querySelectorAll("button, a[href], input, select, textarea, [tabindex]").forEach((el) => {
+            if (!el.hasAttribute("aria-label") && !String(el.textContent || "").trim() && el.getAttribute("title")) {
+                el.setAttribute("aria-label", el.getAttribute("title"));
+            }
+        });
+    }
+
+    let a11yQueued = false;
+    function queueA11y() {
+        if (a11yQueued) return;
+        a11yQueued = true;
+        requestAnimationFrame(() => {
+            a11yQueued = false;
+            enhanceAccessibility(document);
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        enhanceAccessibility(document);
+        const observer = new MutationObserver(queueA11y);
+        observer.observe(document.body, { childList: true, subtree: true });
+    }, { once: true });
+
+    window.StudentSecurity = Object.freeze({
+        escapeHTML,
+        safeURL,
+        sanitizeSearchTerm,
+        sanitizeHTML,
+        setHTML,
+        enhanceAccessibility
+    });
+})();
+
+/* =========================================================
    Student - Main App
 ========================================================= */
 
@@ -876,7 +1008,9 @@ function showFloatingPanel(title, content) {
     const panel = document.createElement("section");
     panel.id = "floating-panel";
     panel.className = "student-internal-page";
-    panel.innerHTML = `<header class="student-internal-header"><button id="floating-close" class="student-internal-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="student-internal-title">${String(title || "")}</div></header><div class="student-internal-body">${String(content || "")}</div>`;
+    const safeTitle = window.StudentSecurity?.escapeHTML?.(title || "") ?? String(title || "").replace(/[&<>"\']/g, "");
+    const panelHTML = `<header class="student-internal-header"><button id="floating-close" class="student-internal-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="student-internal-title">${safeTitle}</div></header><div class="student-internal-body">${String(content || "")}</div>`;
+    panel.innerHTML = window.StudentSecurity?.sanitizeHTML?.(panelHTML) ?? panelHTML;
     document.body.appendChild(panel);
     panel.querySelector("#floating-close")?.addEventListener("click", closeFloatingPanel);
     return panel;
@@ -2675,7 +2809,7 @@ document.addEventListener(
             slide.className = "student-home-ad-slide";
             slide.setAttribute("role", ad.link_url ? "link" : "img");
             slide.innerHTML = `
-                <img src="${String(ad.image_url || "").replace(/"/g, "&quot;")}" alt="${String(ad.title || "إعلان").replace(/"/g, "&quot;")}" loading="lazy">
+                <img src="${window.StudentSecurity?.escapeHTML?.(window.StudentSecurity?.safeURL?.(ad.image_url, {allowData:true}) || "") || ""}" alt="${window.StudentSecurity?.escapeHTML?.(ad.title || "إعلان") || "إعلان"}" loading="lazy" decoding="async">
                 ${ad.title ? `<div class="student-home-ad-caption">${String(ad.title).replace(/[&<>]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]))}</div>` : ""}
             `;
             const target = normalizeUrl(ad.link_url);
@@ -2898,7 +3032,7 @@ document.addEventListener(
             const page = entry.element;
             page.hidden = false;
             page.querySelector(".student-internal-title").textContent = title;
-            page.querySelector(".student-internal-body").innerHTML = html;
+            page.querySelector(".student-internal-body").innerHTML = window.StudentSecurity?.sanitizeHTML?.(html) ?? html;
             entry.onClose = onClose || entry.onClose;
             document.body.classList.add("student-internal-page-open");
             return page;
@@ -2914,7 +3048,7 @@ document.addEventListener(
         page.dataset.studentNavPage = id;
         page.innerHTML = `<header class="student-internal-header"><button class="student-internal-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="student-internal-title"></div></header><div class="student-internal-body"></div>`;
         page.querySelector(".student-internal-title").textContent = title;
-        page.querySelector(".student-internal-body").innerHTML = html;
+        page.querySelector(".student-internal-body").innerHTML = window.StudentSecurity?.sanitizeHTML?.(html) ?? html;
         page.querySelector(".student-internal-back").addEventListener("click", () => back());
         document.body.appendChild(page);
         pageStack.push({ id, element: page, onClose });
@@ -3051,7 +3185,7 @@ document.addEventListener(
     if (window.StudentNotifications) return;
 
     const VAPID_PUBLIC_KEY = "BDzANVHrkwSN1O6cIyREd5yYgjo7pxiGiizwdOGw2nHIxciXm5Fs5jxmCGh9NjOMX3Xo0t2sd949fLrRfJwTCQI";
-    const SW_URL = "./sw.js?v=1.0.1";
+    const SW_URL = "./sw.js?v=4.1.0";
 
     const state = {
         user: null,
