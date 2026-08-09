@@ -939,7 +939,7 @@
     function showModal(html) {
         const modal = modalElement();
         if (!modal) return;
-        modal.innerHTML = html;
+        modal.innerHTML = window.StudentSecurity?.sanitizeHTML?.(html) ?? html;
         modal.classList.add("show");
         modal.setAttribute("aria-hidden", "false");
     }
