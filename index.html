@@ -6,12 +6,14 @@
 
     <title>Student</title>
 
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0095f6">
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         /* =========================
@@ -241,6 +243,49 @@
             background: #0095f6;
         }
 
+
+        /* ===== Accessibility & rendering performance hardening ===== */
+        :focus-visible {
+            outline: 3px solid rgba(0, 149, 246, 0.38);
+            outline-offset: 3px;
+        }
+        
+        button, a, input, select, textarea, [role="button"] {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        img, video {
+            max-width: 100%;
+        }
+        
+        .student-internal-body,
+        .student-store-body,
+        .sm-body,
+        .sn-body {
+            contain: layout style;
+        }
+        
+        @supports (content-visibility: auto) {
+            .student-store-product,
+            .student-store-order,
+            .ste-content-card,
+            .sn-item,
+            .sm-row {
+                content-visibility: auto;
+                contain-intrinsic-size: 1px 120px;
+            }
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+
     </style>
 </head>
 
@@ -250,7 +295,7 @@
          شاشة تسجيل الدخول / إنشاء الحساب
     ========================================== -->
 
-    <section id="auth-screen">
+    <section id="auth-screen" aria-label="تسجيل الدخول">
 
         <div class="auth-box">
 
@@ -389,26 +434,27 @@
          التطبيق الرئيسي
     ========================================== -->
 
-    <section id="main-screen" class="hidden">
+    <section id="main-screen" class="hidden" aria-label="التطبيق الرئيسي">
 
         <!-- الهيدر -->
         <header>
 
-            <div class="header-icons">
-                <i class="fa-regular fa-bell"></i>
-            </div>
+            <button class="header-icons" type="button" aria-label="الإشعارات" style="border:0;background:transparent">
+                <i class="fa-regular fa-bell" aria-hidden="true"></i>
+            </button>
 
             <div>
                 <div class="logo">Student</div>
                 <div id="welcome-user" class="welcome-user"></div>
             </div>
 
-            <div class="header-icons">
+            <button class="header-icons" type="button" aria-label="القائمة" style="border:0;background:transparent">
                 <i
                     id="menu-icon"
                     class="fa-solid fa-bars"
+                    aria-hidden="true"
                 ></i>
-            </div>
+            </button>
 
         </header>
 
@@ -527,8 +573,8 @@
     <!-- =========================================
          JavaScript
     ========================================== -->
-    <script src="app.js?v=3.2.0"></script>
-    <script src="social.js?v=1.0.1"></script>
+    <script defer src="app.js?v=3.3.0"></script>
+    <script defer src="social.js?v=1.0.2"></script>
 
 </body>
 </html>
