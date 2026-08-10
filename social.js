@@ -5474,6 +5474,18 @@ window.StudentSuggestions = { open:openSuggestions };
         window.openStudentStoryCreator;
 
 
+    window.StudentStories = window.StudentStories || {};
+    window.StudentStories.openById = async function(storyId) {
+        if (!storyId) return false;
+        if (!stories.length) await loadStories();
+        const target = stories.find(item => String(item.id) === String(storyId));
+        if (!target) return false;
+        const group = stories.filter(item => String(item.user_id) === String(target.user_id));
+        const index = group.findIndex(item => String(item.id) === String(storyId));
+        await openStoryGroup(group, Math.max(0, index));
+        return true;
+    };
+
     /* =========================================================
        INIT
     ========================================================= */
@@ -7217,7 +7229,8 @@ window.StudentSuggestions = { open:openSuggestions };
 "use strict";
 if(window.__studentSearchLoaded) return;
 window.__studentSearchLoaded=true;
-let page=null,timer=null,controller=null;
+let fallbackPage=null,timer=null,controller=null;
+let lastQuery="", lastScroll=0;
 const db=()=>typeof supabaseClient!=="undefined"?supabaseClient:null;
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const safeUrl=(value,allowData=false)=>{
@@ -7225,26 +7238,81 @@ const safeUrl=(value,allowData=false)=>{
  try{const u=new URL(String(value||""),window.location.origin);return ["http:","https:","blob:"].includes(u.protocol)?u.href:""}catch(_){return""}
 };
 const safeSearch=value=>window.StudentSecurity?.sanitizeSearchTerm?window.StudentSecurity.sanitizeSearchTerm(value):String(value||"").replace(/[,%()]/g," ").trim().slice(0,80);
-function ensure(){
- if(page) return page;
- page=document.createElement("section"); page.id="student-search-page";
- page.style.cssText="position:fixed;inset:0;z-index:2147482400;background:#f7f8fb;display:none;flex-direction:column;direction:rtl";
- page.innerHTML=`<header style="height:62px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;padding:0 14px"><button data-search-back style="border:0;background:#eef2f6;width:40px;height:40px;border-radius:50%;font-size:22px">‹</button><strong style="font-size:19px">البحث</strong></header><div style="padding:12px"><input id="student-search-input" placeholder="ابحث بالاسم أو اسم المستخدم" style="width:100%;box-sizing:border-box;border:1px solid #dfe3e8;border-radius:14px;padding:13px;font:inherit;background:#fff"></div><div id="student-search-results" style="padding:0 12px 90px;overflow:auto;display:grid;gap:8px"></div>`;
- document.body.appendChild(page);
- page.addEventListener("click",e=>{const b=e.target.closest("[data-search-back]");if(b){close();return;}const r=e.target.closest("[data-profile-id]");if(r){window.StudentProfile?.open?.(r.dataset.profileId);}});
- page.querySelector("#student-search-input").addEventListener("input",e=>{clearTimeout(timer);timer=setTimeout(()=>run(e.target.value),300);});
- return page;
+const BODY_HTML=`<div class="student-search-shell" style="height:100%;display:flex;flex-direction:column;background:#f7f8fb"><div style="padding:12px;background:#fff;border-bottom:1px solid #edf0f4"><input id="student-search-input" placeholder="ابحث بالاسم أو اسم المستخدم" autocomplete="off" style="width:100%;box-sizing:border-box;border:1px solid #dfe3e8;border-radius:14px;padding:13px;font:inherit;background:#fff;outline:none"></div><div id="student-search-results" style="padding:12px 12px 90px;overflow:auto;display:grid;gap:8px;flex:1;min-height:0"></div></div>`;
+
+function bind(body){
+ const input=body.querySelector('#student-search-input');
+ const box=body.querySelector('#student-search-results');
+ if(!input||!box||body.dataset.searchBound==='1')return;
+ body.dataset.searchBound='1';
+ input.value=lastQuery;
+ input.addEventListener('input',e=>{lastQuery=e.target.value;clearTimeout(timer);timer=setTimeout(()=>run(lastQuery,body),260)});
+ box.addEventListener('scroll',()=>{lastScroll=box.scrollTop},{passive:true});
+ body.addEventListener('click',async e=>{
+   const r=e.target.closest('[data-search-target]');
+   if(!r)return;
+   e.preventDefault();
+   const type=r.dataset.searchTarget;
+   const id=r.dataset.targetId||'';
+   await openTarget(type,id,r.dataset);
+ });
+ if(lastQuery.trim().length>=2) run(lastQuery,body); else box.innerHTML='<div style="text-align:center;color:#7b8491;padding:45px 12px">اكتب حرفين على الأقل</div>';
+ requestAnimationFrame(()=>{box.scrollTop=lastScroll});
 }
-async function run(value){
- const q=String(value||"").trim(); const box=page.querySelector("#student-search-results");
+
+async function openTarget(type,id,data={}){
+ if(type==='profile'&&id){
+   if(window.StudentProfile?.open){window.StudentProfile.open(id);return;}
+   if(typeof window.openStudentProfile==='function'){window.openStudentProfile(id);return;}
+ }
+ if(type==='messages'){
+   if(window.StudentMessages?.openTarget){await window.StudentMessages.openTarget(id);return;}
+   if(window.StudentMessages?.open){await window.StudentMessages.open();return;}
+ }
+ if(type==='story'&&id&&window.StudentStories?.openById){await window.StudentStories.openById(id);return;}
+ if(type==='store'&&typeof window.openStudentStoreSection==='function'){window.openStudentStoreSection();return;}
+ document.dispatchEvent(new CustomEvent('student:search-target',{detail:{type,id,data}}));
+}
+
+function getBody(){
+ if(window.StudentNavigation?.openPage){
+   const page=window.StudentNavigation.openPage({id:'search',title:'البحث',html:BODY_HTML,reuse:true});
+   const body=page?.querySelector('.student-internal-body');
+   if(body)bind(body);
+   return body;
+ }
+ if(!fallbackPage){
+   fallbackPage=document.createElement('section');
+   fallbackPage.id='student-search-page';
+   fallbackPage.style.cssText='position:fixed;inset:0;z-index:2147482400;background:#f7f8fb;display:none;flex-direction:column;direction:rtl';
+   fallbackPage.innerHTML=`<header style="height:62px;background:#fff;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;padding:0 14px"><button data-search-back style="border:0;background:#eef2f6;width:40px;height:40px;border-radius:50%;font-size:22px">‹</button><strong style="font-size:19px">البحث</strong></header><main style="flex:1;min-height:0">${BODY_HTML}</main>`;
+   document.body.appendChild(fallbackPage);
+   fallbackPage.querySelector('[data-search-back]').onclick=close;
+   bind(fallbackPage);
+ }
+ fallbackPage.style.display='flex';
+ return fallbackPage;
+}
+
+async function run(value,root){
+ const q=String(value||'').trim();
+ const box=(root||document).querySelector('#student-search-results');
+ if(!box)return;
  if(q.length<2){box.innerHTML='<div style="text-align:center;color:#7b8491;padding:45px 12px">اكتب حرفين على الأقل</div>';return;}
- controller?.abort(); controller=new AbortController(); box.innerHTML='<div style="text-align:center;padding:35px;color:#777">جارٍ البحث...</div>';
- try{const client=db(); if(!client) throw new Error("Supabase غير جاهز"); const safe=safeSearch(q); const {data,error}=await client.from("profiles").select("id,full_name,username,avatar_url,role,is_verified,verification_color").or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30); if(error) throw error; box.innerHTML=(data||[]).map(x=>`<button data-profile-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:14px;padding:10px;display:grid;grid-template-columns:48px 1fr;gap:10px;text-align:right;align-items:center"><img src="${esc(safeUrl(x.avatar_url||'', true))}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5"><span><strong>${esc(x.full_name||x.username||'مستخدم')}${studentVerificationBadge(x,14)}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
- }catch(err){if(err.name!=="AbortError") box.innerHTML='<div style="text-align:center;color:#b3261e;padding:35px">تعذر البحث حاليًا</div>';}
+ controller?.abort(); controller=new AbortController();
+ box.innerHTML='<div style="text-align:center;padding:35px;color:#777">جارٍ البحث...</div>';
+ try{
+   const client=db(); if(!client)throw new Error('Supabase غير جاهز');
+   const safe=safeSearch(q);
+   const {data,error}=await client.from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30);
+   if(error)throw error;
+   box.innerHTML=(data||[]).map(x=>`<button type="button" data-search-target="profile" data-target-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:10px;display:grid;grid-template-columns:48px 1fr auto;gap:10px;text-align:right;align-items:center;box-shadow:0 2px 9px rgba(16,24,40,.04)"><img src="${esc(safeUrl(x.avatar_url||'',true))}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5"><span><strong>${esc(x.full_name||x.username||'مستخدم')}${studentVerificationBadge(x,14)}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span><span aria-hidden="true" style="color:#9aa3af;font-size:20px">‹</span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
+   requestAnimationFrame(()=>{box.scrollTop=lastScroll});
+ }catch(err){if(err.name!=='AbortError')box.innerHTML='<div style="text-align:center;color:#b3261e;padding:35px">تعذر البحث حاليًا</div>';}
 }
-function open(){ensure();page.style.display="flex";history.pushState({studentPage:"search"},"","#search");setTimeout(()=>page.querySelector("#student-search-input")?.focus(),50);}
-function close(){if(!page)return;page.style.display="none";controller?.abort();}
-window.openStudentSearch=open; window.closeStudentSearch=close;
+function open(){const body=getBody();setTimeout(()=>body?.querySelector('#student-search-input')?.focus(),50)}
+function close(){controller?.abort();if(window.StudentNavigation?.closeById){window.StudentNavigation.closeById('search');return;}if(fallbackPage)fallbackPage.style.display='none'}
+window.openStudentSearch=open;window.closeStudentSearch=close;
 })();
 
 
@@ -7371,5 +7439,5 @@ window.addEventListener('popstate',()=>{
     if(!S.historyOpen)return;
     handleBack();
 });
-window.StudentMessages={open,close,handleBack,updateBadge};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
+window.StudentMessages={open,close,handleBack,updateBadge,openTarget:async function(conversationId){await open();if(conversationId)await openChat(conversationId);}};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
 })();
