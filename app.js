@@ -3222,13 +3222,13 @@ document.addEventListener(
             .sn-back{width:42px;height:42px;border-radius:50%;background:#f1f4f8;font-size:21px}
             .sn-title{font-size:19px;font-weight:800;flex:1;margin:0}
             .sn-action{background:#087cff;color:#fff;border-radius:12px;padding:10px 13px;font-weight:700}
-            .sn-body{max-width:720px;margin:0 auto;padding:14px 14px 90px}
+            .sn-body{max-width:760px;margin:0 auto;padding:14px 14px 90px;background:linear-gradient(180deg,#fbfcff 0,#f7f9fc 100%);min-height:calc(100dvh - 70px)}
             .sn-permission{border:1px solid #dce8ff;background:#f4f8ff;border-radius:16px;padding:14px;margin-bottom:14px}
             .sn-permission strong{display:block;margin-bottom:5px}.sn-permission p{margin:0 0 12px;color:#566171;line-height:1.7}
             .sn-btn{background:#087cff;color:#fff;border-radius:12px;padding:11px 15px;font-weight:750}.sn-btn.secondary{background:#eef2f7;color:#223047}.sn-btn.danger{background:#e93d4f}
-            .sn-list{display:grid;gap:10px}.sn-item{border:1px solid #e8ebf0;border-radius:16px;padding:13px;background:#fff;display:flex;gap:11px;align-items:flex-start}
-            .sn-item.unread{background:#f4f8ff;border-color:#cfe0ff}.sn-icon{width:42px;height:42px;border-radius:50%;background:#eef4ff;display:grid;place-items:center;flex:0 0 42px;font-size:19px}
-            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:800;margin-bottom:4px}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:12px;color:#8a94a3;margin-top:7px}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
+            .sn-list{display:grid;gap:10px}.sn-item{border:1px solid #e7ebf1;border-radius:20px;padding:14px;background:#fff;display:flex;gap:12px;align-items:flex-start;box-shadow:0 5px 18px rgba(23,32,51,.045);transition:transform .16s ease,box-shadow .16s ease;cursor:pointer}.sn-item:active{transform:scale(.992)}
+            .sn-item.unread{background:#f2f7ff;border-color:#c9dcff}.sn-item.unread .sn-item-title:after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#087cff;margin-right:7px;vertical-align:middle}.sn-icon{width:46px;height:46px;border-radius:15px;background:linear-gradient(145deg,#eef4ff,#e2ecff);display:grid;place-items:center;flex:0 0 46px;font-size:20px;box-shadow:inset 0 0 0 1px rgba(8,124,255,.08)}
+            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:850;margin-bottom:4px;display:flex;align-items:center;flex-wrap:wrap}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:11px;color:#8a94a3;margin-top:7px;display:flex;align-items:center;gap:6px}.sn-chevron{align-self:center;color:#a2aab5;font-size:22px;line-height:1}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
             .sn-empty{text-align:center;padding:60px 20px;color:#788393}.sn-empty .bell{font-size:48px;margin-bottom:12px}
             .sn-modal{position:fixed;inset:0;z-index:10070;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}
             .sn-sheet{width:min(620px,100%);background:#fff;border-radius:22px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
@@ -3342,9 +3342,10 @@ document.addEventListener(
                 <div class="sn-content">
                     <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
                     <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
-                    <div class="sn-meta">${escapeHtml(dateText(item.created_at))}</div>
+                    <div class="sn-meta"><span>${escapeHtml(dateText(item.created_at))}</span></div>
                     ${canManage ? `<div class="sn-item-admin"><button class="sn-mini" data-edit-broadcast type="button">تعديل</button><button class="sn-mini danger" data-delete-broadcast type="button">حذف</button></div>` : ""}
                 </div>
+                <div class="sn-chevron" aria-hidden="true">‹</div>
             </article>`;
         }).join("");
         list.querySelectorAll(".sn-item").forEach(el => {
@@ -3367,35 +3368,88 @@ document.addEventListener(
 
     async function openNotificationTarget(item) {
         const meta = item?.metadata || {};
-        const kind = String(item?.kind || item?.type || "");
-        const link = String(item?.link || "");
+        const kind = String(item?.kind || item?.type || "").toLowerCase();
+        const link = String(item?.link || "").toLowerCase();
+        const actorId = item?.actor_id || meta.actor_id || meta.user_id || null;
+        const storyId = meta.story_id || null;
+        const reelId = meta.reel_id || null;
+        const postId = meta.post_id || null;
+        const conversationId = meta.conversation_id || meta.chat_id || null;
+        const orderId = meta.order_id || null;
 
         close();
 
-        if (kind.startsWith("story_") || link === "stories" || meta.story_id) {
+        if (conversationId || kind === "message" || kind.includes("chat") || link.startsWith("messages")) {
+            if (window.StudentMessages?.openTarget) {
+                await window.StudentMessages.openTarget(conversationId);
+                return;
+            }
+            if (typeof window.openStudentMessages === "function") {
+                await window.openStudentMessages();
+                return;
+            }
+        }
+
+        if (storyId || kind.startsWith("story_") || link === "stories") {
+            if (storyId && window.StudentStories?.openById) {
+                const opened = await window.StudentStories.openById(storyId);
+                if (opened) return;
+            }
             if (typeof window.openStoriesSection === "function") {
                 window.openStoriesSection();
                 return;
             }
         }
 
-        if (kind.startsWith("store_") || link === "store" || meta.order_id) {
+        if (reelId || kind.startsWith("reel_") || link === "reels") {
+            if (typeof window.StudentOpenReelById === "function" && reelId) {
+                await window.StudentOpenReelById(reelId);
+                return;
+            }
+            document.dispatchEvent(new CustomEvent("student:open-reel", { detail: { reelId } }));
+            if (typeof window.openReelsSection === "function") {
+                window.openReelsSection();
+                return;
+            }
+        }
+
+        if (postId || kind.startsWith("post_") || link === "home" || link === "posts") {
+            if (typeof window.StudentOpenPostById === "function" && postId) {
+                await window.StudentOpenPostById(postId);
+                return;
+            }
+            document.dispatchEvent(new CustomEvent("student:open-post", { detail: { postId } }));
+            if (typeof window.showHome === "function") {
+                window.showHome();
+                return;
+            }
+        }
+
+        if (orderId || kind.startsWith("store_") || link === "store") {
             if (typeof window.openStudentStoreSection === "function") {
                 window.openStudentStoreSection();
+                document.dispatchEvent(new CustomEvent("student:open-store-order", { detail: { orderId } }));
                 return;
             }
         }
 
-        if (kind === "follow" || link === "profile") {
-            if (typeof window.openStudentProfile === "function") {
-                window.openStudentProfile(item.actor_id || meta.actor_id || null);
+        if (kind === "follow" || kind.includes("profile") || link === "profile" || actorId) {
+            if (window.StudentProfile?.open && actorId) {
+                window.StudentProfile.open(actorId);
+                return;
+            }
+            if (typeof window.openStudentProfile === "function" && actorId) {
+                window.openStudentProfile(actorId);
                 return;
             }
         }
 
-        if (link && /^(https?:\/\/|\.\/|\/)/i.test(link)) {
-            location.href = link;
+        if (item?.link && /^(https?:\/\/|\.\/|\/)/i.test(String(item.link))) {
+            location.href = item.link;
+            return;
         }
+
+        toast("تعذر تحديد وجهة هذا الإشعار.");
     }
 
     async function load() {
