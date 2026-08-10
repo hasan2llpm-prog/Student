@@ -581,7 +581,15 @@ async function loginUser(
     }
 
     const email =
-        emailElement.value.trim();
+        String(emailElement.value || "")
+            .normalize("NFKC")
+            .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
+            .replace(/\s+/g, "")
+            .trim()
+            .toLowerCase();
+
+    // أعِد القيمة المنظفة للحقل حتى يرى المستخدم ما سيتم إرساله فعلياً.
+    emailElement.value = email;
 
     const password =
         passwordElement.value;
@@ -746,6 +754,20 @@ async function registerUser(
         showMessage(
             "register-message",
             "اكتب البريد الإلكتروني.",
+            "error"
+        );
+
+        return;
+    }
+
+    const emailPattern =
+        /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+
+    if (!emailPattern.test(email)) {
+
+        showMessage(
+            "register-message",
+            "صيغة البريد الإلكتروني غير صحيحة. مثال: name@gmail.com",
             "error"
         );
 
@@ -920,6 +942,17 @@ function translateAuthError(
             error?.message ||
             ""
         ).toLowerCase();
+
+    if (
+        message.includes("unable to validate email address") ||
+        message.includes("invalid email") ||
+        message.includes("email address is invalid")
+    ) {
+
+        return (
+            "تعذر قبول البريد الإلكتروني. تأكد من كتابته بدون مسافات أو رموز إضافية."
+        );
+    }
 
     if (
         message.includes(
