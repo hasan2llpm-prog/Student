@@ -287,6 +287,12 @@
             .student-store-action { min-height:45px; border:0; border-radius:12px; font-weight:900; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:7px; }
             .student-store-action.primary { background:#1473e6; color:#fff; }
             .student-store-action.whatsapp { background:#20b15a; color:#fff; }
+            .student-store-payment-proof{display:grid;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #e5edf5}
+            .student-store-payment-proof label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#334155}
+            .student-store-payment-proof input{width:100%;box-sizing:border-box;border:1px solid #d7e0ea;border-radius:12px;padding:12px 13px;background:#fff;color:#111827;font:inherit;outline:none}
+            .student-store-payment-proof input:focus{border-color:#4d9af0;box-shadow:0 0 0 3px rgba(77,154,240,.12)}
+            .student-store-payment-steps{margin:10px 0 0;padding:0 18px 0 0;color:#526173;font-size:12px;line-height:1.9}
+            .student-store-payment-warning{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff8e7;color:#815d00;font-size:12px;line-height:1.7}
             .student-store-action.light { background:#edf1f5; color:#263442; }
             .student-store-order-list{width:100%;max-width:920px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.student-store-order{padding:14px;border:1px solid #e1e6ec;border-radius:16px;background:#fff}.student-store-order-head{display:flex;justify-content:space-between;gap:10px}.student-store-order-status{padding:5px 9px;border-radius:999px;background:#fff3d8;color:#8b5d08;font-size:12px;font-weight:900}.student-store-order-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.student-store-order-actions button{min-height:38px;padding:0 12px;border:0;border-radius:10px;font-weight:900;cursor:pointer}.student-store-order-actions .ok{background:#e8f8ee;color:#15713a}.student-store-order-actions .done{background:#e8f2ff;color:#1a5faf}.student-store-order-actions .no{background:#fff0f0;color:#b3261e}.student-store-paid-check { display:flex; align-items:flex-start; gap:9px; margin-top:14px; padding:12px; border-radius:12px; background:#fff8e8; color:#71540d; line-height:1.6; font-size:13px; }
             .student-store-toast {
@@ -645,11 +651,23 @@
         `;
     }
 
+    function diamondProofInfo(value) {
+        try {
+            const data = JSON.parse(String(value || ""));
+            return { sender: String(data.sender_name || ""), last4: String(data.card_last4 || "") };
+        } catch (_) {
+            return { sender: "", last4: "" };
+        }
+    }
+
     function renderOrders() {
         const body=document.getElementById("student-store-body"); if(!body)return;
-        if(!state.orders.length){body.innerHTML=`<div class="student-store-empty"><i class="fa-solid fa-receipt"></i><strong>${state.isAdmin?"لا توجد طلبات حاليًا":"لم تنشئ أي طلب بعد"}</strong></div>`;return;}
-        const labels={pending:"قيد المراجعة",confirmed:"مقبول",completed:"تم التسليم",cancelled:"مرفوض",refunded:"مسترجع"};
-        body.innerHTML=`${pageHead("fa-solid fa-receipt", state.isAdmin ? "طلبات المتجر" : "طلباتي", "تابع الطلبات وحالتها بسهولة")}<div class="student-store-order-list">${state.orders.map(o=>`<article class="student-store-order"><div class="student-store-order-head"><strong>${esc(o.product_name)}</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status)}</span></div><div class="student-store-description">رقم الطلب: ${esc(o.id)}</div><div class="student-store-prices"><span class="student-store-price">${o.payment_method==='diamonds'?`${Number(o.diamond_amount||0)} ألماسة`:money(o.money_amount,o.currency)}</span></div><div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div>${state.isAdmin&&o.status==='pending'?`<div class="student-store-order-actions"><button class="ok" data-store-order-status="confirmed" data-order-id="${esc(o.id)}">قبول</button><button class="no" data-store-order-status="cancelled" data-order-id="${esc(o.id)}">رفض</button></div>`:''}${state.isAdmin&&o.status==='confirmed'?`<div class="student-store-order-actions"><button class="done" data-store-order-status="completed" data-order-id="${esc(o.id)}">تم التسليم</button></div>`:''}</article>`).join('')}</div>`;
+        const diamondRows = state.isAdmin ? [] : (state.diamondRequests || []);
+        if(!state.orders.length && !diamondRows.length){body.innerHTML=`<div class="student-store-empty"><i class="fa-solid fa-receipt"></i><strong>${state.isAdmin?"لا توجد طلبات حاليًا":"لم تنشئ أي طلب بعد"}</strong></div>`;return;}
+        const labels={pending:"قيد المراجعة",confirmed:"مقبول",approved:"تمت الموافقة",completed:"تم التسليم",cancelled:"مرفوض",rejected:"مرفوض",refunded:"مسترجع"};
+        const storeOrders = state.orders.length ? `<div class="student-store-order-list">${state.orders.map(o=>`<article class="student-store-order"><div class="student-store-order-head"><strong>${esc(o.product_name)}</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status)}</span></div><div class="student-store-description">رقم الطلب: ${esc(o.id)}</div><div class="student-store-prices"><span class="student-store-price">${o.payment_method==='diamonds'?`${Number(o.diamond_amount||0)} ألماسة`:money(o.money_amount,o.currency)}</span></div><div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div>${state.isAdmin&&o.status==='pending'?`<div class="student-store-order-actions"><button class="ok" data-store-order-status="confirmed" data-order-id="${esc(o.id)}">قبول</button><button class="no" data-store-order-status="cancelled" data-order-id="${esc(o.id)}">رفض</button></div>`:''}${state.isAdmin&&o.status==='confirmed'?`<div class="student-store-order-actions"><button class="done" data-store-order-status="completed" data-order-id="${esc(o.id)}">تم التسليم</button></div>`:''}</article>`).join('')}</div>` : '';
+        const diamondOrders = diamondRows.length ? `<section class="student-store-section"><h3 class="student-store-section-title">طلبات شحن الألماس</h3><div class="student-store-order-list">${diamondRows.map(o=>{const proof=diamondProofInfo(o.payment_reference);return `<article class="student-store-order"><div class="student-store-order-head"><strong>${Number(o.diamonds||0).toLocaleString('ar-IQ')} ألماسة</strong><span class="student-store-order-status">${labels[o.status]||esc(o.status||'pending')}</span></div><div class="student-store-prices"><span class="student-store-price">${Number(o.amount_iqd||0).toLocaleString('ar-IQ')} د.ع</span></div>${proof.sender?`<div class="student-store-description">المرسل: ${esc(proof.sender)} · البطاقة: •••• ${esc(proof.last4)}</div>`:''}<div class="student-store-stock">${new Date(o.created_at).toLocaleString('ar-IQ')}</div></article>`}).join('')}</div></section>` : '';
+        body.innerHTML=`${pageHead("fa-solid fa-receipt", state.isAdmin ? "طلبات المتجر" : "طلباتي", "تابع الطلبات وحالتها بسهولة")}${storeOrders}${diamondOrders}`;
     }
 
     function renderDiamonds() {
@@ -701,7 +719,7 @@
 
     function renderDiamondAdminArea() {
         const dr = state.diamondRequests || [], aa = state.agencyApplications || [], sr = state.agentStockRequests || [];
-        const row=(title,items,type)=>`<section class="student-store-section"><h3 class="student-store-section-title">${title}</h3><div class="student-store-task-list">${items.map(x=>`<article class="student-store-agent-card"><strong>${type==='agency'?esc(x.full_name):Number(x.diamonds||0).toLocaleString('ar-IQ')+' ألماسة'}</strong><div class="student-store-description">${type==='agency'?esc(x.province+' · '+x.phone):Number(x.amount_iqd||0).toLocaleString('ar-IQ')+' د.ع'}</div><div class="student-store-agent-actions"><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="1">قبول</button><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="0">رفض</button></div></article>`).join('')||'<div class="student-store-empty">لا توجد طلبات معلقة.</div>'}</div></section>`;
+        const row=(title,items,type)=>`<section class="student-store-section"><h3 class="student-store-section-title">${title}</h3><div class="student-store-task-list">${items.map(x=>{const proof=type==='diamond'?diamondProofInfo(x.payment_reference):null;return `<article class="student-store-agent-card"><strong>${type==='agency'?esc(x.full_name):Number(x.diamonds||0).toLocaleString('ar-IQ')+' ألماسة'}</strong><div class="student-store-description">${type==='agency'?esc(x.province+' · '+x.phone):Number(x.amount_iqd||0).toLocaleString('ar-IQ')+' د.ع'}</div>${proof?.sender?`<div class="student-store-description">اسم المرسل: ${esc(proof.sender)} · آخر 4 أرقام: ${esc(proof.last4)}</div>`:''}<div class="student-store-agent-actions"><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="1">قبول</button><button data-store-admin-review="${type}" data-id="${esc(x.id)}" data-approve="0">رفض</button></div></article>`}).join('')||'<div class="student-store-empty">لا توجد طلبات معلقة.</div>'}</div></section>`;
         return row('طلبات شراء الألماس',dr,'diamond')+row('طلبات الوكالة',aa,'agency')+row('طلبات شحن خزنة الوكيل',sr,'stock');
     }
 
@@ -857,6 +875,9 @@
                 client.from("store_agent_stock_requests").select("*").eq("status","pending").order("created_at",{ascending:false})
             ]);
             state.diamondRequests=d.data||[]; state.agencyApplications=a.data||[]; state.agentStockRequests=st.data||[];
+        } else {
+            const d = await client.from("store_diamond_purchase_requests").select("id,user_id,diamonds,amount_iqd,status,payment_reference,created_at,reviewed_at").eq("user_id",state.user.id).order("created_at",{ascending:false}).limit(50);
+            state.diamondRequests = d.data || [];
         }
     }
 
@@ -1394,7 +1415,52 @@
         document.getElementById("student-store-agency-form")?.addEventListener("submit", submitAgencyApplication);
     }
 
-    async function requestDiamondPackage(id, button) { const client=db(); if(!client)return; button.disabled=true; try{const {error}=await client.rpc("store_request_diamonds",{p_package_id:id,p_payment_reference:null});if(error)throw error;toast("تم إنشاء طلب شراء الألماس. حوّل المبلغ ثم تواصل مع الإدارة.");await refresh();}catch(e){toast(e.message||"تعذر إنشاء الطلب.");}finally{button.disabled=false;} }
+    function openDiamondPayment(id) {
+        const pack = (state.diamondPackages || []).find(p => String(p.id) === String(id));
+        if (!pack) return toast("تعذر العثور على الباقة.");
+        showModal(`<div class="student-store-modal-card"><div class="student-store-modal-head"><div class="student-store-modal-title">دفع باقة الألماس</div><button class="student-store-modal-close" data-store-modal-close>×</button></div>
+            <div class="student-store-payment-card"><h3>${esc(pack.title)}</h3><div class="student-store-payment-row"><span>الألماس</span><strong>${Number(pack.diamonds||0).toLocaleString('ar-IQ')} ألماسة</strong></div><div class="student-store-payment-row"><span>المبلغ</span><strong>${Number(pack.user_price_iqd||0).toLocaleString('ar-IQ')} د.ع</strong></div>
+            <div class="student-store-master-box"><div style="text-align:center;font-weight:900">بطاقة SuperQi للتحويل</div><div class="student-store-master-number">${STORE_MASTER_NUMBER}</div><div style="text-align:center">${STORE_MASTER_NAME}</div></div>
+            <ol class="student-store-payment-steps"><li>انسخ رقم البطاقة وافتح تطبيق SuperQi.</li><li>حوّل مبلغ الباقة بالضبط.</li><li>بعد إكمال التحويل اكتب اسم مرسل الأموال وآخر 4 أرقام من البطاقة التي حوّلت منها.</li></ol>
+            <div class="student-store-payment-warning">لا ترسل رقم بطاقتك كاملًا أو PIN أو OTP. نحتاج فقط اسم المرسل وآخر أربعة أرقام للتحقق اليدوي.</div>
+            <div class="student-store-payment-proof"><label>اسم مرسل الأموال<input id="student-store-diamond-sender" maxlength="80" autocomplete="name" placeholder="الاسم كما يظهر في التحويل"></label><label>آخر 4 أرقام من بطاقة المرسل<input id="student-store-diamond-last4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="1234"></label><label class="student-store-paid-check"><input id="student-store-diamond-paid" type="checkbox"><span>أؤكد أنني أكملت التحويل بالمبلغ المطلوب.</span></label></div>
+            <div class="student-store-action-grid"><button class="student-store-action light" type="button" data-store-copy-master><i class="fa-regular fa-copy"></i>نسخ رقم البطاقة</button><button class="student-store-action primary" type="button" data-store-submit-diamond="${esc(pack.id)}">تأكيد الدفع وإرسال الطلب</button></div></div></div>`);
+    }
+
+    async function submitDiamondPayment(id, button) {
+        const client=db(); if(!client||!state.user||button?.disabled)return;
+        const pack=(state.diamondPackages||[]).find(p=>String(p.id)===String(id));
+        const sender=document.getElementById("student-store-diamond-sender")?.value?.trim()||"";
+        const last4=document.getElementById("student-store-diamond-last4")?.value?.trim()||"";
+        const paid=Boolean(document.getElementById("student-store-diamond-paid")?.checked);
+        if(!paid)return toast("أكد إكمال التحويل أولًا.");
+        if(sender.length<2||sender.length>80)return toast("اكتب اسم مرسل الأموال بشكل صحيح.");
+        if(!/^\d{4}$/.test(last4))return toast("اكتب آخر 4 أرقام فقط من بطاقة المرسل.");
+        button.disabled=true; const old=button.textContent; button.textContent="جارٍ تثبيت الطلب...";
+        try{
+            const {data,error}=await client.rpc("store_submit_diamond_payment",{p_package_id:id,p_sender_name:sender,p_card_last4:last4});
+            if(error)throw error;
+            const requestId=Array.isArray(data)?data[0]:data;
+            const text=[
+                "طلب شراء ألماس - Student",
+                `رقم الطلب: ${requestId||"بانتظار التوليد"}`,
+                `الباقة: ${pack?.title||"باقة ألماس"}`,
+                `الكمية: ${Number(pack?.diamonds||0)} ألماسة`,
+                `المبلغ: ${Number(pack?.user_price_iqd||0)} د.ع`,
+                `اسم مرسل الأموال: ${sender}`,
+                `آخر 4 أرقام من بطاقة المرسل: ${last4}`
+            ].join("\n");
+            closeModal();
+            toast("تم إرسال الطلب للإدارة. سيتم فتح واتساب الآن.");
+            await refresh();
+            const wa=`https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(text)}`;
+            setTimeout(()=>{ try{ window.open(wa,"_blank","noopener"); }catch(_){ location.href=wa; } },120);
+        }catch(e){
+            console.error("Diamond payment request:",e);
+            toast(e?.message||"تعذر إرسال طلب الألماس.");
+            button.disabled=false; button.textContent=old;
+        }
+    }
     async function submitAgencyApplication(e){e.preventDefault();const client=db();const b=e.submitter;b.disabled=true;try{const {error}=await client.rpc("store_apply_for_agency",{p_full_name:document.getElementById('agency-name').value,p_province:document.getElementById('agency-province').value,p_phone:document.getElementById('agency-phone').value,p_whatsapp:document.getElementById('agency-whatsapp').value,p_telegram:document.getElementById('agency-telegram').value,p_experience:document.getElementById('agency-experience').value});if(error)throw error;closeModal();toast("تم إرسال طلب الوكالة.");await refresh();}catch(x){toast(x.message||"تعذر إرسال الطلب.");b.disabled=false;}}
     async function requestAgentStock(id,button){const client=db();button.disabled=true;try{const {error}=await client.rpc("store_agent_request_stock",{p_package_id:id});if(error)throw error;toast("تم إرسال طلب شحن الخزنة.");await refresh();}catch(e){toast(e.message||"تعذر إرسال الطلب.");}finally{button.disabled=false;}}
     async function reviewStoreRequest(type,id,approve,button){const client=db();button.disabled=true;const rpc=type==='diamond'?'admin_review_diamond_request':type==='agency'?'admin_review_agency_application':'admin_review_agent_stock';const args=type==='diamond'?{p_request_id:id,p_approve:approve}:type==='agency'?{p_application_id:id,p_approve:approve,p_note:null}:{p_request_id:id,p_approve:approve};try{const {error}=await client.rpc(rpc,args);if(error)throw error;toast("تم تحديث الطلب.");await refresh();}catch(e){toast(e.message||"تعذر تحديث الطلب.");button.disabled=false;}}
@@ -1406,7 +1472,7 @@
         const homeButton = event.target.closest("[data-store-home]");
         if (homeButton) { event.preventDefault(); setSection("home", false); return; }
         const buyDiamond = event.target.closest("[data-store-buy-diamond]");
-        if (buyDiamond) { event.preventDefault(); requestDiamondPackage(buyDiamond.dataset.storeBuyDiamond, buyDiamond); return; }
+        if (buyDiamond) { event.preventDefault(); openDiamondPayment(buyDiamond.dataset.storeBuyDiamond); return; }
         const agencyForm = event.target.closest("[data-store-open-agency-form]");
         if (agencyForm) { event.preventDefault(); openAgencyForm(); return; }
         const stock = event.target.closest("[data-store-agent-stock]");
@@ -1530,6 +1596,8 @@
         if (saveTaskButton) { event.preventDefault(); saveTask(saveTaskButton); return; }
         const deleteTaskButton = event.target.closest("[data-store-confirm-delete-task]");
         if (deleteTaskButton) { event.preventDefault(); deleteTask(deleteTaskButton.dataset.storeConfirmDeleteTask, deleteTaskButton); return; }
+        const submitDiamond = event.target.closest("[data-store-submit-diamond]");
+        if (submitDiamond) { event.preventDefault(); submitDiamondPayment(submitDiamond.dataset.storeSubmitDiamond, submitDiamond); return; }
         const copyMaster = event.target.closest("[data-store-copy-master]");
         if (copyMaster) { event.preventDefault(); navigator.clipboard?.writeText(STORE_MASTER_NUMBER).then(() => toast("تم نسخ رقم الماستر.")).catch(() => toast(STORE_MASTER_NUMBER)); return; }
         const copyOrder = event.target.closest("[data-store-copy-order]");
