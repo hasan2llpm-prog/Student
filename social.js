@@ -710,6 +710,16 @@ window.StudentSuggestions = { open:openSuggestions };
     let storySwipeStartY = 0;
     let storySwipeMoved = false;
 
+    let editorObjectUrl = null;
+    let editorImage = null;
+    let editorFilter = "none";
+    let editorBrightness = 100;
+    let editorSaturation = 100;
+    let editorTextFont = "system-ui";
+    let editorTextAlign = "center";
+    let editorTextSize = 42;
+    let editorBackground = "#1877f2";
+
     const REACTIONS = ["❤️", "😂", "🔥", "👏"];
 
     const $ = (s, r = document) => r.querySelector(s);
@@ -1826,6 +1836,28 @@ window.StudentSuggestions = { open:openSuggestions };
             pointer-events:none;
         }
 
+        .student-story-advanced-tools{
+            max-width:520px;
+            margin:0 auto 14px;
+            padding:14px;
+            border:1px solid #eceef1;
+            border-radius:16px;
+            background:#fafbfc;
+        }
+        .student-story-tool-title{font-weight:800;margin-bottom:10px;color:#20242a}
+        .student-story-chip-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+        .student-story-chip-row::-webkit-scrollbar{display:none}
+        .student-story-chip-row button{flex:0 0 auto;border:1px solid #dfe3e8;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer}
+        .student-story-chip-row button.active{border-color:#1877f2;box-shadow:0 0 0 2px rgba(24,119,242,.12)}
+        .student-story-tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+        .student-story-tool-grid label,.student-story-range-label{font-size:12px;font-weight:700;color:#555}
+        .student-story-tool-grid select,.student-story-overlay-input{width:100%;margin-top:6px;border:1px solid #dfe3e8;border-radius:12px;padding:10px;background:#fff;box-sizing:border-box}
+        .student-story-range-label{display:block;margin-top:12px}
+        .student-story-range-label input{width:100%;margin-top:8px}
+        .student-story-preview-box{position:relative;overflow:hidden;background:#101114}
+        .student-story-editor-image{width:100%;height:100%;object-fit:cover;display:block}
+        .student-story-editor-overlay{position:absolute;left:8%;right:8%;top:50%;transform:translateY(-50%);padding:8px 10px;color:#fff;text-align:center;font-weight:800;font-size:34px;line-height:1.2;text-shadow:0 2px 8px rgba(0,0,0,.7);pointer-events:none;overflow-wrap:anywhere}
+        .student-story-text-live{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:28px;box-sizing:border-box;white-space:pre-wrap;overflow-wrap:anywhere}
         @media (min-width:700px){
             .student-story-form{
                 padding-left:max(24px,calc((100vw - 620px)/2))!important;
@@ -1893,11 +1925,61 @@ window.StudentSuggestions = { open:openSuggestions };
                         type="file"
                         accept="image/*,video/*"
                     >
+                    <small id="studentStoryVideoHint" style="display:none;color:#6b7280;margin:-2px 0 10px">فيديو حتى 30 ثانية بصوته الأصلي، بدون مونتاج.</small>
 
                     <div
                         id="studentStoryPreview"
                         class="student-story-preview-box"
                     ></div>
+
+                    <div id="studentStoryTextTools" class="student-story-advanced-tools">
+                        <div class="student-story-tool-title">ستايل النص</div>
+                        <div class="student-story-chip-row" id="studentStoryBackgroundPresets">
+                            <button type="button" data-bg="#1877f2" class="active">أزرق</button>
+                            <button type="button" data-bg="#111827">داكن</button>
+                            <button type="button" data-bg="#7c3aed">بنفسجي</button>
+                            <button type="button" data-bg="linear-gradient(135deg,#ff7a18,#af002d 70%)">غروب</button>
+                            <button type="button" data-bg="linear-gradient(135deg,#00c6ff,#0072ff)">سماوي</button>
+                        </div>
+                        <div class="student-story-tool-grid">
+                            <label>الخط
+                                <select id="studentStoryFont">
+                                    <option value="system-ui">افتراضي</option>
+                                    <option value="serif">كلاسيكي</option>
+                                    <option value="monospace">مميز</option>
+                                </select>
+                            </label>
+                            <label>المحاذاة
+                                <select id="studentStoryTextAlign">
+                                    <option value="center">وسط</option>
+                                    <option value="right">يمين</option>
+                                    <option value="left">يسار</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label class="student-story-range-label">حجم النص <span id="studentStoryTextSizeValue">42</span>
+                            <input id="studentStoryTextSize" type="range" min="24" max="72" value="42">
+                        </label>
+                    </div>
+
+                    <div id="studentStoryImageTools" class="student-story-advanced-tools" style="display:none">
+                        <div class="student-story-tool-title">تحرير الصورة</div>
+                        <div class="student-story-chip-row" id="studentStoryFilterPresets">
+                            <button type="button" data-filter="none" class="active">أصلي</button>
+                            <button type="button" data-filter="contrast(1.08) saturate(1.08)">حيوي</button>
+                            <button type="button" data-filter="sepia(.28) contrast(1.05)">دافئ</button>
+                            <button type="button" data-filter="grayscale(1)">أبيض وأسود</button>
+                            <button type="button" data-filter="contrast(1.12) brightness(.96)">سينمائي</button>
+                        </div>
+                        <label class="student-story-range-label">السطوع <span id="studentStoryBrightnessValue">100</span>%
+                            <input id="studentStoryBrightness" type="range" min="70" max="130" value="100">
+                        </label>
+                        <label class="student-story-range-label">التشبع <span id="studentStorySaturationValue">100</span>%
+                            <input id="studentStorySaturation" type="range" min="0" max="160" value="100">
+                        </label>
+                        <div class="student-story-tool-title">نص فوق الصورة</div>
+                        <input id="studentStoryOverlayText" class="student-story-overlay-input" type="text" maxlength="120" placeholder="اكتب نصًا اختياريًا فوق الصورة">
+                    </div>
 
                     <div
                         class="student-story-color-row"
@@ -2677,6 +2759,37 @@ window.StudentSuggestions = { open:openSuggestions };
        CREATE / EDIT
     ========================================================= */
 
+    function getVideoDurationSeconds(file) {
+
+        return new Promise((resolve, reject) => {
+
+            const url = URL.createObjectURL(file);
+            const video = document.createElement("video");
+
+            video.preload = "metadata";
+            video.playsInline = true;
+
+            const cleanup = () => {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+                video.removeAttribute("src");
+                try { video.load(); } catch (_) {}
+            };
+
+            video.onloadedmetadata = () => {
+                const duration = Number(video.duration || 0);
+                cleanup();
+                resolve(duration);
+            };
+
+            video.onerror = () => {
+                cleanup();
+                reject(new Error("تعذر قراءة مدة الفيديو"));
+            };
+
+            video.src = url;
+        });
+    }
+
     function setStoryMode(
         mode
     ) {
@@ -2732,9 +2845,19 @@ window.StudentSuggestions = { open:openSuggestions };
 
         $("#studentStoryText")
             .style.display =
-            isText || isImage || isVideo
+            isText
                 ? "block"
                 : "none";
+
+        const textTools = $("#studentStoryTextTools");
+        const imageTools = $("#studentStoryImageTools");
+        if (textTools) textTools.style.display = isText ? "block" : "none";
+        if (imageTools) imageTools.style.display = isImage ? "block" : "none";
+        const videoHint = $("#studentStoryVideoHint");
+        if (videoHint) videoHint.style.display = isVideo ? "block" : "none";
+
+        if (isText) updateTextStoryPreview();
+        if (isImage) updateImageEditorPreview();
     }
 
     function clearPreview() {
@@ -2749,84 +2872,118 @@ window.StudentSuggestions = { open:openSuggestions };
             "none";
     }
 
-    function previewFile(
-        file
-    ) {
+    function buildEditorFilter() {
+        const extras = ` brightness(${editorBrightness}%) saturate(${editorSaturation}%)`;
+        return `${editorFilter === "none" ? "" : editorFilter}${extras}`.trim();
+    }
 
-        const box =
-            $("#studentStoryPreview");
+    function updateTextStoryPreview() {
+        if (storyMode !== "text") return;
+        const box = $("#studentStoryPreview");
+        if (!box) return;
+        const text = $("#studentStoryText")?.value || "اكتب شيئًا...";
+        box.style.display = "flex";
+        box.style.background = editorBackground;
+        box.innerHTML = "";
+        const live = document.createElement("div");
+        live.className = "student-story-text-live";
+        live.textContent = text;
+        live.style.color = $("#studentStoryTextColor")?.value || "#fff";
+        live.style.fontFamily = editorTextFont;
+        live.style.textAlign = editorTextAlign;
+        live.style.fontSize = `${editorTextSize}px`;
+        live.style.justifyContent = editorTextAlign === "left" ? "flex-start" : editorTextAlign === "right" ? "flex-end" : "center";
+        box.appendChild(live);
+    }
 
-        if (!file) {
+    function updateImageEditorPreview() {
+        if (storyMode !== "image" || !editorImage) return;
+        const box = $("#studentStoryPreview");
+        if (!box) return;
+        box.style.display = "flex";
+        box.style.background = "#000";
+        box.innerHTML = "";
+        const img = document.createElement("img");
+        img.className = "student-story-editor-image";
+        img.src = editorImage.src;
+        img.style.filter = buildEditorFilter();
+        box.appendChild(img);
+        const overlayValue = $("#studentStoryOverlayText")?.value?.trim();
+        if (overlayValue) {
+            const overlay = document.createElement("div");
+            overlay.className = "student-story-editor-overlay";
+            overlay.textContent = overlayValue;
+            overlay.style.color = $("#studentStoryTextColor")?.value || "#fff";
+            overlay.style.fontFamily = editorTextFont;
+            overlay.style.textAlign = editorTextAlign;
+            overlay.style.fontSize = `${Math.max(24, editorTextSize * .8)}px`;
+            box.appendChild(overlay);
+        }
+    }
 
-            clearPreview();
+    async function createEditedImageFile(originalFile) {
+        if (!editorImage) return originalFile;
+        const canvas = document.createElement("canvas");
+        const targetW = 1080, targetH = 1920;
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d", { alpha:false });
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,targetW,targetH);
+        const iw = editorImage.naturalWidth || editorImage.width;
+        const ih = editorImage.naturalHeight || editorImage.height;
+        const scale = Math.max(targetW/iw, targetH/ih);
+        const dw = iw*scale, dh = ih*scale;
+        const dx = (targetW-dw)/2, dy=(targetH-dh)/2;
+        ctx.filter = buildEditorFilter();
+        ctx.drawImage(editorImage, dx, dy, dw, dh);
+        ctx.filter = "none";
+        const overlay = $("#studentStoryOverlayText")?.value?.trim();
+        if (overlay) {
+            const size = Math.max(48, Math.min(110, editorTextSize*1.8));
+            ctx.font = `800 ${size}px ${editorTextFont}`;
+            ctx.fillStyle = $("#studentStoryTextColor")?.value || "#fff";
+            ctx.textAlign = editorTextAlign === "left" ? "left" : editorTextAlign === "right" ? "right" : "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "rgba(0,0,0,.65)";
+            ctx.shadowBlur = 12;
+            const x = editorTextAlign === "left" ? 90 : editorTextAlign === "right" ? targetW-90 : targetW/2;
+            const maxWidth = targetW-180;
+            const words = overlay.split(/\s+/);
+            const lines=[]; let line="";
+            for (const word of words) {
+                const test = line ? `${line} ${word}` : word;
+                if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line=word; } else line=test;
+            }
+            if (line) lines.push(line);
+            const lineH = size*1.18;
+            const startY = targetH/2 - ((lines.length-1)*lineH)/2;
+            lines.slice(0,5).forEach((ln,i)=>ctx.fillText(ln,x,startY+i*lineH,maxWidth));
+            ctx.shadowBlur = 0;
+        }
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", .88));
+        if (!blob) return originalFile;
+        return new File([blob], `story_${Date.now()}.jpg`, { type:"image/jpeg" });
+    }
 
+    function previewFile(file) {
+        const box = $("#studentStoryPreview");
+        if (!file) { clearPreview(); return; }
+        if (editorObjectUrl) { URL.revokeObjectURL(editorObjectUrl); editorObjectUrl = null; }
+        editorObjectUrl = URL.createObjectURL(file);
+        box.innerHTML = "";
+        if (file.type.startsWith("image/")) {
+            const img = new Image();
+            img.onload = () => { editorImage = img; updateImageEditorPreview(); };
+            img.src = editorObjectUrl;
             return;
         }
-
-        const url =
-            URL.createObjectURL(
-                file
-            );
-
-        box.innerHTML =
-            "";
-
-        if (
-            file.type.startsWith(
-                "image/"
-            )
-        ) {
-
-            const img =
-                document.createElement(
-                    "img"
-                );
-
-            img.src =
-                url;
-
-            box.appendChild(
-                img
-            );
-
-        } else if (
-            file.type.startsWith(
-                "video/"
-            )
-        ) {
-
-            const video =
-                document.createElement(
-                    "video"
-                );
-
-            video.src =
-                url;
-
-            video.controls =
-                true;
-
-            video.playsInline =
-                true;
-
-            box.appendChild(
-                video
-            );
-
-        } else {
-
-            toast(
-                "اختر صورة أو فيديو فقط",
-                "error"
-            );
-
-            clearPreview();
-
-            return;
+        editorImage = null;
+        if (file.type.startsWith("video/")) {
+            const video = document.createElement("video");
+            video.src = editorObjectUrl; video.controls = true; video.playsInline = true;
+            box.appendChild(video); box.style.display = "flex"; return;
         }
-
-        box.style.display =
-            "flex";
+        toast("اختر صورة أو فيديو فقط","error"); clearPreview();
     }
 
     function openCreateModal(
@@ -2852,9 +3009,20 @@ window.StudentSuggestions = { open:openSuggestions };
                 ? "تعديل الستوري"
                 : "إنشاء ستوري";
 
+        let initialStoryText = story?.content || "";
+        let initialTextConfig = null;
+        if (initialStoryText.startsWith("__STORYV2__")) {
+            try {
+                initialTextConfig = JSON.parse(initialStoryText.slice(11));
+                initialStoryText = initialTextConfig?.text || "";
+            } catch (_) {
+                initialTextConfig = null;
+            }
+        }
+
         $("#studentStoryText")
             .value =
-            story?.content || "";
+            initialStoryText;
 
         $("#studentStoryBackground")
             .value =
@@ -2880,6 +3048,23 @@ window.StudentSuggestions = { open:openSuggestions };
             .value =
             "";
 
+        if (editorObjectUrl) { URL.revokeObjectURL(editorObjectUrl); editorObjectUrl = null; }
+        editorImage = null;
+        editorFilter = "none";
+        editorBrightness = 100;
+        editorSaturation = 100;
+        editorTextFont = initialTextConfig?.font || "system-ui";
+        editorTextAlign = initialTextConfig?.align || "center";
+        editorTextSize = Math.max(24, Math.min(72, Number(initialTextConfig?.size) || 42));
+        editorBackground = initialTextConfig?.background || story?.background_color || "#1877f2";
+        if ($("#studentStoryFont")) $("#studentStoryFont").value = editorTextFont;
+        if ($("#studentStoryTextAlign")) $("#studentStoryTextAlign").value = editorTextAlign;
+        if ($("#studentStoryTextSize")) $("#studentStoryTextSize").value = String(editorTextSize);
+        if ($("#studentStoryTextSizeValue")) $("#studentStoryTextSizeValue").textContent = String(editorTextSize);
+        if ($("#studentStoryBrightness")) $("#studentStoryBrightness").value = "100";
+        if ($("#studentStorySaturation")) $("#studentStorySaturation").value = "100";
+        if ($("#studentStoryOverlayText")) $("#studentStoryOverlayText").value = "";
+
         clearPreview();
 
         setStoryMode(
@@ -2895,6 +3080,8 @@ window.StudentSuggestions = { open:openSuggestions };
             .add(
                 "active"
             );
+
+        if (storyMode === "text") updateTextStoryPreview();
     }
 
     function closeCreateModal() {
@@ -2907,6 +3094,11 @@ window.StudentSuggestions = { open:openSuggestions };
 
         editStory =
             null;
+        if (editorObjectUrl) {
+            URL.revokeObjectURL(editorObjectUrl);
+            editorObjectUrl = null;
+        }
+        editorImage = null;
     }
 
     async function uploadStorageFile(
@@ -3017,8 +3209,9 @@ window.StudentSuggestions = { open:openSuggestions };
                     .trim();
 
             const background =
-                $("#studentStoryBackground")
-                    .value;
+                storyMode === "text" && editorBackground.startsWith("#")
+                    ? editorBackground
+                    : $("#studentStoryBackground").value;
 
             const textColor =
                 $("#studentStoryTextColor")
@@ -3032,10 +3225,21 @@ window.StudentSuggestions = { open:openSuggestions };
                 $("#studentStoryReplyEnabled")
                     .checked;
 
-            const file =
+            let file =
                 $("#studentStoryFile")
                     .files[0] ||
                 null;
+
+            let storedText = text;
+            if (storyMode === "text") {
+                storedText = "__STORYV2__" + JSON.stringify({
+                    text,
+                    background: editorBackground,
+                    font: editorTextFont,
+                    align: editorTextAlign,
+                    size: editorTextSize
+                });
+            }
 
             let type =
                 "text";
@@ -3088,6 +3292,10 @@ window.StudentSuggestions = { open:openSuggestions };
 
                 if (file) {
 
+                    if (storyMode === "image" && file.type.startsWith("image/")) {
+                        file = await createEditedImageFile(file);
+                    }
+
                     if (
                         !file.type.startsWith(
                             "image/"
@@ -3103,6 +3311,26 @@ window.StudentSuggestions = { open:openSuggestions };
                         );
 
                         return;
+                    }
+
+                    if (file.type.startsWith("video/")) {
+                        let videoDuration = 0;
+                        try {
+                            videoDuration = await getVideoDurationSeconds(file);
+                        } catch (error) {
+                            toast(error?.message || "تعذر قراءة الفيديو", "error");
+                            return;
+                        }
+
+                        if (!Number.isFinite(videoDuration) || videoDuration <= 0) {
+                            toast("الفيديو غير صالح", "error");
+                            return;
+                        }
+
+                        if (videoDuration > 30.05) {
+                            toast("مدة فيديو الستوري يجب ألا تتجاوز 30 ثانية", "error");
+                            return;
+                        }
                     }
 
                     const max =
@@ -3187,7 +3415,7 @@ window.StudentSuggestions = { open:openSuggestions };
                         .update({
                             type,
                             content:
-                                text,
+                                storedText,
                             media_url:
                                 mediaUrl,
                             media_path:
@@ -3265,7 +3493,7 @@ window.StudentSuggestions = { open:openSuggestions };
                                 currentUser.id,
                             type,
                             content:
-                                text,
+                                storedText,
                             media_url:
                                 mediaUrl,
                             media_path:
@@ -3528,7 +3756,14 @@ window.StudentSuggestions = { open:openSuggestions };
             "text"
         ) {
 
+            let cfg = null;
+            const rawContent = currentStory.content || "";
+            if (rawContent.startsWith("__STORYV2__")) {
+                try { cfg = JSON.parse(rawContent.slice(11)); } catch (_) { cfg = null; }
+            }
+
             box.style.background =
+                cfg?.background ||
                 currentStory.background_color ||
                 "#1877f2";
 
@@ -3543,10 +3778,14 @@ window.StudentSuggestions = { open:openSuggestions };
             text.style.color =
                 currentStory.text_color ||
                 "#fff";
+            if (cfg) {
+                text.style.fontFamily = cfg.font || "system-ui";
+                text.style.textAlign = cfg.align || "center";
+                text.style.fontSize = `${Math.max(24, Math.min(72, Number(cfg.size) || 42))}px`;
+            }
 
             text.textContent =
-                currentStory.content ||
-                "";
+                cfg?.text ?? rawContent;
 
             box.appendChild(
                 text
@@ -4749,6 +4988,39 @@ window.StudentSuggestions = { open:openSuggestions };
                     );
                 }
             );
+
+        $("#studentStoryText")?.addEventListener("input", () => {
+            if (storyMode === "text") updateTextStoryPreview();
+            else if (storyMode === "image") {
+                const overlay = $("#studentStoryOverlayText");
+                if (overlay && !overlay.value) overlay.value = $("#studentStoryText").value;
+                updateImageEditorPreview();
+            }
+        });
+
+        $("#studentStoryTextColor")?.addEventListener("input", () => { updateTextStoryPreview(); updateImageEditorPreview(); });
+        $("#studentStoryBackground")?.addEventListener("input", event => { editorBackground = event.target.value; updateTextStoryPreview(); });
+        $("#studentStoryFont")?.addEventListener("change", event => { editorTextFont = event.target.value; updateTextStoryPreview(); updateImageEditorPreview(); });
+        $("#studentStoryTextAlign")?.addEventListener("change", event => { editorTextAlign = event.target.value; updateTextStoryPreview(); updateImageEditorPreview(); });
+        $("#studentStoryTextSize")?.addEventListener("input", event => { editorTextSize = Number(event.target.value); $("#studentStoryTextSizeValue").textContent = String(editorTextSize); updateTextStoryPreview(); updateImageEditorPreview(); });
+        $("#studentStoryBrightness")?.addEventListener("input", event => { editorBrightness = Number(event.target.value); $("#studentStoryBrightnessValue").textContent = String(editorBrightness); updateImageEditorPreview(); });
+        $("#studentStorySaturation")?.addEventListener("input", event => { editorSaturation = Number(event.target.value); $("#studentStorySaturationValue").textContent = String(editorSaturation); updateImageEditorPreview(); });
+        $("#studentStoryOverlayText")?.addEventListener("input", updateImageEditorPreview);
+
+        $("#studentStoryBackgroundPresets")?.addEventListener("click", event => {
+            const btn = event.target.closest("button[data-bg]"); if (!btn) return;
+            editorBackground = btn.dataset.bg;
+            $$("#studentStoryBackgroundPresets button").forEach(b => b.classList.toggle("active", b === btn));
+            if (editorBackground.startsWith("#")) $("#studentStoryBackground").value = editorBackground;
+            updateTextStoryPreview();
+        });
+
+        $("#studentStoryFilterPresets")?.addEventListener("click", event => {
+            const btn = event.target.closest("button[data-filter]"); if (!btn) return;
+            editorFilter = btn.dataset.filter || "none";
+            $$("#studentStoryFilterPresets button").forEach(b => b.classList.toggle("active", b === btn));
+            updateImageEditorPreview();
+        });
 
         $("#studentStoryCancel")
             .addEventListener(
