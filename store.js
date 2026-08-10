@@ -1076,7 +1076,7 @@
                     <div class="student-store-field"><label>نوع المهمة</label>
                         <select id="student-store-task-verification" class="student-store-input">
                             <option value="daily_visit" ${task?.verification_type === "daily_visit" ? "selected" : ""}>زيارة المتجر / استلام يدوي</option>
-                            <option value="automatic" ${task?.verification_type === "automatic" ? "selected" : ""}>تلقائية حسب الإنجاز</option>
+                            <option value="system" ${task?.verification_type === "system" ? "selected" : ""}>تلقائية حسب الإنجاز</option>
                         </select>
                     </div>
                     <div class="student-store-field"><label>شرط المهمة التلقائية</label>
