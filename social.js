@@ -702,6 +702,13 @@ window.StudentSuggestions = { open:openSuggestions };
 
     let storyTimer = null;
     let videoTimer = null;
+    let storyPaused = false;
+    let storyDurationMs = 5000;
+    let storyElapsedMs = 0;
+    let storyLastTick = 0;
+    let storySwipeStartX = 0;
+    let storySwipeStartY = 0;
+    let storySwipeMoved = false;
 
     const REACTIONS = ["❤️", "😂", "🔥", "👏"];
 
@@ -1645,6 +1652,192 @@ window.StudentSuggestions = { open:openSuggestions };
             color:#777;
             padding:25px 10px;
         }
+
+        .student-story-own-ring{
+            position:relative!important;
+            background:#fff!important;
+            border:2px solid #e7e7e7!important;
+            padding:2px!important;
+            overflow:visible!important;
+        }
+
+        .student-story-own-placeholder{
+            background:linear-gradient(145deg,#f2f3f5,#dfe3e8)!important;
+            color:#30343b!important;
+        }
+
+        .student-story-add-badge{
+            position:absolute;
+            right:-2px;
+            bottom:-1px;
+            width:24px;
+            height:24px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#ed1c24;
+            color:#fff;
+            border:3px solid #fff;
+            font-size:18px;
+            line-height:1;
+            font-weight:700;
+            box-sizing:border-box;
+        }
+
+        #studentStoryCreateModal{
+            padding:0!important;
+            background:#fff!important;
+            align-items:stretch!important;
+            justify-content:stretch!important;
+            overflow:hidden;
+        }
+
+        .student-story-form{
+            width:100%!important;
+            max-width:none!important;
+            max-height:none!important;
+            height:100%!important;
+            border-radius:0!important;
+            padding:0 16px 24px!important;
+            background:#fff!important;
+            overflow:auto!important;
+            overscroll-behavior:contain;
+        }
+
+        .student-story-editor-head{
+            position:sticky;
+            top:0;
+            z-index:4;
+            min-height:72px;
+            display:grid;
+            grid-template-columns:44px 1fr 44px;
+            align-items:center;
+            gap:8px;
+            margin:0 -16px 18px;
+            padding:env(safe-area-inset-top,0) 16px 0;
+            background:rgba(255,255,255,.96);
+            border-bottom:1px solid #f0f0f0;
+            backdrop-filter:blur(12px);
+        }
+
+        .student-story-editor-head button{
+            width:40px;
+            height:40px;
+            border:0;
+            border-radius:50%;
+            background:#f3f4f6;
+            font-size:30px;
+            line-height:1;
+            cursor:pointer;
+        }
+
+        .student-story-editor-head h2{
+            margin:0!important;
+            font-size:19px!important;
+            text-align:center;
+        }
+
+        .student-story-editor-head small{
+            display:block;
+            margin-top:2px;
+            color:#8a8f98;
+            text-align:center;
+            font-size:11px;
+        }
+
+        .student-story-types{
+            grid-template-columns:repeat(3,1fr)!important;
+            max-width:520px;
+            margin:0 auto 16px!important;
+        }
+
+        .student-story-types button{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap:7px;
+            min-height:48px;
+        }
+
+        #studentStoryText,
+        #studentStoryFile,
+        #studentStoryPreview,
+        .student-story-color-row,
+        .student-story-field,
+        .student-story-switch,
+        .student-story-actions{
+            max-width:520px;
+            margin-left:auto;
+            margin-right:auto;
+        }
+
+        #studentStoryText{
+            min-height:170px!important;
+            background:#f7f8fa;
+            border-color:#eceef1!important;
+        }
+
+        #studentStoryFile{
+            padding:12px;
+            border:1px dashed #cfd4da;
+            border-radius:14px;
+            background:#fafafa;
+        }
+
+        .student-story-preview-box{
+            height:min(58vh,520px)!important;
+            border-radius:18px!important;
+        }
+
+        .student-story-actions{
+            position:sticky;
+            bottom:0;
+            z-index:3;
+            padding:12px 0 calc(6px + env(safe-area-inset-bottom,0));
+            background:linear-gradient(to top,#fff 80%,rgba(255,255,255,0));
+        }
+
+        #studentStoryPublish{
+            min-height:48px;
+            font-weight:700;
+        }
+
+        .student-story-content{
+            touch-action:pan-y;
+            user-select:none;
+            -webkit-user-select:none;
+        }
+
+        #studentStoryViewer.story-paused .student-story-content::after{
+            content:'Ⅱ';
+            position:absolute;
+            inset:50% auto auto 50%;
+            transform:translate(-50%,-50%);
+            width:58px;
+            height:58px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:rgba(0,0,0,.38);
+            color:#fff;
+            font-size:25px;
+            pointer-events:none;
+        }
+
+        @media (min-width:700px){
+            .student-story-form{
+                padding-left:max(24px,calc((100vw - 620px)/2))!important;
+                padding-right:max(24px,calc((100vw - 620px)/2))!important;
+            }
+            .student-story-editor-head{
+                margin-left:calc(-1 * max(24px,calc((100vw - 620px)/2)));
+                margin-right:calc(-1 * max(24px,calc((100vw - 620px)/2)));
+                padding-left:max(24px,calc((100vw - 620px)/2));
+                padding-right:max(24px,calc((100vw - 620px)/2));
+            }
+        }
         `;
 
         document.head.appendChild(style);
@@ -1669,31 +1862,25 @@ window.StudentSuggestions = { open:openSuggestions };
                     class="student-story-form"
                 >
 
-                    <h2
-                        id="studentStoryTitle"
-                    >
-                        إضافة ستوري
-                    </h2>
+                    <div class="student-story-editor-head">
+                        <button id="studentStoryEditorBack" type="button" aria-label="رجوع">‹</button>
+                        <div>
+                            <h2 id="studentStoryTitle">إنشاء ستوري</h2>
+                            <small>صمّم قصتك ثم انشرها</small>
+                        </div>
+                        <span class="student-story-editor-head-space" aria-hidden="true"></span>
+                    </div>
 
-                    <div
-                        class="student-story-types"
-                    >
-
-                        <button
-                            id="studentStoryTextMode"
-                            class="active"
-                            type="button"
-                        >
-                            نص
+                    <div class="student-story-types" role="tablist" aria-label="نوع الستوري">
+                        <button id="studentStoryTextMode" class="active" type="button" role="tab">
+                            <i class="fa-solid fa-font"></i><span>نص</span>
                         </button>
-
-                        <button
-                            id="studentStoryMediaMode"
-                            type="button"
-                        >
-                            صورة / فيديو
+                        <button id="studentStoryImageMode" type="button" role="tab">
+                            <i class="fa-regular fa-image"></i><span>صورة</span>
                         </button>
-
+                        <button id="studentStoryVideoMode" type="button" role="tab">
+                            <i class="fa-solid fa-video"></i><span>فيديو</span>
+                        </button>
                     </div>
 
                     <textarea
@@ -2086,20 +2273,41 @@ window.StudentSuggestions = { open:openSuggestions };
         item.className =
             "story stories-add-new";
 
+        const profile =
+            typeof currentProfile !== "undefined" &&
+            currentProfile?.id === currentUser?.id
+                ? currentProfile
+                : null;
+
+        const fallback =
+            escapeHtml(
+                (getProfileName(
+                    profile,
+                    "أنت"
+                ).charAt(0) || "أ")
+            );
+
+        const picture =
+            profile?.avatar_url
+                ? `<img class="student-story-preview" src="${escapeHtml(profile.avatar_url)}" alt="صورتك" loading="eager" decoding="async">`
+                : `<div class="student-story-placeholder student-story-own-placeholder">${fallback}</div>`;
+
         item.innerHTML = `
             <div
-                class="story-ring"
+                class="story-ring student-story-own-ring"
+                aria-label="إضافة ستوري"
             >
 
                 <div
                     class="story-ring-inner"
                 >
-
-                    <i
-                        class="fa-solid fa-plus"
-                    ></i>
-
+                    ${picture}
                 </div>
+
+                <span
+                    class="student-story-add-badge"
+                    aria-hidden="true"
+                >+</span>
 
             </div>
 
@@ -2476,23 +2684,55 @@ window.StudentSuggestions = { open:openSuggestions };
         storyMode =
             mode;
 
+        const isText =
+            mode === "text";
+
+        const isImage =
+            mode === "image";
+
+        const isVideo =
+            mode === "video";
+
         $("#studentStoryTextMode")
-            .classList
-            .toggle(
+            .classList.toggle(
                 "active",
-                mode === "text"
+                isText
             );
 
-        $("#studentStoryMediaMode")
-            .classList
-            .toggle(
+        $("#studentStoryImageMode")
+            ?.classList.toggle(
                 "active",
-                mode === "media"
+                isImage
             );
 
-        $("#studentStoryFile")
+        $("#studentStoryVideoMode")
+            ?.classList.toggle(
+                "active",
+                isVideo
+            );
+
+        const input =
+            $("#studentStoryFile");
+
+        input.style.display =
+            isText
+                ? "none"
+                : "block";
+
+        if (isImage) {
+            input.accept =
+                "image/*";
+        } else if (isVideo) {
+            input.accept =
+                "video/*";
+        } else {
+            input.accept =
+                "image/*,video/*";
+        }
+
+        $("#studentStoryText")
             .style.display =
-            mode === "media"
+            isText || isImage || isVideo
                 ? "block"
                 : "none";
     }
@@ -2610,7 +2850,7 @@ window.StudentSuggestions = { open:openSuggestions };
             .textContent =
             story
                 ? "تعديل الستوري"
-                : "إضافة ستوري";
+                : "إنشاء ستوري";
 
         $("#studentStoryText")
             .value =
@@ -2643,13 +2883,11 @@ window.StudentSuggestions = { open:openSuggestions };
         clearPreview();
 
         setStoryMode(
-            story &&
-            (
-                story.type === "image" ||
-                story.type === "video"
-            )
-                ? "media"
-                : "text"
+            story?.type === "image"
+                ? "image"
+                : story?.type === "video"
+                    ? "video"
+                    : "text"
         );
 
         $("#studentStoryCreateModal")
@@ -2891,6 +3129,28 @@ window.StudentSuggestions = { open:openSuggestions };
                         )
                             ? "video"
                             : "image";
+
+                    if (
+                        storyMode === "image" &&
+                        type !== "image"
+                    ) {
+                        toast(
+                            "اختر صورة فقط",
+                            "error"
+                        );
+                        return;
+                    }
+
+                    if (
+                        storyMode === "video" &&
+                        type !== "video"
+                    ) {
+                        toast(
+                            "اختر فيديو فقط",
+                            "error"
+                        );
+                        return;
+                    }
 
                     const uploaded =
                         await uploadStorageFile(
@@ -3335,7 +3595,7 @@ window.StudentSuggestions = { open:openSuggestions };
                 currentStory.media_url;
 
             video.controls =
-                true;
+                false;
 
             video.autoplay =
                 true;
@@ -3373,38 +3633,16 @@ window.StudentSuggestions = { open:openSuggestions };
             return;
         }
 
-        let elapsed =
-            0;
-
-        const duration =
+        storyDurationMs =
             5000;
 
-        storyTimer =
-            setInterval(
-                () => {
+        storyElapsedMs =
+            0;
 
-                    elapsed +=
-                        100;
+        storyPaused =
+            false;
 
-                    updateProgress(
-                        elapsed /
-                        duration *
-                        100
-                    );
-
-                    if (
-                        elapsed >=
-                        duration
-                    ) {
-
-                        clearTimers();
-
-                        nextStory();
-                    }
-
-                },
-                100
-            );
+        runStoryClock();
     }
 
     function startVideoTimer(
@@ -3413,108 +3651,223 @@ window.StudentSuggestions = { open:openSuggestions };
 
         clearTimers();
 
-        const duration =
+        storyDurationMs =
             Math.max(
                 3000,
                 seconds * 1000
             );
 
-        const started =
-            Date.now();
+        storyElapsedMs =
+            0;
+
+        storyPaused =
+            false;
+
+        runStoryClock();
+    }
+
+    function runStoryClock() {
+
+        clearInterval(
+            storyTimer
+        );
+
+        storyLastTick =
+            performance.now();
 
         storyTimer =
             setInterval(
                 () => {
 
-                    const elapsed =
-                        Date.now() -
-                        started;
+                    const now =
+                        performance.now();
+
+                    const delta =
+                        now -
+                        storyLastTick;
+
+                    storyLastTick =
+                        now;
+
+                    if (storyPaused) {
+                        return;
+                    }
+
+                    storyElapsedMs +=
+                        delta;
 
                     updateProgress(
-                        elapsed /
-                        duration *
+                        storyElapsedMs /
+                        storyDurationMs *
                         100
                     );
 
                     if (
-                        elapsed >=
-                        duration
+                        storyElapsedMs >=
+                        storyDurationMs
                     ) {
 
                         clearTimers();
-
                         nextStory();
                     }
 
                 },
-                100
+                80
             );
+    }
+
+    function setStoryPaused(
+        paused
+    ) {
+
+        if (!currentStory) {
+            return;
+        }
+
+        storyPaused =
+            Boolean(paused);
+
+        const video =
+            $("#studentStoryContent video");
+
+        if (video) {
+            if (storyPaused) {
+                video.pause();
+            } else {
+                video.play()
+                    .catch(() => {});
+            }
+        }
+
+        $("#studentStoryViewer")
+            ?.classList.toggle(
+                "story-paused",
+                storyPaused
+            );
+    }
+
+    function toggleStoryPause() {
+        setStoryPaused(
+            !storyPaused
+        );
     }
 
     function clearTimers() {
 
-        if (
-            storyTimer
-        ) {
-
+        if (storyTimer) {
             clearInterval(
                 storyTimer
             );
-
             storyTimer =
                 null;
         }
 
-        if (
-            videoTimer
-        ) {
-
+        if (videoTimer) {
             clearTimeout(
                 videoTimer
             );
-
             videoTimer =
                 null;
         }
+
+        storyPaused =
+            false;
+
+        storyElapsedMs =
+            0;
+
+        $("#studentStoryViewer")
+            ?.classList.remove(
+                "story-paused"
+            );
+    }
+
+    function getOrderedStoryGroups() {
+
+        const groups =
+            new Map();
+
+        for (const story of stories) {
+            if (!groups.has(story.user_id)) {
+                groups.set(
+                    story.user_id,
+                    []
+                );
+            }
+            groups.get(story.user_id)
+                .push(story);
+        }
+
+        return Array.from(
+            groups.values()
+        );
     }
 
     async function nextStory() {
 
         if (
             currentIndex <
-            currentGroup.length -
-                1
+            currentGroup.length - 1
         ) {
 
-            currentIndex +=
-                1;
-
+            currentIndex += 1;
             await renderCurrentStory();
-
-        } else {
-
-            closeViewer();
+            return;
         }
+
+        const groups =
+            getOrderedStoryGroups();
+
+        const groupIndex =
+            groups.findIndex(
+                group =>
+                    group[0]?.user_id ===
+                    currentStory?.user_id
+            );
+
+        if (
+            groupIndex >= 0 &&
+            groupIndex < groups.length - 1
+        ) {
+            await openStoryGroup(
+                groups[groupIndex + 1],
+                0
+            );
+            return;
+        }
+
+        closeViewer();
     }
 
     async function previousStory() {
 
-        if (
-            currentIndex >
-            0
-        ) {
-
-            currentIndex -=
-                1;
-
+        if (currentIndex > 0) {
+            currentIndex -= 1;
             await renderCurrentStory();
-
-        } else {
-
-            updateProgress(
-                0
-            );
+            return;
         }
+
+        const groups =
+            getOrderedStoryGroups();
+
+        const groupIndex =
+            groups.findIndex(
+                group =>
+                    group[0]?.user_id ===
+                    currentStory?.user_id
+            );
+
+        if (groupIndex > 0) {
+            const previousGroup =
+                groups[groupIndex - 1];
+            await openStoryGroup(
+                previousGroup,
+                previousGroup.length - 1
+            );
+            return;
+        }
+
+        updateProgress(0);
     }
 
     function closeViewer() {
@@ -4350,23 +4703,40 @@ window.StudentSuggestions = { open:openSuggestions };
                 }
             );
 
-        $("#studentStoryMediaMode")
+        $("#studentStoryImageMode")
             .addEventListener(
                 "click",
                 () => {
-
                     setStoryMode(
-                        "media"
+                        "image"
                     );
-
                     const input =
                         $("#studentStoryFile");
-
                     input.value =
                         "";
-
                     input.click();
                 }
+            );
+
+        $("#studentStoryVideoMode")
+            .addEventListener(
+                "click",
+                () => {
+                    setStoryMode(
+                        "video"
+                    );
+                    const input =
+                        $("#studentStoryFile");
+                    input.value =
+                        "";
+                    input.click();
+                }
+            );
+
+        $("#studentStoryEditorBack")
+            .addEventListener(
+                "click",
+                closeCreateModal
             );
 
         $("#studentStoryFile")
@@ -4409,6 +4779,71 @@ window.StudentSuggestions = { open:openSuggestions };
                 "click",
                 nextStory
             );
+
+        const storyContent =
+            $("#studentStoryContent");
+
+        storyContent.addEventListener(
+            "click",
+            event => {
+                if (storySwipeMoved) {
+                    storySwipeMoved = false;
+                    return;
+                }
+                if (event.target.closest("button,input,textarea")) {
+                    return;
+                }
+                toggleStoryPause();
+            }
+        );
+
+        storyContent.addEventListener(
+            "touchstart",
+            event => {
+                const touch =
+                    event.touches[0];
+                storySwipeStartX =
+                    touch.clientX;
+                storySwipeStartY =
+                    touch.clientY;
+                storySwipeMoved =
+                    false;
+            },
+            { passive:true }
+        );
+
+        storyContent.addEventListener(
+            "touchend",
+            event => {
+                const touch =
+                    event.changedTouches[0];
+                const dx =
+                    touch.clientX -
+                    storySwipeStartX;
+                const dy =
+                    touch.clientY -
+                    storySwipeStartY;
+
+                if (
+                    Math.abs(dx) < 45 ||
+                    Math.abs(dx) <= Math.abs(dy)
+                ) {
+                    return;
+                }
+
+                storySwipeMoved =
+                    true;
+
+                setStoryPaused(false);
+
+                if (dx < 0) {
+                    nextStory();
+                } else {
+                    previousStory();
+                }
+            },
+            { passive:true }
+        );
 
         $("#studentStoryMenu")
             .addEventListener(
