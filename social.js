@@ -955,6 +955,8 @@ window.StudentSuggestions = { open:openSuggestions };
             return new Map();
         }
 
+        (data || []).forEach(cacheStoryAvatar);
+
         return new Map(
             (data || []).map(
                 row => [
@@ -973,6 +975,29 @@ window.StudentSuggestions = { open:openSuggestions };
             profile?.display_name?.trim() ||
             fallback
         );
+    }
+
+    function storyAvatarCacheKey(userId) {
+        return `student_story_avatar_${userId || ""}`;
+    }
+
+    function cacheStoryAvatar(profile) {
+        if (!profile?.id || !profile?.avatar_url) return;
+        try {
+            localStorage.setItem(
+                storyAvatarCacheKey(profile.id),
+                profile.avatar_url
+            );
+        } catch (_) {}
+    }
+
+    function getCachedStoryAvatar(userId) {
+        if (!userId) return "";
+        try {
+            return localStorage.getItem(storyAvatarCacheKey(userId)) || "";
+        } catch (_) {
+            return "";
+        }
     }
 
     function avatar(
@@ -1121,7 +1146,8 @@ window.StudentSuggestions = { open:openSuggestions };
         #studentStoryCreateModal,
         #studentStoryViewer,
         #studentStoryDeleteConfirm,
-        #studentStoryViewersModal{
+        #studentStoryViewersModal,
+        #studentStoryRepliesModal{
             position:fixed;
             inset:0;
             z-index:100000;
@@ -1131,7 +1157,8 @@ window.StudentSuggestions = { open:openSuggestions };
         #studentStoryCreateModal.active,
         #studentStoryViewer.active,
         #studentStoryDeleteConfirm.active,
-        #studentStoryViewersModal.active{
+        #studentStoryViewersModal.active,
+        #studentStoryRepliesModal.active{
             display:flex;
         }
 
@@ -1396,6 +1423,46 @@ window.StudentSuggestions = { open:openSuggestions };
             font-weight:700;
         }
 
+        .student-story-avatar-skeleton,
+        .student-story-own-skeleton{
+            position:relative;
+            overflow:hidden;
+            background:#e9edf2;
+        }
+
+        .student-story-avatar-skeleton::after,
+        .student-story-own-skeleton::after{
+            content:"";
+            position:absolute;
+            inset:0;
+            transform:translateX(-100%);
+            background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);
+            animation:studentStorySkeleton 1.1s infinite;
+        }
+
+        @keyframes studentStorySkeleton{
+            100%{transform:translateX(100%);}
+        }
+
+        .student-story-replies-btn{
+            display:none;
+        }
+
+        .student-story-reply-owner-row{
+            display:flex;
+            gap:10px;
+            padding:12px 0;
+            border-bottom:1px solid rgba(0,0,0,.08);
+            align-items:flex-start;
+        }
+
+        .student-story-reply-owner-message{
+            margin-top:4px;
+            line-height:1.55;
+            white-space:pre-wrap;
+            word-break:break-word;
+        }
+
         .student-story-content{
             width:100%;
             height:100%;
@@ -1560,7 +1627,8 @@ window.StudentSuggestions = { open:openSuggestions };
         }
 
         #studentStoryDeleteConfirm,
-        #studentStoryViewersModal{
+        #studentStoryViewersModal,
+        #studentStoryRepliesModal{
             align-items:center;
             justify-content:center;
             background:rgba(0,0,0,.66);
@@ -2176,6 +2244,16 @@ window.StudentSuggestions = { open:openSuggestions };
 
                         </button>
 
+                        <button
+                            id="studentStoryRepliesBtn"
+                            class="student-story-replies-btn"
+                            type="button"
+                            title="الردود"
+                        >
+                            <i class="fa-regular fa-comment"></i>
+                            <span id="studentStoryReplyNumber">0</span>
+                        </button>
+
                     </div>
 
                     <div
@@ -2320,6 +2398,21 @@ window.StudentSuggestions = { open:openSuggestions };
                 modal
             );
         }
+
+        if (!$("#studentStoryRepliesModal")) {
+            const modal = document.createElement("div");
+            modal.id = "studentStoryRepliesModal";
+            modal.innerHTML = `
+                <div class="student-story-viewers-card">
+                    <div class="student-story-viewers-head">
+                        <strong>ردود الستوري</strong>
+                        <button id="studentStoryRepliesClose" type="button">×</button>
+                    </div>
+                    <div id="studentStoryRepliesList"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
     }
 
     /* =========================================================
@@ -2361,18 +2454,15 @@ window.StudentSuggestions = { open:openSuggestions };
                 ? currentProfile
                 : null;
 
-        const fallback =
-            escapeHtml(
-                (getProfileName(
-                    profile,
-                    "أنت"
-                ).charAt(0) || "أ")
-            );
+        const cachedAvatar =
+            profile?.avatar_url ||
+            getCachedStoryAvatar(currentUser?.id);
 
-        const picture =
-            profile?.avatar_url
-                ? `<img class="student-story-preview" src="${escapeHtml(profile.avatar_url)}" alt="صورتك" loading="eager" decoding="async">`
-                : `<div class="student-story-placeholder student-story-own-placeholder">${fallback}</div>`;
+        if (profile?.avatar_url) cacheStoryAvatar(profile);
+
+        const picture = cachedAvatar
+            ? `<img class="student-story-preview" src="${escapeHtml(cachedAvatar)}" alt="صورتك" loading="eager" decoding="async">`
+            : `<div class="student-story-placeholder student-story-own-placeholder student-story-own-skeleton" aria-label="جاري تحميل صورة الحساب"></div>`;
 
         item.innerHTML = `
             <div
@@ -2408,6 +2498,27 @@ window.StudentSuggestions = { open:openSuggestions };
         container.appendChild(
             item
         );
+
+        if (!cachedAvatar && currentUser?.id) {
+            sb.from("profiles")
+                .select("id,display_name,avatar_url")
+                .eq("id", currentUser.id)
+                .maybeSingle()
+                .then(({ data }) => {
+                    if (!data?.avatar_url || !item.isConnected) return;
+                    cacheStoryAvatar(data);
+                    const inner = item.querySelector(".story-ring-inner");
+                    if (!inner) return;
+                    const img = document.createElement("img");
+                    img.className = "student-story-preview";
+                    img.alt = "صورتك";
+                    img.loading = "eager";
+                    img.decoding = "async";
+                    img.src = data.avatar_url;
+                    inner.replaceChildren(img);
+                })
+                .catch(() => {});
+        }
     }
 
     /* =========================================================
@@ -3670,6 +3781,8 @@ window.StudentSuggestions = { open:openSuggestions };
 
         await updateViewCount();
 
+        await updateReplyCount();
+
         await loadReactionCounts();
 
         startTimer();
@@ -4439,6 +4552,61 @@ window.StudentSuggestions = { open:openSuggestions };
             );
     }
 
+    async function updateReplyCount() {
+        const button = $("#studentStoryRepliesBtn");
+        const number = $("#studentStoryReplyNumber");
+        if (!button || !number || !currentStory || !currentUser) return;
+
+        const isOwner = currentStory.user_id === currentUser.id;
+        button.style.display = isOwner ? "flex" : "none";
+        if (!isOwner) { number.textContent = "0"; return; }
+
+        const { count, error } = await sb
+            .from("story_replies")
+            .select("id", { count: "exact", head: true })
+            .eq("story_id", currentStory.id);
+
+        number.textContent = error ? "0" : String(count || 0);
+    }
+
+    async function openStoryReplies() {
+        if (!currentStory || !currentUser || currentStory.user_id !== currentUser.id) return;
+
+        const { data, error } = await sb
+            .from("story_replies")
+            .select("user_id,message,created_at")
+            .eq("story_id", currentStory.id)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            toast(error.message || "تعذر تحميل الردود", "error");
+            return;
+        }
+
+        const profiles = await getProfiles((data || []).map(row => row.user_id));
+        const list = $("#studentStoryRepliesList");
+
+        if (!data?.length) {
+            list.innerHTML = `<div class="student-story-empty">لا توجد ردود بعد</div>`;
+        } else {
+            list.innerHTML = data.map(row => {
+                const profile = profiles.get(row.user_id);
+                return `
+                    <div class="student-story-reply-owner-row">
+                        ${avatar(profile, "U")}
+                        <div class="student-story-viewer-meta">
+                            <div class="student-story-viewer-name">${escapeHtml(getProfileName(profile, "مستخدم"))}</div>
+                            <div class="student-story-viewer-time">${escapeHtml(timeAgo(row.created_at))}</div>
+                            <div class="student-story-reply-owner-message">${escapeHtml(row.message || "")}</div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        $("#studentStoryRepliesModal").classList.add("active");
+    }
+
     /* =========================================================
        REACTIONS
     ========================================================= */
@@ -5148,6 +5316,22 @@ window.StudentSuggestions = { open:openSuggestions };
                 openViewers
             );
 
+        $("#studentStoryRepliesBtn")
+            .addEventListener(
+                "click",
+                openStoryReplies
+            );
+
+        $("#studentStoryRepliesClose")
+            .addEventListener(
+                "click",
+                () => {
+                    $("#studentStoryRepliesModal")
+                        .classList
+                        .remove("active");
+                }
+            );
+
         $("#studentStoryViewersClose")
             .addEventListener(
                 "click",
@@ -5195,6 +5379,16 @@ window.StudentSuggestions = { open:openSuggestions };
                     ) {
 
                         closeViewer();
+                    }
+                }
+            );
+
+        $("#studentStoryRepliesModal")
+            .addEventListener(
+                "click",
+                event => {
+                    if (event.target.id === "studentStoryRepliesModal") {
+                        $("#studentStoryRepliesModal").classList.remove("active");
                     }
                 }
             );
