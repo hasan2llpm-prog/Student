@@ -581,15 +581,7 @@ async function loginUser(
     }
 
     const email =
-        String(emailElement.value || "")
-            .normalize("NFKC")
-            .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, "")
-            .replace(/\s+/g, "")
-            .trim()
-            .toLowerCase();
-
-    // أعِد القيمة المنظفة للحقل حتى يرى المستخدم ما سيتم إرساله فعلياً.
-    emailElement.value = email;
+        emailElement.value.trim();
 
     const password =
         passwordElement.value;
@@ -754,20 +746,6 @@ async function registerUser(
         showMessage(
             "register-message",
             "اكتب البريد الإلكتروني.",
-            "error"
-        );
-
-        return;
-    }
-
-    const emailPattern =
-        /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
-
-    if (!emailPattern.test(email)) {
-
-        showMessage(
-            "register-message",
-            "صيغة البريد الإلكتروني غير صحيحة. مثال: name@gmail.com",
             "error"
         );
 
@@ -942,17 +920,6 @@ function translateAuthError(
             error?.message ||
             ""
         ).toLowerCase();
-
-    if (
-        message.includes("unable to validate email address") ||
-        message.includes("invalid email") ||
-        message.includes("email address is invalid")
-    ) {
-
-        return (
-            "تعذر قبول البريد الإلكتروني. تأكد من كتابته بدون مسافات أو رموز إضافية."
-        );
-    }
 
     if (
         message.includes(
@@ -3112,6 +3079,18 @@ document.addEventListener(
         return true;
     }
 
+    function clearPages() {
+        let changed = false;
+        while (pageStack.length) {
+            const entry = pageStack.pop();
+            entry?.element?.remove();
+            try { entry?.onClose?.(); } catch (_) {}
+            changed = true;
+        }
+        document.body.classList.remove("student-internal-page-open");
+        return changed;
+    }
+
     function back() {
         if (handlingBack) return true;
         handlingBack = true;
@@ -3121,8 +3100,38 @@ document.addEventListener(
                 exitDialog = null;
                 return true;
             }
-            if (closePage()) return true;
-            if (closeTopLayer()) return true;
+
+            if (window.StudentNotifications?.isOpen?.()) {
+                window.StudentNotifications.close({ clearReturn:true });
+                return true;
+            }
+
+            const messagesPage = document.getElementById("student-messages-page");
+            if (messagesPage?.classList.contains("sm-open") && typeof window.StudentMessages?.handleBack === "function") {
+                const fromNotification = window.StudentNotifications?.hasPendingReturn?.() === true;
+                const handled = window.StudentMessages.handleBack();
+                if (handled) {
+                    if (fromNotification && messagesPage.classList.contains("sm-open")) {
+                        window.StudentMessages.handleBack();
+                    }
+                    const stillOpen = messagesPage.classList.contains("sm-open");
+                    if (fromNotification && !stillOpen) window.StudentNotifications?.restoreAfterBack?.();
+                    return true;
+                }
+            }
+
+            if (closePage()) {
+                window.StudentNotifications?.restoreAfterBack?.();
+                return true;
+            }
+            if (closeTopLayer()) {
+                const hasRootLayer = !!document.querySelector(
+                    "#studentStoryViewer.show,#studentStoryViewer.active,#student-store-overlay.show,#student-store-overlay.active,#student-education-overlay.show,#student-education-overlay.active,.student-admin-overlay.show"
+                );
+                if (!hasRootLayer) window.StudentNotifications?.restoreAfterBack?.();
+                return true;
+            }
+            if (window.StudentNotifications?.restoreAfterBack?.()) return true;
             showExitConfirm();
             return false;
         } finally {
@@ -3201,6 +3210,7 @@ document.addEventListener(
         back,
         closePage,
         closeById,
+        clearPages,
         closeTopLayer,
         showExitConfirm
     };
@@ -3227,7 +3237,10 @@ document.addEventListener(
         channel: null,
         overlay: null,
         loading: false,
-        initializedFor: null
+        initializedFor: null,
+        returnPending: false,
+        returnTargetId: null,
+        filter: "all"
     };
 
     function sb() {
@@ -3248,25 +3261,27 @@ document.addEventListener(
         const style = document.createElement("style");
         style.id = "student-notifications-style";
         style.textContent = `
-            #student-notifications-page{position:fixed;inset:0;z-index:10050;background:#fff;display:none;overflow:auto;direction:rtl;color:#172033}
-            #student-notifications-page.is-open{display:block}
-            .sn-head{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #e9edf3;padding:14px 16px;display:flex;align-items:center;gap:12px}
-            .sn-back,.sn-action,.sn-btn{border:0;cursor:pointer;font:inherit}
-            .sn-back{width:42px;height:42px;border-radius:50%;background:#f1f4f8;font-size:21px}
-            .sn-title{font-size:19px;font-weight:800;flex:1;margin:0}
-            .sn-action{background:#087cff;color:#fff;border-radius:12px;padding:10px 13px;font-weight:700}
-            .sn-body{max-width:760px;margin:0 auto;padding:14px 14px 90px;background:linear-gradient(180deg,#fbfcff 0,#f7f9fc 100%);min-height:calc(100dvh - 70px)}
-            .sn-permission{border:1px solid #dce8ff;background:#f4f8ff;border-radius:16px;padding:14px;margin-bottom:14px}
-            .sn-permission strong{display:block;margin-bottom:5px}.sn-permission p{margin:0 0 12px;color:#566171;line-height:1.7}
-            .sn-btn{background:#087cff;color:#fff;border-radius:12px;padding:11px 15px;font-weight:750}.sn-btn.secondary{background:#eef2f7;color:#223047}.sn-btn.danger{background:#e93d4f}
-            .sn-list{display:grid;gap:10px}.sn-item{border:1px solid #e7ebf1;border-radius:20px;padding:14px;background:#fff;display:flex;gap:12px;align-items:flex-start;box-shadow:0 5px 18px rgba(23,32,51,.045);transition:transform .16s ease,box-shadow .16s ease;cursor:pointer}.sn-item:active{transform:scale(.992)}
-            .sn-item.unread{background:#f2f7ff;border-color:#c9dcff}.sn-item.unread .sn-item-title:after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#087cff;margin-right:7px;vertical-align:middle}.sn-icon{width:46px;height:46px;border-radius:15px;background:linear-gradient(145deg,#eef4ff,#e2ecff);display:grid;place-items:center;flex:0 0 46px;font-size:20px;box-shadow:inset 0 0 0 1px rgba(8,124,255,.08)}
-            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:850;margin-bottom:4px;display:flex;align-items:center;flex-wrap:wrap}.sn-item-text{color:#4e5969;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}.sn-meta{font-size:11px;color:#8a94a3;margin-top:7px;display:flex;align-items:center;gap:6px}.sn-chevron{align-self:center;color:#a2aab5;font-size:22px;line-height:1}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
-            .sn-empty{text-align:center;padding:60px 20px;color:#788393}.sn-empty .bell{font-size:48px;margin-bottom:12px}
-            .sn-modal{position:fixed;inset:0;z-index:10070;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}
-            .sn-sheet{width:min(620px,100%);background:#fff;border-radius:22px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
-            .sn-field{margin-bottom:12px}.sn-field label{display:block;font-weight:700;margin-bottom:6px}.sn-field input,.sn-field textarea,.sn-field select{width:100%;border:1px solid #dbe1ea;border-radius:12px;padding:12px;font:inherit;outline:none}.sn-field textarea{min-height:110px;resize:vertical}
-            .sn-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:15px}.sn-toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:10100;background:#172033;color:#fff;border-radius:12px;padding:11px 16px;max-width:88%;text-align:center}
+            #student-notifications-page{position:fixed;inset:0;z-index:2147482100;background:#f4f7fb;display:none;overflow:hidden;direction:rtl;color:#172033}
+            #student-notifications-page.is-open{display:flex;flex-direction:column}
+            .sn-head{position:relative;z-index:3;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-bottom:1px solid #e8edf4;padding:12px 14px;display:flex;align-items:center;gap:10px;min-height:64px;box-sizing:border-box}
+            .sn-back,.sn-action,.sn-btn,.sn-head-icon{border:0;cursor:pointer;font:inherit}
+            .sn-back{width:42px;height:42px;border-radius:14px;background:#edf2f7;color:#172033;font-size:24px;display:grid;place-items:center;flex:0 0 42px}
+            .sn-heading{min-width:0;flex:1}.sn-title{font-size:20px;font-weight:900;margin:0;line-height:1.25}.sn-subtitle{font-size:11px;color:#8490a0;margin-top:3px}
+            .sn-head-actions{display:flex;gap:8px;align-items:center}.sn-head-icon{height:38px;border-radius:12px;padding:0 11px;background:#eef4ff;color:#087cff;font-weight:800}.sn-action{background:#087cff;color:#fff;border-radius:12px;padding:10px 12px;font-weight:800}
+            .sn-body{width:100%;max-width:760px;margin:0 auto;padding:14px 14px 96px;min-height:0;flex:1;overflow:auto;box-sizing:border-box;background:linear-gradient(180deg,#f8fbff 0,#f4f7fb 52%,#f7f9fc 100%);-webkit-overflow-scrolling:touch}
+            .sn-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(135deg,#087cff,#4da6ff);color:#fff;border-radius:22px;padding:16px 17px;margin-bottom:12px;box-shadow:0 14px 32px rgba(8,124,255,.18)}
+            .sn-summary strong{font-size:16px}.sn-summary span{display:block;font-size:12px;opacity:.88;margin-top:3px}.sn-summary-count{min-width:46px;height:46px;border-radius:15px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:17px;font-weight:900}
+            .sn-permission{border:1px solid #dbe8fb;background:#fff;border-radius:18px;padding:13px 14px;margin-bottom:12px;box-shadow:0 5px 18px rgba(23,32,51,.035)}
+            .sn-permission strong{display:block;margin-bottom:4px;font-size:13px}.sn-permission p{margin:0 0 10px;color:#667385;line-height:1.65;font-size:12px}
+            .sn-btn{background:#087cff;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800}.sn-btn.secondary{background:#eef2f7;color:#223047}.sn-btn.danger{background:#e93d4f}
+            .sn-filterbar{display:flex;gap:8px;align-items:center;overflow:auto;margin:2px 0 12px;padding-bottom:2px}.sn-filter{border:1px solid #e1e7ef;background:#fff;color:#536072;border-radius:999px;padding:8px 12px;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}.sn-filter.active{background:#172033;color:#fff;border-color:#172033}
+            .sn-list{display:grid;gap:9px}.sn-item{position:relative;border:1px solid #e8edf3;border-radius:19px;padding:13px;background:#fff;display:flex;gap:12px;align-items:flex-start;box-shadow:0 5px 16px rgba(25,39,58,.04);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;cursor:pointer;overflow:hidden}.sn-item:active{transform:scale(.994)}
+            .sn-item.unread{background:linear-gradient(135deg,#f5f9ff,#fff);border-color:#cfe0fb}.sn-item.unread:before{content:"";position:absolute;right:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:#087cff}.sn-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;flex:0 0 48px;font-size:21px;background:var(--sn-icon-bg,#eef4ff);color:var(--sn-icon-color,#087cff);box-shadow:inset 0 0 0 1px rgba(0,0,0,.025)}
+            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:900;margin-bottom:4px;font-size:14px;line-height:1.45}.sn-item-text{color:#566274;line-height:1.6;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.sn-meta{font-size:10px;color:#929baa;margin-top:7px;display:flex;align-items:center;gap:6px}.sn-dot{width:5px;height:5px;border-radius:50%;background:#087cff}.sn-chevron{align-self:center;color:#b1bac7;font-size:22px;line-height:1}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
+            .sn-empty{text-align:center;padding:70px 20px;color:#788393}.sn-empty .bell{width:74px;height:74px;border-radius:24px;background:#fff;display:grid;place-items:center;font-size:34px;margin:0 auto 14px;box-shadow:0 10px 28px rgba(20,40,70,.08)}
+            .sn-modal{position:fixed;inset:0;z-index:2147482300;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}.sn-sheet{width:min(620px,100%);background:#fff;border-radius:24px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
+            .sn-field{margin-bottom:12px}.sn-field label{display:block;font-weight:700;margin-bottom:6px}.sn-field input,.sn-field textarea,.sn-field select{width:100%;box-sizing:border-box;border:1px solid #dbe1ea;border-radius:12px;padding:12px;font:inherit;outline:none}.sn-field textarea{min-height:110px;resize:vertical}
+            .sn-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:15px}.sn-toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:2147482400;background:#172033;color:#fff;border-radius:12px;padding:11px 16px;max-width:88%;text-align:center}
             .sn-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
         `;
         document.head.appendChild(style);
@@ -3287,19 +3302,36 @@ document.addEventListener(
         if (page) return page;
         page = document.createElement("section");
         page.id = "student-notifications-page";
+        page.setAttribute("aria-label", "الإشعارات");
         page.innerHTML = `
             <header class="sn-head">
-                <button class="sn-back" type="button" aria-label="رجوع">‹</button>
-                <h2 class="sn-title">الإشعارات</h2>
-                <button class="sn-action" id="sn-broadcast" type="button" hidden>نشر للجميع</button>
+                <button class="sn-back" type="button" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button>
+                <div class="sn-heading"><h2 class="sn-title">الإشعارات</h2><div class="sn-subtitle">كل جديد في Student بمكان واحد</div></div>
+                <div class="sn-head-actions">
+                    <button class="sn-head-icon" id="sn-mark-all" type="button" title="تحديد الكل كمقروء">✓ الكل</button>
+                    <button class="sn-action" id="sn-broadcast" type="button" hidden>نشر</button>
+                </div>
             </header>
             <main class="sn-body">
+                <div id="sn-summary"></div>
                 <div id="sn-permission-box"></div>
+                <div class="sn-filterbar" id="sn-filterbar">
+                    <button class="sn-filter active" type="button" data-filter="all">الكل</button>
+                    <button class="sn-filter" type="button" data-filter="unread">غير المقروء</button>
+                </div>
                 <div id="sn-list" class="sn-list"></div>
             </main>`;
         document.body.appendChild(page);
-        page.querySelector(".sn-back").addEventListener("click", close);
+        page.querySelector(".sn-back").addEventListener("click", () => close({ clearReturn:true }));
         page.querySelector("#sn-broadcast").addEventListener("click", openBroadcast);
+        page.querySelector("#sn-mark-all").addEventListener("click", markAllRead);
+        page.querySelectorAll("[data-filter]").forEach(button => {
+            button.addEventListener("click", () => {
+                state.filter = button.dataset.filter || "all";
+                page.querySelectorAll("[data-filter]").forEach(x => x.classList.toggle("active", x === button));
+                render();
+            });
+        });
         state.overlay = page;
         return page;
     }
@@ -3354,28 +3386,56 @@ document.addEventListener(
         box.querySelector("#sn-enable-push")?.addEventListener("click", enablePush);
     }
 
+    function notificationVisual(item) {
+        const kind = String(item?.kind || "").toLowerCase();
+        if (kind.includes("message") || kind.includes("chat")) return { icon:"💬", bg:"#edf8ff", color:"#087cff" };
+        if (kind.includes("follow") || kind.includes("profile")) return { icon:"👤", bg:"#f1f0ff", color:"#6f55d9" };
+        if (kind.includes("story")) return { icon:"◉", bg:"#fff0f4", color:"#e83265" };
+        if (kind.includes("reel")) return { icon:"▶", bg:"#fff2ed", color:"#e4662b" };
+        if (kind.includes("post") || kind.includes("comment") || kind.includes("like")) return { icon:"♥", bg:"#fff1f3", color:"#e13b52" };
+        if (kind.includes("store") || kind.includes("order") || kind.includes("diamond")) return { icon:"◆", bg:"#eefaff", color:"#00a1c9" };
+        if (kind.includes("teacher") || kind.includes("verification")) return { icon:"✓", bg:"#fff3ef", color:"#e45c35" };
+        if (kind.includes("admin") || item?.is_broadcast === true) return { icon:"✦", bg:"#f0f5ff", color:"#3667d6" };
+        return { icon:String(item?.icon || "🔔"), bg:"#eef4ff", color:"#087cff" };
+    }
+
+    function unreadCount() {
+        return state.items.filter(x => !x.is_read).length;
+    }
+
+    function renderSummary() {
+        const box = document.getElementById("sn-summary");
+        if (!box) return;
+        const unread = unreadCount();
+        box.innerHTML = `<div class="sn-summary"><div><strong>${unread ? "لديك إشعارات جديدة" : "أنت مطّلع على كل شيء"}</strong><span>${unread ? `باقي ${unread} إشعار غير مقروء` : "لا توجد إشعارات غير مقروءة حاليًا"}</span></div><div class="sn-summary-count">${unread > 99 ? "99+" : unread}</div></div>`;
+    }
+
     function render() {
         const page = ensurePage();
         page.querySelector("#sn-broadcast").hidden = !state.isAdmin;
+        page.querySelector("#sn-mark-all").hidden = unreadCount() === 0;
+        renderSummary();
         renderPermission();
         const list = page.querySelector("#sn-list");
         if (state.loading) {
             list.innerHTML = `<div class="sn-empty">جارٍ تحميل الإشعارات...</div>`;
             return;
         }
-        if (!state.items.length) {
-            list.innerHTML = `<div class="sn-empty"><div class="bell">🔔</div><div>لا توجد إشعارات حتى الآن.</div></div>`;
+        const shown = state.filter === "unread" ? state.items.filter(x => !x.is_read) : state.items;
+        if (!shown.length) {
+            list.innerHTML = `<div class="sn-empty"><div class="bell">🔔</div><div>${state.filter === "unread" ? "لا توجد إشعارات غير مقروءة." : "لا توجد إشعارات حتى الآن."}</div></div>`;
             return;
         }
-        list.innerHTML = state.items.map(item => {
+        list.innerHTML = shown.map(item => {
             const canManage = state.isAdmin && item.is_broadcast === true && item.kind === "admin_broadcast";
+            const visual = notificationVisual(item);
             return `
             <article class="sn-item ${item.is_read ? "" : "unread"}" data-id="${escapeHtml(item.id)}">
-                <div class="sn-icon">${escapeHtml(item.icon || "🔔")}</div>
+                <div class="sn-icon" style="--sn-icon-bg:${escapeHtml(visual.bg)};--sn-icon-color:${escapeHtml(visual.color)}">${escapeHtml(visual.icon)}</div>
                 <div class="sn-content">
                     <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
                     <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
-                    <div class="sn-meta"><span>${escapeHtml(dateText(item.created_at))}</span></div>
+                    <div class="sn-meta">${item.is_read ? "" : `<span class="sn-dot"></span>`}<span>${escapeHtml(dateText(item.created_at))}</span></div>
                     ${canManage ? `<div class="sn-item-admin"><button class="sn-mini" data-edit-broadcast type="button">تعديل</button><button class="sn-mini danger" data-delete-broadcast type="button">حذف</button></div>` : ""}
                 </div>
                 <div class="sn-chevron" aria-hidden="true">‹</div>
@@ -3399,6 +3459,27 @@ document.addEventListener(
         updateBadge();
     }
 
+    function hideForTarget(item) {
+        const page = document.getElementById("student-notifications-page");
+        page?.classList.remove("is-open");
+        state.returnPending = true;
+        state.returnTargetId = item?.id || null;
+        document.body.style.overflow = "";
+    }
+
+    function hasPendingReturn() {
+        return state.returnPending === true;
+    }
+
+    function restoreAfterBack() {
+        if (!state.returnPending) return false;
+        state.returnPending = false;
+        state.returnTargetId = null;
+        window.StudentNavigation?.clearPages?.();
+        open({ fromReturn:true }).catch(console.error);
+        return true;
+    }
+
     async function openNotificationTarget(item) {
         const meta = item?.metadata || {};
         const kind = String(item?.kind || item?.type || "").toLowerCase();
@@ -3410,7 +3491,7 @@ document.addEventListener(
         const conversationId = meta.conversation_id || meta.chat_id || null;
         const orderId = meta.order_id || null;
 
-        close();
+        hideForTarget(item);
 
         if (conversationId || kind === "message" || kind.includes("chat") || link.startsWith("messages")) {
             if (window.StudentMessages?.openTarget) {
@@ -3482,6 +3563,7 @@ document.addEventListener(
             return;
         }
 
+        restoreAfterBack();
         toast("تعذر تحديد وجهة هذا الإشعار.");
     }
 
@@ -3853,22 +3935,34 @@ document.addEventListener(
         showFirstLoginPrompt();
     }
 
-    async function open() {
+    async function open(options = {}) {
         await init();
         const page = ensurePage();
+        if (!options.fromReturn) {
+            state.returnPending = false;
+            state.returnTargetId = null;
+        }
         page.classList.add("is-open");
         document.body.style.overflow = "hidden";
         await load();
-        await markAllRead();
     }
 
-    function close() {
+    function close(options = {}) {
         const page = document.getElementById("student-notifications-page");
         page?.classList.remove("is-open");
+        if (options.clearReturn !== false) {
+            state.returnPending = false;
+            state.returnTargetId = null;
+        }
         document.body.style.overflow = "";
+        return true;
     }
 
-    window.StudentNotifications = { init, open, close, enablePush };
+    function isOpen() {
+        return document.getElementById("student-notifications-page")?.classList.contains("is-open") === true;
+    }
+
+    window.StudentNotifications = { init, open, close, enablePush, isOpen, hasPendingReturn, restoreAfterBack };
     window.openNotifications = open;
 
     const wait = setInterval(() => {
