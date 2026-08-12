@@ -2,7 +2,7 @@
    Student Service Worker
    Offline shell + runtime cache + Firebase Cloud Messaging
 ========================================================= */
-const CACHE_VERSION = "student-v4.3.0";
+const CACHE_VERSION = "student-v4.4.0";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "./index.html";
@@ -72,7 +72,6 @@ self.addEventListener("fetch", (event) => {
 
     const url = new URL(request.url);
 
-    // Never cache Supabase/Firebase API calls.
     if (url.hostname.endsWith("supabase.co") || url.hostname.includes("googleapis.com")) return;
 
     if (request.mode === "navigate") {
@@ -85,11 +84,7 @@ self.addEventListener("fetch", (event) => {
     }
 });
 
-/*
-   IMPORTANT: register notificationclick BEFORE importing Firebase Messaging.
-   This preserves Student's custom click behavior for notifications created by
-   the page/service worker. FCM notification messages use fcm_options.link.
-*/
+/* Register click handling before Firebase Messaging imports. */
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
@@ -132,10 +127,26 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 /*
-   Background display is now handled by FCM itself because send-push sends a
-   notification payload + webpush.fcm_options.link. Do NOT call
-   showNotification here, otherwise one event may create duplicate alerts.
+   send-push sends DATA messages. For background/closed-tab delivery,
+   Firebase wakes this service worker and this handler displays the alert.
 */
 messaging.onBackgroundMessage((payload) => {
-    console.log("[Student SW] FCM background message received", payload?.messageId || "");
+    const data = payload?.data || {};
+    const title = data.title || "Student";
+    const notificationId = data.notification_id || "";
+    const targetUrl = new URL("./index.html", self.location.origin);
+    if (notificationId) targetUrl.searchParams.set("student_notification", notificationId);
+
+    return self.registration.showNotification(title, {
+        body: data.body || "لديك إشعار جديد",
+        icon: "./icon-192.png",
+        badge: "./icon-192.png",
+        tag: notificationId ? `student-${notificationId}` : "student-notification",
+        renotify: true,
+        data: {
+            url: targetUrl.href,
+            notification_id: notificationId,
+            kind: data.kind || ""
+        }
+    });
 });
