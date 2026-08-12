@@ -2,7 +2,7 @@
    Student Service Worker
    Offline shell + runtime cache + Firebase Cloud Messaging
 ========================================================= */
-const CACHE_VERSION = "student-v4.2.0";
+const CACHE_VERSION = "student-v4.3.0";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "./index.html";
@@ -85,44 +85,11 @@ self.addEventListener("fetch", (event) => {
     }
 });
 
-/* ===== Firebase Cloud Messaging ===== */
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
-
-firebase.initializeApp({
-    apiKey: "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0",
-    authDomain: "student-1fcba.firebaseapp.com",
-    projectId: "student-1fcba",
-    storageBucket: "student-1fcba.firebasestorage.app",
-    messagingSenderId: "898081758778",
-    appId: "1:898081758778:web:7c7f0fa6b2cb52387e5f03"
-});
-
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-    const data = payload?.data || {};
-    const title = data.title || "Student";
-    const notificationId = data.notification_id || "";
-    const targetUrl = new URL("./index.html", self.location.origin);
-    if (notificationId) targetUrl.searchParams.set("student_notification", notificationId);
-
-    const options = {
-        body: data.body || "لديك إشعار جديد",
-        icon: "./icon-192.png",
-        badge: "./icon-192.png",
-        tag: notificationId ? `student-${notificationId}` : "student-notification",
-        renotify: true,
-        data: {
-            url: targetUrl.href,
-            notification_id: notificationId,
-            kind: data.kind || ""
-        }
-    };
-
-    return self.registration.showNotification(title, options);
-});
-
+/*
+   IMPORTANT: register notificationclick BEFORE importing Firebase Messaging.
+   This preserves Student's custom click behavior for notifications created by
+   the page/service worker. FCM notification messages use fcm_options.link.
+*/
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
@@ -147,4 +114,28 @@ self.addEventListener("notificationclick", (event) => {
             return self.clients.openWindow ? self.clients.openWindow(target) : null;
         })
     );
+});
+
+/* ===== Firebase Cloud Messaging ===== */
+importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
+
+firebase.initializeApp({
+    apiKey: "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0",
+    authDomain: "student-1fcba.firebaseapp.com",
+    projectId: "student-1fcba",
+    storageBucket: "student-1fcba.firebasestorage.app",
+    messagingSenderId: "898081758778",
+    appId: "1:898081758778:web:7c7f0fa6b2cb52387e5f03"
+});
+
+const messaging = firebase.messaging();
+
+/*
+   Background display is now handled by FCM itself because send-push sends a
+   notification payload + webpush.fcm_options.link. Do NOT call
+   showNotification here, otherwise one event may create duplicate alerts.
+*/
+messaging.onBackgroundMessage((payload) => {
+    console.log("[Student SW] FCM background message received", payload?.messageId || "");
 });
