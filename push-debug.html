@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Student Push Debug</title>
+  <style>
+    body{font-family:Tahoma,Arial,sans-serif;background:#f5f7fb;color:#172033;margin:0;padding:20px}
+    .card{max-width:720px;margin:0 auto;background:#fff;border:1px solid #e4e9f0;border-radius:18px;padding:18px}
+    h1{font-size:22px;margin:0 0 14px}
+    button{width:100%;border:0;border-radius:12px;padding:13px 14px;margin:7px 0;background:#087cff;color:#fff;font-weight:700;font-size:15px}
+    button.secondary{background:#eef3f8;color:#172033}
+    pre{background:#0f1720;color:#d7e3f0;padding:12px;border-radius:12px;white-space:pre-wrap;word-break:break-word;min-height:120px}
+    .ok{color:#16803c}.bad{color:#c62828}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>فحص إشعارات Student</h1>
+    <button id="statusBtn" class="secondary">فحص الحالة</button>
+    <button id="localBtn">اختبار إشعار محلي</button>
+    <button id="swBtn" class="secondary">فحص Service Worker</button>
+    <pre id="out">جاهز للفحص...</pre>
+  </div>
+
+<script>
+const out = document.getElementById('out');
+function log(msg){ out.textContent += "\n" + msg; }
+function reset(msg){ out.textContent = msg; }
+
+async function getReg(){
+  if (!('serviceWorker' in navigator)) throw new Error('Service Worker غير مدعوم');
+  const regs = await navigator.serviceWorker.getRegistrations();
+  const lines = regs.map((r,i)=>[
+    `#${i+1}`,
+    `scope: ${r.scope}`,
+    `active: ${r.active?.scriptURL || 'none'}`,
+    `waiting: ${r.waiting?.scriptURL || 'none'}`,
+    `installing: ${r.installing?.scriptURL || 'none'}`
+  ].join('\n'));
+  return { regs, text: lines.join('\n\n') || 'لا يوجد Service Worker مسجل' };
+}
+
+document.getElementById('statusBtn').onclick = async () => {
+  reset('=== الحالة ===');
+  log('origin: ' + location.origin);
+  log('secureContext: ' + window.isSecureContext);
+  log('Notification API: ' + ('Notification' in window));
+  log('Notification.permission: ' + (('Notification' in window) ? Notification.permission : 'unsupported'));
+  log('ServiceWorker API: ' + ('serviceWorker' in navigator));
+  try{
+    const ready = await navigator.serviceWorker.ready;
+    log('ready active: ' + (ready.active?.scriptURL || 'none'));
+  }catch(e){
+    log('ready error: ' + e.message);
+  }
+};
+
+document.getElementById('swBtn').onclick = async () => {
+  reset('=== Service Worker ===');
+  try{
+    const info = await getReg();
+    log(info.text);
+  }catch(e){
+    log('ERROR: ' + e.message);
+  }
+};
+
+document.getElementById('localBtn').onclick = async () => {
+  reset('=== اختبار إشعار محلي ===');
+  try{
+    if (!('Notification' in window)) throw new Error('Notification API غير مدعوم');
+
+    if (Notification.permission !== 'granted'){
+      const p = await Notification.requestPermission();
+      log('permission: ' + p);
+      if (p !== 'granted') throw new Error('لم يتم منح إذن الإشعارات');
+    } else {
+      log('permission: granted');
+    }
+
+    let reg = await navigator.serviceWorker.ready;
+    log('worker: ' + (reg.active?.scriptURL || 'none'));
+
+    await reg.showNotification('اختبار Student المحلي 🔔', {
+      body: 'إذا ظهر هذا الإشعار فـ Android/Chrome وService Worker قادران على عرض الإشعارات.',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'student-local-debug-' + Date.now(),
+      renotify: true,
+      data: { url: './index.html' }
+    });
+
+    log('تم استدعاء showNotification بنجاح.');
+    log('راقب شريط إشعارات الهاتف الآن.');
+  }catch(e){
+    log('ERROR: ' + (e?.message || e));
+  }
+};
+</script>
+</body>
+</html>
