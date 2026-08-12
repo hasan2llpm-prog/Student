@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Student Push Repair</title>
+  <style>
+    body{font-family:Tahoma,Arial,sans-serif;background:#f5f7fb;color:#172033;margin:0;padding:20px}
+    .card{max-width:720px;margin:0 auto;background:#fff;border:1px solid #e4e9f0;border-radius:18px;padding:18px}
+    h1{font-size:22px;margin:0 0 10px}
+    p{line-height:1.8;color:#566171}
+    button{width:100%;border:0;border-radius:12px;padding:13px 14px;margin:7px 0;background:#087cff;color:#fff;font-weight:700;font-size:15px}
+    button.secondary{background:#eef3f8;color:#172033}
+    button.danger{background:#d93025}
+    pre{background:#0f1720;color:#d7e3f0;padding:12px;border-radius:12px;white-space:pre-wrap;word-break:break-word;min-height:120px}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>إصلاح Push في Student</h1>
+  <p>هذا الملف يحذف تسجيل Firebase القديم فقط، ويُبقي Service Worker الرئيسي الخاص بـ Student.</p>
+  <button id="scan" class="secondary">فحص Service Workers</button>
+  <button id="repair" class="danger">تنظيف تسجيل FCM القديم</button>
+  <pre id="out">جاهز...</pre>
+</div>
+
+<script type="module">
+const out = document.getElementById('out');
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0",
+  authDomain: "student-1fcba.firebaseapp.com",
+  projectId: "student-1fcba",
+  storageBucket: "student-1fcba.firebasestorage.app",
+  messagingSenderId: "898081758778",
+  appId: "1:898081758778:web:7c7f0fa6b2cb52387e5f03"
+};
+
+function reset(s){ out.textContent=s; }
+function log(s){ out.textContent += "\n" + s; }
+
+async function scan(){
+  reset("=== Service Workers ===");
+  const regs = await navigator.serviceWorker.getRegistrations();
+  if(!regs.length){ log("لا يوجد أي تسجيل."); return regs; }
+  regs.forEach((r,i)=>{
+    log(`#${i+1}`);
+    log(`scope: ${r.scope}`);
+    log(`active: ${r.active?.scriptURL || "none"}`);
+    log("");
+  });
+  return regs;
+}
+
+document.getElementById('scan').onclick = () => scan().catch(e => reset("ERROR: "+e.message));
+
+document.getElementById('repair').onclick = async () => {
+  reset("=== بدء التنظيف ===");
+  try{
+    // حذف FCM token المحلي الحالي إن أمكن
+    try{
+      const appSdk = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js");
+      const msgSdk = await import("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js");
+      const app = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
+      const messaging = msgSdk.getMessaging(app);
+      await msgSdk.deleteToken(messaging);
+      log("✓ تم حذف FCM token المحلي.");
+    }catch(e){
+      log("تنبيه: تعذر حذف token عبر SDK: " + (e?.message || e));
+    }
+
+    const regs = await navigator.serviceWorker.getRegistrations();
+    let removed = 0;
+    for(const reg of regs){
+      const isOldFcmScope = reg.scope.includes("/firebase-cloud-messaging-push-scope");
+      const isOldFcmScript = (reg.active?.scriptURL || "").includes("/firebase-messaging-sw.js");
+      if(isOldFcmScope || isOldFcmScript){
+        const ok = await reg.unregister();
+        if(ok){ removed++; log("✓ تم حذف تسجيل FCM القديم: " + reg.scope); }
+      }
+    }
+
+    // إجبار Student على إنشاء token جديد في الزيارة التالية
+    Object.keys(localStorage).forEach(k => {
+      if(k.startsWith("student-fcm-token:") || k.startsWith("student-fcm-migration-")) {
+        localStorage.removeItem(k);
+      }
+    });
+    log(`✓ أزيل ${removed} تسجيل قديم.`);
+    log("✓ تم مسح مفاتيح ترحيل FCM المحلية.");
+    log("");
+    log("الآن أغلق هذه الصفحة وافتح Student مرة واحدة لمدة 15 ثانية.");
+    log("بعدها ارجع وافحص Service Workers: يجب أن يبقى تسجيل واحد فقط لـ sw.js.");
+  }catch(e){
+    log("ERROR: " + (e?.message || e));
+  }
+};
+</script>
+</body>
+</html>
