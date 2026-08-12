@@ -3237,7 +3237,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "10.14.1";
-    const SW_URL = "./sw.js?v=4.2.0";
+    const SW_URL = "./firebase-messaging-sw.js?v=5.0.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -3732,7 +3732,11 @@ document.addEventListener(
                 throw new Error("FCM_UNSUPPORTED");
             }
             const firebaseApp = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
-            return { messaging: messagingSdk.getMessaging(firebaseApp), getToken: messagingSdk.getToken };
+            return {
+                messaging: messagingSdk.getMessaging(firebaseApp),
+                getToken: messagingSdk.getToken,
+                deleteToken: messagingSdk.deleteToken
+            };
         })();
         return firebaseMessagingPromise;
     }
@@ -3758,12 +3762,28 @@ document.addEventListener(
         }
 
         const registration = await registerServiceWorker();
-        const { messaging, getToken } = await getFirebaseMessagingClient();
+        const { messaging, getToken, deleteToken } = await getFirebaseMessagingClient();
+
+        /* One-time FCM migration: force a fresh token bound to the new
+           Firebase messaging service worker and current sender/VAPID key. */
+        const migrationKey = "student-fcm-migration-898081758778-v5";
+        if (localStorage.getItem(migrationKey) !== "done") {
+            try {
+                await deleteToken(messaging);
+            } catch (error) {
+                console.warn("Old FCM token cleanup skipped:", error);
+            }
+
+            localStorage.removeItem(`student-fcm-token:${state.user.id}`);
+        }
+
         const token = await getToken(messaging, {
             vapidKey: FIREBASE_VAPID_KEY,
             serviceWorkerRegistration: registration
         });
         if (!token) throw new Error("FCM_TOKEN_EMPTY");
+
+        localStorage.setItem(migrationKey, "done");
 
         const { error } = await client.rpc("student_register_push_token", {
             p_token: token,
