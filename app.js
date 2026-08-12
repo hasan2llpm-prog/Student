@@ -3227,8 +3227,18 @@ document.addEventListener(
 
     if (window.StudentNotifications) return;
 
-    const VAPID_PUBLIC_KEY = "BDzANVHrkwSN1O6cIyREd5yYgjo7pxiGiizwdOGw2nHIxciXm5Fs5jxmCGh9NjOMX3Xo0t2sd949fLrRfJwTCQI";
-    const SW_URL = "./sw.js?v=4.1.0";
+    const FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0",
+        authDomain: "student-1fcba.firebaseapp.com",
+        projectId: "student-1fcba",
+        storageBucket: "student-1fcba.firebasestorage.app",
+        messagingSenderId: "898081758778",
+        appId: "1:898081758778:web:7c7f0fa6b2cb52387e5f03"
+    };
+    const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
+    const FIREBASE_SDK_VERSION = "10.14.1";
+    const SW_URL = "./sw.js?v=4.2.0";
+    let firebaseMessagingPromise = null;
 
     const state = {
         user: null,
@@ -3713,52 +3723,68 @@ document.addEventListener(
         });
     }
 
-    function urlBase64ToUint8Array(base64String) {
-        const padding = "=".repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-        const rawData = atob(base64);
-        return Uint8Array.from([...rawData].map(ch => ch.charCodeAt(0)));
+    async function getFirebaseMessagingClient() {
+        if (firebaseMessagingPromise) return firebaseMessagingPromise;
+        firebaseMessagingPromise = (async () => {
+            const appSdk = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`);
+            const messagingSdk = await import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-messaging.js`);
+            if (typeof messagingSdk.isSupported === "function" && !(await messagingSdk.isSupported())) {
+                throw new Error("FCM_UNSUPPORTED");
+            }
+            const firebaseApp = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
+            return { messaging: messagingSdk.getMessaging(firebaseApp), getToken: messagingSdk.getToken };
+        })();
+        return firebaseMessagingPromise;
     }
 
     async function registerServiceWorker() {
         if (!("serviceWorker" in navigator)) throw new Error("SERVICE_WORKER_UNSUPPORTED");
-        return navigator.serviceWorker.register(SW_URL, { scope: "./" });
+        const registration = await navigator.serviceWorker.register(SW_URL, { scope: "./" });
+        await navigator.serviceWorker.ready;
+        return registration;
     }
 
-    async function enablePush() {
+    async function syncFirebasePushToken({ requestPermission = false, silent = false } = {}) {
         const client = sb();
-        if (!client || !state.user) return;
-        try {
+        if (!client || !state.user || !("Notification" in window)) return false;
+
+        if (Notification.permission !== "granted") {
+            if (!requestPermission) return false;
             const permission = await Notification.requestPermission();
             if (permission !== "granted") {
                 renderPermission();
-                return;
+                return false;
             }
-            const registration = await registerServiceWorker();
-            let subscription = await registration.pushManager.getSubscription();
-            if (!subscription) {
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                });
-            }
-            const json = subscription.toJSON();
-            const { error } = await client.from("push_subscriptions").upsert({
-                user_id: state.user.id,
-                endpoint: json.endpoint,
-                p256dh: json.keys?.p256dh || "",
-                auth: json.keys?.auth || "",
-                user_agent: navigator.userAgent,
-                is_active: true,
-                updated_at: new Date().toISOString()
-            }, { onConflict: "user_id,endpoint" });
-            if (error) throw error;
-            localStorage.setItem(`student-push-asked:${state.user.id}`, "yes");
-            renderPermission();
-            toast("تم تفعيل إشعارات الهاتف.");
+        }
+
+        const registration = await registerServiceWorker();
+        const { messaging, getToken } = await getFirebaseMessagingClient();
+        const token = await getToken(messaging, {
+            vapidKey: FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration: registration
+        });
+        if (!token) throw new Error("FCM_TOKEN_EMPTY");
+
+        const { error } = await client.rpc("student_register_push_token", {
+            p_token: token,
+            p_user_agent: navigator.userAgent || null,
+            p_platform: "web"
+        });
+        if (error) throw error;
+
+        localStorage.setItem(`student-fcm-token:${state.user.id}`, token);
+        localStorage.setItem(`student-push-asked:${state.user.id}`, "yes");
+        renderPermission();
+        if (!silent) toast("تم تفعيل الإشعارات الخارجية.");
+        return true;
+    }
+
+    async function enablePush() {
+        try {
+            await syncFirebasePushToken({ requestPermission: true, silent: false });
         } catch (error) {
-            console.error("Push enable error:", error);
-            toast("تعذر تفعيل الإشعارات الخارجية. تأكد من تشغيل SQL ورفع sw.js.");
+            console.error("FCM enable error:", error);
+            toast("تعذر تفعيل الإشعارات الخارجية. شغّل كود Push SQL ثم أعد المحاولة.");
         }
     }
 
@@ -3903,21 +3929,40 @@ document.addEventListener(
             notificationId = rpcResult.data || null;
 
             // الإشعار الداخلي تم نشره. فشل Push الخارجي لا يلغي نجاح النشر الداخلي.
-            if (notificationId) {
-                try {
-                    const pushResult = await client.functions.invoke("send-push", {
-                        body: { notification_id: notificationId, broadcast: true }
-                    });
-                    if (pushResult?.error) console.warn("External push invoke failed:", pushResult.error);
-                } catch (error2) {
-                    console.warn("External push invoke failed:", error2);
-                }
-            }
 
             modal.remove();
             await load();
             toast("تم نشر الإشعار للجميع داخل التطبيق.");
         };
+    }
+
+    async function openExternalNotificationIfNeeded() {
+        let notificationId = null;
+        try {
+            const url = new URL(location.href);
+            notificationId = url.searchParams.get("student_notification");
+            if (!notificationId) return false;
+            url.searchParams.delete("student_notification");
+            history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+        } catch (_) {
+            return false;
+        }
+
+        const existing = state.items.find(x => String(x.id) === String(notificationId));
+        let item = existing || null;
+        if (!item) {
+            const client = sb();
+            const { data } = await client
+                .from("notifications")
+                .select("id,title,body,icon,kind,link,is_read,created_at,actor_id,metadata,is_broadcast,audience,user_id")
+                .eq("id", notificationId)
+                .maybeSingle();
+            item = data || null;
+        }
+        if (!item) return false;
+        if (!item.is_read) await markRead(item.id);
+        await openNotificationTarget(item);
+        return true;
     }
 
     async function init() {
@@ -3932,7 +3977,11 @@ document.addEventListener(
         await registerServiceWorker().catch(() => null);
         await load();
         await subscribeRealtime();
-        showFirstLoginPrompt();
+        if (Notification.permission === "granted") {
+            syncFirebasePushToken({ requestPermission:false, silent:true }).catch(error => console.warn("FCM token sync failed:", error));
+        }
+        const openedExternal = await openExternalNotificationIfNeeded().catch(() => false);
+        if (!openedExternal) showFirstLoginPrompt();
     }
 
     async function open(options = {}) {
