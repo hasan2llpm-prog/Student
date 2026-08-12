@@ -3237,7 +3237,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "10.14.1";
-    const SW_URL = "./firebase-messaging-sw.js?v=5.0.0";
+    const SW_URL = "./sw.js?v=6.0.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -3743,9 +3743,36 @@ document.addEventListener(
 
     async function registerServiceWorker() {
         if (!("serviceWorker" in navigator)) throw new Error("SERVICE_WORKER_UNSUPPORTED");
-        const registration = await navigator.serviceWorker.register(SW_URL, { scope: "./" });
-        await navigator.serviceWorker.ready;
-        return registration;
+
+        const registration = await navigator.serviceWorker.register(SW_URL, {
+            scope: "./",
+            updateViaCache: "none"
+        });
+
+        try {
+            await registration.update();
+        } catch (_) {}
+
+        const candidate = registration.installing || registration.waiting;
+        if (candidate && candidate.state !== "activated") {
+            await new Promise((resolve) => {
+                const timeout = setTimeout(resolve, 8000);
+                candidate.addEventListener("statechange", function onStateChange() {
+                    if (candidate.state === "activated" || candidate.state === "redundant") {
+                        clearTimeout(timeout);
+                        candidate.removeEventListener("statechange", onStateChange);
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        const readyRegistration = await navigator.serviceWorker.ready;
+        if (!readyRegistration.active) {
+            throw new Error("SERVICE_WORKER_NOT_ACTIVE");
+        }
+
+        return readyRegistration;
     }
 
     async function syncFirebasePushToken({ requestPermission = false, silent = false } = {}) {
@@ -3766,7 +3793,7 @@ document.addEventListener(
 
         /* One-time FCM migration: force a fresh token bound to the new
            Firebase messaging service worker and current sender/VAPID key. */
-        const migrationKey = "student-fcm-migration-898081758778-v5";
+        const migrationKey = "student-fcm-migration-898081758778-v6";
         if (localStorage.getItem(migrationKey) !== "done") {
             try {
                 await deleteToken(messaging);
