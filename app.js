@@ -3237,7 +3237,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "10.14.1";
-    const SW_URL = "./sw.js?v=6.0.0";
+    const SW_URL = "./sw.js?v=6.1.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -3734,8 +3734,7 @@ document.addEventListener(
             const firebaseApp = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
             return {
                 messaging: messagingSdk.getMessaging(firebaseApp),
-                getToken: messagingSdk.getToken,
-                deleteToken: messagingSdk.deleteToken
+                getToken: messagingSdk.getToken
             };
         })();
         return firebaseMessagingPromise;
@@ -3789,28 +3788,20 @@ document.addEventListener(
         }
 
         const registration = await registerServiceWorker();
-        const { messaging, getToken, deleteToken } = await getFirebaseMessagingClient();
+        const { messaging, getToken } = await getFirebaseMessagingClient();
 
-        /* One-time FCM migration: force a fresh token bound to the new
-           Firebase messaging service worker and current sender/VAPID key. */
-        const migrationKey = "student-fcm-migration-898081758778-v6";
-        if (localStorage.getItem(migrationKey) !== "done") {
-            try {
-                await deleteToken(messaging);
-            } catch (error) {
-                console.warn("Old FCM token cleanup skipped:", error);
-            }
-
-            localStorage.removeItem(`student-fcm-token:${state.user.id}`);
-        }
-
+        /*
+         * IMPORTANT:
+         * Always bind FCM to Student's existing Service Worker.
+         * Do not call deleteToken() here because this app uses a custom
+         * ServiceWorkerRegistration instead of Firebase's default
+         * /firebase-cloud-messaging-push-scope registration.
+         */
         const token = await getToken(messaging, {
             vapidKey: FIREBASE_VAPID_KEY,
             serviceWorkerRegistration: registration
         });
         if (!token) throw new Error("FCM_TOKEN_EMPTY");
-
-        localStorage.setItem(migrationKey, "done");
 
         const { error } = await client.rpc("student_register_push_token", {
             p_token: token,
