@@ -1650,6 +1650,35 @@
 
 
     /* =====================================================
+       تأكيد موحّد للعمليات الحساسة
+    ===================================================== */
+
+    function askUserConfirmation(title, message, confirmText = "تأكيد") {
+        return new Promise(function (resolve) {
+            document.getElementById("student-generic-confirm")?.remove();
+            const overlay = document.createElement("div");
+            overlay.id = "student-generic-confirm";
+            overlay.style.cssText = `position:fixed;inset:0;z-index:100002120;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.5);direction:rtl`;
+            overlay.innerHTML = `
+                <div style="width:100%;max-width:390px;background:#fff;border-radius:22px;padding:20px;box-sizing:border-box;box-shadow:0 20px 70px rgba(0,0,0,.3)">
+                    <div style="font-size:19px;font-weight:800;color:#222;margin-bottom:10px">${escapeHTML(title)}</div>
+                    <div style="color:#666;line-height:1.8;font-size:14px">${escapeHTML(message)}</div>
+                    <div style="display:flex;gap:10px;margin-top:18px">
+                        <button type="button" data-cancel style="flex:1;border:0;padding:13px;border-radius:13px;background:#f1f3f5;cursor:pointer;font-weight:700">إلغاء</button>
+                        <button type="button" data-confirm style="flex:1;border:0;padding:13px;border-radius:13px;background:#d93025;color:#fff;cursor:pointer;font-weight:700">${escapeHTML(confirmText)}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            const finish = function (value) { overlay.remove(); resolve(value); };
+            overlay.querySelector("[data-cancel]")?.addEventListener("click", () => finish(false));
+            overlay.querySelector("[data-confirm]")?.addEventListener("click", () => finish(true));
+            overlay.addEventListener("click", event => { if (event.target === overlay) finish(false); });
+        });
+    }
+
+    window.StudentAskConfirmation = askUserConfirmation;
+
+    /* =====================================================
        تأكيد تسجيل الخروج
     ===================================================== */
 
@@ -4553,8 +4582,10 @@
                 async function () {
 
                     const confirmed =
-                        window.confirm(
-                            "هل أنت متأكد أنك تريد تسجيل الخروج من جميع الأجهزة؟"
+                        await window.StudentAskConfirmation(
+                            "تسجيل الخروج من جميع الأجهزة",
+                            "سيتم إنهاء جلسات تسجيل الدخول على جميع الأجهزة، بما فيها هذا الجهاز.",
+                            "تسجيل الخروج"
                         );
 
 
@@ -5632,8 +5663,10 @@
 
 
         const confirmed =
-            window.confirm(
-                "هل تريد إزالة هذا العنصر من المحفوظات؟"
+            await window.StudentAskConfirmation(
+                "إزالة من المحفوظات",
+                "هل تريد إزالة هذا العنصر من المحفوظات؟",
+                "إزالة"
             );
 
 
