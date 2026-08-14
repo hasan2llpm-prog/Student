@@ -1966,7 +1966,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education-admin.js?v=1.0.0";
+        script.src = "education-admin.js?v=1.1.0";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2277,6 +2277,11 @@ function openBottomSection(section) {
             return;
         }
     }
+    if (section === "reels") {
+        window.openStudentReels?.(0);
+        return;
+    }
+
     if (section === "messages") {
         window.openStudentMessages?.();
         return;
@@ -2455,7 +2460,7 @@ function loadNavigationManager() { return Promise.resolve(window.StudentNavigati
 function loadAdminSystem() {
 
     loadExternalScript(
-        "education-admin.js?v=1.0.0",
+        "education-admin.js?v=1.1.0",
         "student-admin",
         "Student Admin"
     );
@@ -3237,7 +3242,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "12.17.1";
-    const SW_URL = "./sw.js?v=7.0.0";
+    const SW_URL = "./sw.js?v=8.0.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -3250,7 +3255,10 @@ document.addEventListener(
         initializedFor: null,
         returnPending: false,
         returnTargetId: null,
-        filter: "all"
+        filter: "all",
+        profiles: {},
+        lastLoadedAt: 0,
+        loadPromise: null
     };
 
     function sb() {
@@ -3287,7 +3295,7 @@ document.addEventListener(
             .sn-filterbar{display:flex;gap:8px;align-items:center;overflow:auto;margin:2px 0 12px;padding-bottom:2px}.sn-filter{border:1px solid #e1e7ef;background:#fff;color:#536072;border-radius:999px;padding:8px 12px;font:inherit;font-size:12px;font-weight:800;white-space:nowrap}.sn-filter.active{background:#172033;color:#fff;border-color:#172033}
             .sn-list{display:grid;gap:9px}.sn-item{position:relative;border:1px solid #e8edf3;border-radius:19px;padding:13px;background:#fff;display:flex;gap:12px;align-items:flex-start;box-shadow:0 5px 16px rgba(25,39,58,.04);transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease;cursor:pointer;overflow:hidden}.sn-item:active{transform:scale(.994)}
             .sn-item.unread{background:linear-gradient(135deg,#f5f9ff,#fff);border-color:#cfe0fb}.sn-item.unread:before{content:"";position:absolute;right:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:#087cff}.sn-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;flex:0 0 48px;font-size:21px;background:var(--sn-icon-bg,#eef4ff);color:var(--sn-icon-color,#087cff);box-shadow:inset 0 0 0 1px rgba(0,0,0,.025)}
-            .sn-content{min-width:0;flex:1}.sn-item-title{font-weight:900;margin-bottom:4px;font-size:14px;line-height:1.45}.sn-item-text{color:#566274;line-height:1.6;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.sn-meta{font-size:10px;color:#929baa;margin-top:7px;display:flex;align-items:center;gap:6px}.sn-dot{width:5px;height:5px;border-radius:50%;background:#087cff}.sn-chevron{align-self:center;color:#b1bac7;font-size:22px;line-height:1}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
+            .sn-content{min-width:0;flex:1}.sn-actor{display:flex;align-items:center;gap:3px;font-size:12px;font-weight:900;color:#243247;margin-bottom:3px}.sn-item-title{font-weight:900;margin-bottom:4px;font-size:14px;line-height:1.45}.sn-item-text{color:#566274;line-height:1.6;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.sn-meta{font-size:10px;color:#929baa;margin-top:7px;display:flex;align-items:center;gap:6px}.sn-dot{width:5px;height:5px;border-radius:50%;background:#087cff}.sn-chevron{align-self:center;color:#b1bac7;font-size:22px;line-height:1}.sn-item-admin{display:flex;gap:8px;margin-top:10px}.sn-mini{border:0;border-radius:9px;padding:7px 10px;font:inherit;font-size:11px;font-weight:800;cursor:pointer;background:#eef2f7;color:#223047}.sn-mini.danger{background:#fff0f2;color:#c9293b}
             .sn-empty{text-align:center;padding:70px 20px;color:#788393}.sn-empty .bell{width:74px;height:74px;border-radius:24px;background:#fff;display:grid;place-items:center;font-size:34px;margin:0 auto 14px;box-shadow:0 10px 28px rgba(20,40,70,.08)}
             .sn-modal{position:fixed;inset:0;z-index:2147482300;background:rgba(10,20,35,.48);display:flex;align-items:flex-end;justify-content:center;padding:14px}.sn-sheet{width:min(620px,100%);background:#fff;border-radius:24px;padding:18px;max-height:90vh;overflow:auto}.sn-sheet h3{margin:0 0 15px}
             .sn-field{margin-bottom:12px}.sn-field label{display:block;font-weight:700;margin-bottom:6px}.sn-field input,.sn-field textarea,.sn-field select{width:100%;box-sizing:border-box;border:1px solid #dbe1ea;border-radius:12px;padding:12px;font:inherit;outline:none}.sn-field textarea{min-height:110px;resize:vertical}
@@ -3396,6 +3404,42 @@ document.addEventListener(
         box.querySelector("#sn-enable-push")?.addEventListener("click", enablePush);
     }
 
+    function verificationBadgeHTML(profile, size = 12) {
+        if (!profile) return "";
+        if (typeof window.studentVerificationBadge === "function") return window.studentVerificationBadge(profile, size);
+        let html = "";
+        if (profile.is_verified === true) {
+            const colorName = String(profile.verification_color || "").toLowerCase();
+            const color = colorName === "orange" ? "#ff8a00" : colorName === "red" ? "#e53935" : "#0095f6";
+            html += `<span aria-label="حساب موثق" title="حساب موثق" style="display:inline-grid;place-items:center;width:${Math.max(11, Number(size)||12)}px;height:${Math.max(11, Number(size)||12)}px;border-radius:50%;background:${color};color:#fff;font-size:8px;font-weight:900;margin-inline-start:3px;vertical-align:1px">✓</span>`;
+        }
+        const icon = String(profile.custom_badge_icon || "").trim().slice(0,8);
+        if (icon) {
+            const color = /^#[0-9a-f]{6}$/i.test(String(profile.custom_badge_color || "")) ? profile.custom_badge_color : "#7c3aed";
+            html += `<span title="${escapeHtml(profile.custom_badge_label || "علامة مميزة")}" style="display:inline-grid;place-items:center;min-width:14px;height:14px;padding:0 2px;border-radius:999px;background:${escapeHtml(color)};color:#fff;font-size:9px;margin-inline-start:3px">${escapeHtml(icon)}</span>`;
+        }
+        return html;
+    }
+
+    async function hydrateNotificationProfiles(items = state.items) {
+        const client = sb();
+        if (!client) return;
+        const ids = [...new Set((items || []).map(x => x.actor_id || x?.metadata?.actor_id || x?.metadata?.user_id).filter(Boolean).map(String))]
+            .filter(id => !state.profiles[id]);
+        if (!ids.length) return;
+        const { data, error } = await client.from("profiles")
+            .select("id,full_name,username,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color")
+            .in("id", ids);
+        if (error) return;
+        (data || []).forEach(profile => { state.profiles[String(profile.id)] = profile; });
+        if (isOpen()) render();
+    }
+
+    function actorProfile(item) {
+        const id = item?.actor_id || item?.metadata?.actor_id || item?.metadata?.user_id || null;
+        return id ? state.profiles[String(id)] || null : null;
+    }
+
     function notificationVisual(item) {
         const kind = String(item?.kind || "").toLowerCase();
         if (kind.includes("message") || kind.includes("chat")) return { icon:"💬", bg:"#edf8ff", color:"#087cff" };
@@ -3439,10 +3483,12 @@ document.addEventListener(
         list.innerHTML = shown.map(item => {
             const canManage = state.isAdmin && item.is_broadcast === true && item.kind === "admin_broadcast";
             const visual = notificationVisual(item);
+            const actor = actorProfile(item);
             return `
             <article class="sn-item ${item.is_read ? "" : "unread"}" data-id="${escapeHtml(item.id)}">
                 <div class="sn-icon" style="--sn-icon-bg:${escapeHtml(visual.bg)};--sn-icon-color:${escapeHtml(visual.color)}">${escapeHtml(visual.icon)}</div>
                 <div class="sn-content">
+                    ${actor ? `<div class="sn-actor">${escapeHtml(actor.full_name || actor.username || "مستخدم")}${verificationBadgeHTML(actor,12)}</div>` : ""}
                     <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
                     <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
                     <div class="sn-meta">${item.is_read ? "" : `<span class="sn-dot"></span>`}<span>${escapeHtml(dateText(item.created_at))}</span></div>
@@ -3577,11 +3623,13 @@ document.addEventListener(
         toast("تعذر تحديد وجهة هذا الإشعار.");
     }
 
-    async function load() {
+    async function load(options = {}) {
         const client = sb();
         if (!client || !state.user) return;
+        if (state.loadPromise) return state.loadPromise;
+        state.loadPromise = (async () => {
         state.loading = true;
-        render();
+        if (!options.silent || !state.items.length) render();
         const { data, error } = await client
             .from("notifications")
             .select("id,title,body,icon,kind,link,is_read,created_at,actor_id,metadata,is_broadcast,audience,user_id")
@@ -3591,9 +3639,8 @@ document.addEventListener(
         state.loading = false;
         if (error) {
             console.error("Notifications load error:", error);
-            state.items = [];
             render();
-            toast("تعذر تحميل الإشعارات. شغّل كود SQL أولًا.");
+            if (!state.items.length) toast("تعذر تحميل الإشعارات.");
             return;
         }
         const rows = data || [];
@@ -3611,8 +3658,12 @@ document.addEventListener(
             ...item,
             is_read: item.is_broadcast === true ? readBroadcasts.has(String(item.id)) : item.is_read === true
         }));
+        state.lastLoadedAt = Date.now();
         render();
-        await markAllDelivered();
+        hydrateNotificationProfiles(state.items).catch(() => {});
+        markAllDelivered().catch(() => {});
+        })();
+        try { return await state.loadPromise; } finally { state.loading = false; state.loadPromise = null; }
     }
 
     async function markRead(id) {
@@ -3693,6 +3744,7 @@ document.addEventListener(
                 if (!belongs) return;
                 state.items.unshift({ ...item, is_read: false });
                 render();
+                hydrateNotificationProfiles([item]).catch(() => {});
                 showForeground(item);
             })
             .on("postgres_changes", { event: "UPDATE", schema: "public", table: "notifications" }, payload => {
@@ -4058,9 +4110,9 @@ document.addEventListener(
         state.initializedFor = user.id;
         state.user = user;
         state.isAdmin = await checkAdmin();
-        await registerServiceWorker().catch(() => null);
-        await load();
-        await subscribeRealtime();
+        registerServiceWorker().catch(() => null);
+        await load({ silent: state.items.length > 0 });
+        subscribeRealtime().catch(console.error);
         if (Notification.permission === "granted") {
             syncFirebasePushToken({ requestPermission:false, silent:true }).catch(error => console.warn("FCM FID sync failed:", error));
 
@@ -4079,7 +4131,6 @@ document.addEventListener(
     }
 
     async function open(options = {}) {
-        await init();
         const page = ensurePage();
         if (!options.fromReturn) {
             state.returnPending = false;
@@ -4087,7 +4138,11 @@ document.addEventListener(
         }
         page.classList.add("is-open");
         document.body.style.overflow = "hidden";
-        await load();
+        render();
+        await init();
+        if (state.user && Date.now() - state.lastLoadedAt > 8000) {
+            load({ silent: state.items.length > 0 }).catch(console.error);
+        }
     }
 
     function close(options = {}) {
