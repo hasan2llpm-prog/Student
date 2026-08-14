@@ -29,60 +29,46 @@ function safeSearch(value) {
     return String(value || "").replace(/[,%()]/g, " ").trim().slice(0, 80);
 }
 
+function ensureCosmeticStyles() {
+    if (document.getElementById("student-profile-cosmetics-style")) return;
+    const style = document.createElement("style");
+    style.id = "student-profile-cosmetics-style";
+    style.textContent = `
+        .student-avatar-frame{position:relative;display:inline-grid;place-items:center;flex:0 0 auto}
+        .student-avatar-frame:after{content:"";position:absolute;inset:-6px;background-image:var(--student-profile-frame);background-size:100% 100%;background-position:center;background-repeat:no-repeat;pointer-events:none;z-index:2}
+        .student-custom-badge{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 2px;border-radius:999px;color:#fff;font-size:10px;font-weight:900;line-height:1;margin-inline-start:3px;vertical-align:-1px;box-sizing:border-box}
+    `;
+    document.head.appendChild(style);
+}
+ensureCosmeticStyles();
+
 function verificationBadge(profile, size = 15) {
-    if (!profile || profile.is_verified !== true) return "";
+    if (!profile) return "";
+    let html = "";
+    if (profile.is_verified === true) {
+        const colorName = String(profile.verification_color || "").toLowerCase();
+        const color = colorName === "orange" ? "#ff8a00" : colorName === "red" ? "#e53935" : "#0095f6";
+        const label = colorName === "orange" ? "حساب أدمن موثّق" : colorName === "red" ? "حساب أستاذ موثّق" : "حساب موثّق";
+        const px = Math.max(12, Number(size) || 15);
+        html += `<span class="student-verification-badge" title="${esc(label)}" aria-label="${esc(label)}" style="--verification-color:${color};--verification-size:${px}px;display:inline-flex;width:var(--verification-size);height:var(--verification-size);margin-inline-start:4px;vertical-align:-2px;position:relative;align-items:center;justify-content:center;flex:0 0 auto"><span aria-hidden="true" style="position:absolute;inset:1px;background:var(--verification-color);clip-path:polygon(50% 0%,61% 8%,74% 5%,82% 18%,95% 26%,92% 40%,100% 50%,92% 61%,95% 74%,82% 82%,74% 95%,61% 92%,50% 100%,39% 92%,26% 95%,18% 82%,5% 74%,8% 61%,0% 50%,8% 40%,5% 26%,18% 18%,26% 5%,39% 8%)"></span><i class="fa-solid fa-check" aria-hidden="true" style="position:relative;z-index:1;color:#fff;font-size:calc(var(--verification-size) * .55);line-height:1"></i></span>`;
+    }
+    const icon = String(profile.custom_badge_icon || "").trim().slice(0, 8);
+    if (icon) {
+        const color = /^#[0-9a-f]{6}$/i.test(String(profile.custom_badge_color || "")) ? profile.custom_badge_color : "#7c3aed";
+        const label = String(profile.custom_badge_label || "علامة مميزة").slice(0, 60);
+        html += `<span class="student-custom-badge" title="${esc(label)}" aria-label="${esc(label)}" style="background:${esc(color)}">${esc(icon)}</span>`;
+    }
+    return html;
+}
 
-    const colorName = String(profile.verification_color || "").toLowerCase();
-    const color =
-        colorName === "orange" ? "#ff8a00" :
-        colorName === "red" ? "#e53935" :
-        "#0095f6";
-
-    const label =
-        colorName === "orange" ? "حساب أدمن موثّق" :
-        colorName === "red" ? "حساب أستاذ موثّق" :
-        "حساب موثّق";
-
-    const px = Math.max(12, Number(size) || 15);
-
-    return `<span class="student-verification-badge"
-        title="${esc(label)}"
-        aria-label="${esc(label)}"
-        style="
-            --verification-color:${color};
-            --verification-size:${px}px;
-            display:inline-flex;
-            width:var(--verification-size);
-            height:var(--verification-size);
-            margin-inline-start:4px;
-            vertical-align:-2px;
-            position:relative;
-            align-items:center;
-            justify-content:center;
-            flex:0 0 auto;
-        ">
-        <span aria-hidden="true" style="
-            position:absolute;
-            inset:1px;
-            background:var(--verification-color);
-            clip-path:polygon(
-                50% 0%,61% 8%,74% 5%,82% 18%,95% 26%,92% 40%,
-                100% 50%,92% 61%,95% 74%,82% 82%,74% 95%,61% 92%,
-                50% 100%,39% 92%,26% 95%,18% 82%,5% 74%,8% 61%,
-                0% 50%,8% 40%,5% 26%,18% 18%,26% 5%,39% 8%
-            );
-        "></span>
-        <i class="fa-solid fa-check" aria-hidden="true" style="
-            position:relative;
-            z-index:1;
-            color:#fff;
-            font-size:calc(var(--verification-size) * .55);
-            line-height:1;
-        "></i>
-    </span>`;
+function profileFrameWrap(profile, innerHtml) {
+    const url = safeUrl(profile?.profile_frame_url || "", false);
+    if (!url) return innerHtml;
+    return `<span class="student-avatar-frame" style="--student-profile-frame:url('${esc(url)}')">${innerHtml}</span>`;
 }
 
 window.studentVerificationBadge = verificationBadge;
+window.studentProfileFrameWrap = profileFrameWrap;
 
 function db() {
     return typeof supabaseClient !== "undefined" ? supabaseClient : null;
@@ -229,9 +215,9 @@ function roleLabel(role) {
 
 function avatarHTML(profile, cls = "sp2-avatar") {
     if (profile?.avatar_url) {
-        return `<img class="${cls}" src="${esc(safeUrl(profile.avatar_url, true))}" alt="" loading="lazy" decoding="async">`;
+        return profileFrameWrap(profile, `<img class="${cls}" src="${esc(safeUrl(profile.avatar_url, true))}" alt="" loading="lazy" decoding="async">`);
     }
-    return `<div class="${cls}"><i class="fa-solid fa-user"></i></div>`;
+    return profileFrameWrap(profile, `<div class="${cls}"><i class="fa-solid fa-user"></i></div>`);
 }
 
 async function getStats(userId) {
@@ -257,7 +243,7 @@ async function getOwnProfile(userId) {
 
     const fields = [
         "id","full_name","username","email","bio","avatar_url","account_status","role",
-        "is_verified","verification_color","verified_at",
+        "is_verified","verification_color","verified_at","custom_badge_icon","custom_badge_label","custom_badge_color","profile_frame_url",
         "school_name","education_stage","grade_name","favorite_subject",
         "teaching_subject","city","hobbies","profile_version"
     ].join(",");
@@ -282,7 +268,7 @@ async function getPublicProfile(userId) {
 
     const safe = [
         "id","full_name","username","bio","avatar_url","account_status","role",
-        "is_verified","verification_color","school_name","education_stage",
+        "is_verified","verification_color","custom_badge_icon","custom_badge_label","custom_badge_color","profile_frame_url","school_name","education_stage",
         "grade_name","favorite_subject","teaching_subject","city","hobbies"
     ].join(",");
 
@@ -946,7 +932,7 @@ window.StudentSuggestions = { open:openSuggestions };
         } = await sb
             .from("profiles")
             .select(
-                "id,display_name,avatar_url"
+                "id,display_name,full_name,username,avatar_url,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url"
             )
             .in("id", ids);
 
@@ -973,6 +959,8 @@ window.StudentSuggestions = { open:openSuggestions };
     ) {
         return (
             profile?.display_name?.trim() ||
+            profile?.full_name?.trim() ||
+            profile?.username?.trim() ||
             fallback
         );
     }
@@ -1005,32 +993,20 @@ window.StudentSuggestions = { open:openSuggestions };
         fallback = "S"
     ) {
         if (profile?.avatar_url) {
-            return `
+            return window.studentProfileFrameWrap(profile, `
                 <img
                     class="student-story-avatar"
-                    src="${escapeHtml(
-                        profile.avatar_url
-                    )}"
+                    src="${escapeHtml(profile.avatar_url)}"
                     alt=""
                 >
-            `;
+            `);
         }
 
-        return `
-            <div
-                class="
-                    student-story-avatar
-                    student-story-avatar-fallback
-                "
-            >
-                ${escapeHtml(
-                    getProfileName(
-                        profile,
-                        fallback
-                    ).charAt(0) || fallback
-                )}
+        return window.studentProfileFrameWrap(profile, `
+            <div class="student-story-avatar student-story-avatar-fallback">
+                ${escapeHtml(getProfileName(profile, fallback).charAt(0) || fallback)}
             </div>
-        `;
+        `);
     }
 
     /* =========================================================
@@ -2846,7 +2822,7 @@ window.StudentSuggestions = { open:openSuggestions };
                                 profile,
                                 "ستوري"
                             )
-                    )}
+                    )}${userId === currentUser.id ? "" : studentVerificationBadge(profile, 11)}
                 </span>
             `;
 
@@ -3747,7 +3723,7 @@ window.StudentSuggestions = { open:openSuggestions };
                                     profile,
                                     "مستخدم"
                                 )
-                        )}
+                        )}${currentStory.user_id === currentUser.id ? "" : studentVerificationBadge(profile, 12)}
                     </div>
 
                     <div
@@ -4595,7 +4571,7 @@ window.StudentSuggestions = { open:openSuggestions };
                     <div class="student-story-reply-owner-row">
                         ${avatar(profile, "U")}
                         <div class="student-story-viewer-meta">
-                            <div class="student-story-viewer-name">${escapeHtml(getProfileName(profile, "مستخدم"))}</div>
+                            <div class="student-story-viewer-name">${escapeHtml(getProfileName(profile, "مستخدم"))}${studentVerificationBadge(profile, 11)}</div>
                             <div class="student-story-viewer-time">${escapeHtml(timeAgo(row.created_at))}</div>
                             <div class="student-story-reply-owner-message">${escapeHtml(row.message || "")}</div>
                         </div>
@@ -6092,7 +6068,11 @@ window.StudentSuggestions = { open:openSuggestions };
                     avatar_url,
                     role,
                     is_verified,
-                    verification_color
+                    verification_color,
+                    custom_badge_icon,
+                    custom_badge_label,
+                    custom_badge_color,
+                    profile_frame_url
                 `)
                 .in(
                     "id",
@@ -6138,41 +6118,10 @@ window.StudentSuggestions = { open:openSuggestions };
         profile
     ) {
 
-        if (
-            profile?.avatar_url
-        ) {
-
-            return `
-
-                <img
-                    class="
-                        student-feed-avatar
-                    "
-                    src="${escapeHTML(
-                        profile.avatar_url
-                    )}"
-                    alt=""
-                    loading="lazy"
-                >
-
-            `;
+        if (profile?.avatar_url) {
+            return window.studentProfileFrameWrap(profile, `<img class="student-feed-avatar" src="${escapeHTML(profile.avatar_url)}" alt="" loading="lazy" decoding="async">`);
         }
-
-
-        return `
-
-            <div class="
-                student-feed-avatar-placeholder
-            ">
-
-                <i class="
-                    fa-solid
-                    fa-user
-                "></i>
-
-            </div>
-
-        `;
+        return window.studentProfileFrameWrap(profile, `<div class="student-feed-avatar-placeholder"><i class="fa-solid fa-user"></i></div>`);
     }
 
 
@@ -7304,9 +7253,9 @@ async function run(value,root){
  try{
    const client=db(); if(!client)throw new Error('Supabase غير جاهز');
    const safe=safeSearch(q);
-   const {data,error}=await client.from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30);
+   const {data,error}=await client.from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url').or(`full_name.ilike.%${safe}%,username.ilike.%${safe}%`).limit(30);
    if(error)throw error;
-   box.innerHTML=(data||[]).map(x=>`<button type="button" data-search-target="profile" data-target-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:10px;display:grid;grid-template-columns:48px 1fr auto;gap:10px;text-align:right;align-items:center;box-shadow:0 2px 9px rgba(16,24,40,.04)"><img src="${esc(safeUrl(x.avatar_url||'',true))}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5"><span><strong>${esc(x.full_name||x.username||'مستخدم')}${studentVerificationBadge(x,14)}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span><span aria-hidden="true" style="color:#9aa3af;font-size:20px">‹</span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
+   box.innerHTML=(data||[]).map(x=>`<button type="button" data-search-target="profile" data-target-id="${esc(x.id)}" style="border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:10px;display:grid;grid-template-columns:48px 1fr auto;gap:10px;text-align:right;align-items:center;box-shadow:0 2px 9px rgba(16,24,40,.04)">${studentProfileFrameWrap(x, `<img src="${esc(safeUrl(x.avatar_url||'',true))}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;background:#edf1f5">`)}<span><strong>${esc(x.full_name||x.username||'مستخدم')}${studentVerificationBadge(x,14)}</strong><small style="display:block;color:#7b8491;margin-top:3px">@${esc(x.username||'')}</small></span><span aria-hidden="true" style="color:#9aa3af;font-size:20px">‹</span></button>`).join('')||'<div style="text-align:center;color:#7b8491;padding:45px 12px">لا توجد نتائج</div>';
    requestAnimationFrame(()=>{box.scrollTop=lastScroll});
  }catch(err){if(err.name!=='AbortError')box.innerHTML='<div style="text-align:center;color:#b3261e;padding:35px">تعذر البحث حاليًا</div>';}
 }
@@ -7318,12 +7267,17 @@ window.openStudentSearch=open;window.closeStudentSearch=close;
 
 /* ===== MERGED MODULE: messages.js ===== */
 /* =========================================================
-   Student Messages - Full page chat, groups and channels
+   Student Messages - Fast modern chat, groups and channels
 ========================================================= */
 (function(){
 'use strict';
 if(window.StudentMessages) return;
-const S={user:null,page:null,view:'list',conversations:[],current:null,messages:[],members:[],profiles:{},channel:null,typing:null,reply:null,editing:null,loading:false,historyOpen:false};
+
+const S={
+    user:null,page:null,view:'list',conversations:[],current:null,messages:[],members:[],profiles:{},
+    channel:null,typing:null,reply:null,editing:null,loading:false,chatLoading:false,historyOpen:false,
+    chatRefreshTimer:null,listRefreshTimer:null,searchSeq:0,lastReadAt:0
+};
 const sb=()=>typeof supabaseClient!=='undefined'?supabaseClient:null;
 const esc=v=>String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 const safeUrl=(value,allowData=false)=>{
@@ -7331,113 +7285,73 @@ const safeUrl=(value,allowData=false)=>{
  try{const u=new URL(String(value||''),window.location.origin);return ['http:','https:','blob:'].includes(u.protocol)?u.href:''}catch(_){return''}
 };
 const safeSearch=value=>window.StudentSecurity?.sanitizeSearchTerm?window.StudentSecurity.sanitizeSearchTerm(value):String(value||'').replace(/[,%()]/g,' ').trim().slice(0,80);
-const fmt=v=>{try{return new Intl.DateTimeFormat('ar-IQ',{dateStyle:'short',timeStyle:'short'}).format(new Date(v))}catch{return''}};
-function css(){if(document.getElementById('student-messages-style'))return;let s=document.createElement('style');s.id='student-messages-style';s.textContent=`
-#student-messages-page{position:fixed;inset:0;z-index:10040;background:#f7f9fc;display:none;direction:rtl;color:#172033}.sm-open{display:flex!important;flex-direction:column}.sm-head{height:64px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid #e7ebf1;flex:0 0 auto}.sm-back,.sm-icon,.sm-send,.sm-fab,.sm-mini{border:0;cursor:pointer;font:inherit}.sm-back,.sm-icon{width:42px;height:42px;border-radius:50%;background:#eef2f7;display:grid;place-items:center;font-size:20px}.sm-title{font-size:19px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-sub{font-size:12px;color:#7b8695}.sm-search{padding:12px 14px;background:#fff;border-bottom:1px solid #edf0f4}.sm-searchbox{display:flex;align-items:center;gap:9px;background:#f0f3f7;border-radius:14px;padding:0 12px}.sm-searchbox input{width:100%;border:0;background:transparent;outline:0;padding:12px 0;font:inherit}.sm-body{flex:1;overflow:auto;max-width:900px;width:100%;margin:0 auto}.sm-list{padding:10px}.sm-row{display:flex;gap:12px;align-items:center;background:#fff;padding:12px;border-radius:16px;margin-bottom:8px;border:1px solid #e8ecf2;cursor:pointer}.sm-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover;background:#e8eef7;display:grid;place-items:center;font-weight:800;flex:0 0 48px}.sm-main{min-width:0;flex:1}.sm-name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-preview{font-size:13px;color:#737f8f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}.sm-time{font-size:11px;color:#919baa}.sm-count{min-width:21px;height:21px;border-radius:11px;background:#ef3340;color:#fff;font-size:11px;display:grid;place-items:center;padding:0 6px;margin-top:5px}.sm-fab{position:fixed;left:20px;bottom:86px;width:58px;height:58px;border-radius:50%;background:#087cff;color:#fff;font-size:25px;box-shadow:0 8px 24px rgba(8,124,255,.3)}.sm-empty{text-align:center;color:#788495;padding:70px 20px}.sm-chat{display:flex;flex-direction:column;height:100%}.sm-msgs{flex:1;overflow:auto;padding:16px 12px 100px;background:#eef3f8}.sm-day{text-align:center;font-size:12px;color:#7f8b99;margin:14px}.sm-msg{max-width:78%;margin:5px 0;padding:9px 11px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05);position:relative}.sm-msg.mine{margin-right:auto;background:#dff0ff}.sm-msg.system{margin:10px auto;background:#dfe7ef;color:#526171;text-align:center;max-width:90%}.sm-author{font-size:12px;font-weight:800;color:#087cff;margin-bottom:4px}.sm-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}.sm-reply{border-right:3px solid #087cff;background:rgba(8,124,255,.08);padding:6px 8px;border-radius:8px;margin-bottom:6px;font-size:12px}.sm-media{max-width:100%;max-height:320px;border-radius:12px;margin-top:6px}.sm-file{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.05);padding:9px;border-radius:10px;margin-top:6px}.sm-meta{font-size:10px;color:#8994a2;text-align:left;margin-top:4px}.sm-actions{display:none;position:absolute;top:-36px;left:0;background:#172033;color:#fff;border-radius:10px;padding:4px;gap:2px;z-index:2}.sm-msg:focus-within .sm-actions,.sm-msg:hover .sm-actions{display:flex}.sm-mini{background:transparent;color:inherit;padding:6px;border-radius:7px}.sm-compose{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #dfe5ec;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:8px;z-index:2}.sm-compose textarea{flex:1;max-height:120px;min-height:44px;border:1px solid #dbe2ea;border-radius:18px;padding:11px 13px;font:inherit;resize:none;outline:0}.sm-send{width:46px;height:46px;border-radius:50%;background:#087cff;color:#fff;font-size:19px}.sm-replybar{position:fixed;bottom:63px;left:10px;right:10px;background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:8px 12px;display:none;z-index:3}.sm-replybar.show{display:flex}.sm-sheet{position:fixed;inset:0;background:rgba(8,17,30,.52);z-index:10080;display:flex;align-items:flex-end;justify-content:center;padding:12px}.sm-card{background:#fff;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:22px;padding:18px}.sm-card h3{margin:0 0 14px}.sm-field{margin-bottom:12px}.sm-field label{display:block;font-weight:700;margin-bottom:6px}.sm-field input,.sm-field textarea,.sm-field select{width:100%;border:1px solid #d9e0e8;border-radius:12px;padding:11px;font:inherit}.sm-actions-row{display:flex;gap:8px;justify-content:flex-end}.sm-btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;background:#087cff;color:#fff}.sm-btn.secondary{background:#eef2f6;color:#243247}.sm-btn.danger{background:#e83d50}.sm-user-results{display:grid;gap:8px;max-height:360px;overflow:auto}.sm-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
+const fmt=v=>{try{const d=new Date(v);const now=new Date();if(d.toDateString()===now.toDateString())return new Intl.DateTimeFormat('ar-IQ',{hour:'2-digit',minute:'2-digit'}).format(d);return new Intl.DateTimeFormat('ar-IQ',{month:'short',day:'numeric'}).format(d)}catch{return''}};
+const badge=(p,size=13)=>typeof window.studentVerificationBadge==='function'?window.studentVerificationBadge(p,size):'';
+
+function css(){if(document.getElementById('student-messages-style'))return;const s=document.createElement('style');s.id='student-messages-style';s.textContent=`
+#student-messages-page{position:fixed;inset:0;z-index:10040;background:#f4f7fb;display:none;direction:rtl;color:#111827;overflow:hidden}.sm-open{display:flex!important;flex-direction:column}.sm-head{height:68px;display:flex;align-items:center;gap:10px;padding:0 14px;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);border-bottom:1px solid #e8edf4;flex:0 0 auto;z-index:5}.sm-back,.sm-icon,.sm-send,.sm-fab,.sm-mini{border:0;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent}.sm-back,.sm-icon{width:42px;height:42px;border-radius:14px;background:#eef2f7;color:#172033;display:grid;place-items:center;font-size:20px;flex:0 0 42px}.sm-back:active,.sm-icon:active,.sm-send:active,.sm-fab:active{transform:scale(.96)}.sm-heading{min-width:0;flex:1}.sm-title{font-size:18px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}.sm-sub{font-size:11px;color:#7b8695;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sm-search{padding:10px 14px 8px;background:#fff}.sm-searchbox{display:flex;align-items:center;gap:9px;background:#f0f3f7;border:1px solid transparent;border-radius:16px;padding:0 13px;transition:.15s}.sm-searchbox:focus-within{background:#fff;border-color:#bfdbfe;box-shadow:0 0 0 3px rgba(8,124,255,.08)}.sm-searchbox input{width:100%;border:0;background:transparent;outline:0;padding:12px 0;font:inherit;font-size:14px}.sm-body{flex:1;overflow:auto;max-width:860px;width:100%;margin:0 auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}.sm-list{padding:7px 10px 92px}.sm-row{display:flex;gap:12px;align-items:center;background:#fff;padding:11px 12px;border-radius:18px;margin-bottom:7px;border:1px solid #e9edf3;cursor:pointer;min-height:62px;box-shadow:0 4px 14px rgba(15,23,42,.025);content-visibility:auto;contain-intrinsic-size:72px}.sm-row:active{background:#f7faff;transform:scale(.995)}.sm-avatar{width:50px;height:50px;border-radius:50%;object-fit:cover;background:linear-gradient(135deg,#eaf2ff,#dfe8f5);display:grid;place-items:center;font-weight:900;flex:0 0 50px;color:#47709f}.sm-avatar.sm-small{width:42px;height:42px;flex-basis:42px}.sm-main{min-width:0;flex:1}.sm-name{font-weight:900;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:2px}.sm-preview{font-size:12px;color:#737f8f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}.sm-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.sm-time{font-size:10px;color:#98a2b1;white-space:nowrap}.sm-count{min-width:21px;height:21px;border-radius:11px;background:#087cff;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 6px}.sm-fab{position:fixed;left:20px;bottom:84px;width:56px;height:56px;border-radius:18px;background:#087cff;color:#fff;font-size:23px;box-shadow:0 12px 28px rgba(8,124,255,.3);z-index:4}.sm-empty{text-align:center;color:#788495;padding:64px 20px}.sm-empty-icon{width:74px;height:74px;border-radius:24px;background:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:28px;box-shadow:0 10px 28px rgba(20,40,70,.07)}.sm-skeleton{height:68px;border-radius:18px;margin:0 0 8px;background:linear-gradient(90deg,#eef2f6 25%,#f8fafc 45%,#eef2f6 65%);background-size:220% 100%;animation:smShimmer 1.2s infinite}@keyframes smShimmer{to{background-position:-220% 0}}.sm-chat{display:flex;flex-direction:column;height:100%;min-height:0}.sm-msgs{flex:1;overflow:auto;padding:14px 12px 96px;background:linear-gradient(180deg,#edf3f9 0,#f4f7fb 100%);-webkit-overflow-scrolling:touch;overscroll-behavior:contain}.sm-msg{max-width:min(78%,620px);margin:4px 0;padding:8px 11px 7px;border-radius:17px 17px 17px 5px;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.07);position:relative;content-visibility:auto;contain-intrinsic-size:48px}.sm-msg.mine{margin-right:auto;background:#dff0ff;border-radius:17px 17px 5px 17px}.sm-msg.pending{opacity:.66}.sm-msg.system{margin:10px auto;background:#dde6ef;color:#526171;text-align:center;max-width:90%;border-radius:999px;font-size:11px;padding:7px 12px}.sm-author{font-size:11px;font-weight:900;color:#087cff;margin-bottom:3px;display:flex;align-items:center;gap:2px}.sm-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;font-size:14px}.sm-reply{border-right:3px solid #087cff;background:rgba(8,124,255,.08);padding:6px 8px;border-radius:9px;margin-bottom:6px;font-size:11px;color:#526171}.sm-media{display:block;max-width:100%;max-height:340px;border-radius:12px;margin-top:6px;background:#e7edf4}.sm-file{display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.05);padding:9px;border-radius:10px;margin-top:6px;color:inherit;text-decoration:none}.sm-meta{font-size:9px;color:#8792a0;text-align:left;margin-top:3px;min-height:12px}.sm-actions{display:none;position:absolute;top:-38px;left:0;background:#172033;color:#fff;border-radius:11px;padding:3px;gap:1px;z-index:3;box-shadow:0 8px 20px rgba(0,0,0,.18)}.sm-msg:focus-within .sm-actions,.sm-msg:hover .sm-actions{display:flex}.sm-mini{background:transparent;color:inherit;padding:7px;border-radius:8px}.sm-compose{position:fixed;bottom:0;left:0;right:0;background:rgba(255,255,255,.97);backdrop-filter:blur(14px);border-top:1px solid #dfe5ec;padding:8px 10px calc(8px + env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:7px;z-index:4}.sm-compose textarea{flex:1;max-height:112px;min-height:44px;border:1px solid #dbe2ea;border-radius:18px;padding:11px 13px;font:inherit;resize:none;outline:0;background:#f8fafc;line-height:1.45}.sm-compose textarea:focus{background:#fff;border-color:#b7d7ff}.sm-send{width:46px;height:46px;border-radius:15px;background:#087cff;color:#fff;font-size:18px;flex:0 0 46px}.sm-replybar{position:fixed;bottom:64px;left:10px;right:10px;background:#fff;border:1px solid #dfe5ec;border-radius:13px;padding:8px 12px;display:none;z-index:5;box-shadow:0 7px 18px rgba(15,23,42,.08)}.sm-replybar.show{display:flex}.sm-sheet{position:fixed;inset:0;background:rgba(8,17,30,.5);z-index:10080;display:flex;align-items:flex-end;justify-content:center;padding:12px}.sm-card{background:#fff;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:24px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.2)}.sm-card h3{margin:0 0 14px}.sm-field{margin-bottom:12px}.sm-field label{display:block;font-weight:800;margin-bottom:6px}.sm-field input,.sm-field textarea,.sm-field select{width:100%;box-sizing:border-box;border:1px solid #d9e0e8;border-radius:12px;padding:11px;font:inherit}.sm-actions-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}.sm-btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:800;cursor:pointer;background:#087cff;color:#fff}.sm-btn.secondary{background:#eef2f6;color:#243247}.sm-btn.danger{background:#e83d50}.sm-user-results{display:grid;gap:7px;max-height:360px;overflow:auto}.sm-badge{position:absolute;min-width:18px;height:18px;border-radius:9px;background:#ef3340;color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;padding:0 5px;transform:translate(45%,-45%)}
 `;document.head.appendChild(s)}
-function page(){css();let p=document.getElementById('student-messages-page');if(p)return p;p=document.createElement('section');p.id='student-messages-page';document.body.appendChild(p);S.page=p;return p}
-function toast(t){let e=document.createElement('div');e.style='position:fixed;z-index:10100;left:50%;bottom:90px;transform:translateX(-50%);background:#172033;color:#fff;padding:11px 16px;border-radius:12px;max-width:88%';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2500)}
-async function user(){let c=sb();if(!c)return null;let{data}=await c.auth.getUser();return data?.user||null}
-async function init(){S.user=await user();if(!S.user){toast('\u0633\u062C\u0651\u0644 \u0627\u0644\u062F\u062E\u0648\u0644 \u0623\u0648\u0644\u064B\u0627');return false}return true}
-function avatar(p){return p?.avatar_url?`<img class="sm-avatar" src="${esc(safeUrl(p.avatar_url, true))}">`:`<div class="sm-avatar">${esc((p?.full_name||p?.username||'?').slice(0,1))}</div>`}
-async function open(){if(!await init())return;let p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){history.pushState({studentMessages:'list'},'',location.href);S.historyOpen=true}renderList();await loadConversations();subscribeGlobal()}
-function handleBack(){
-    const p=document.getElementById('student-messages-page');
-    if(!p||!p.classList.contains('sm-open'))return false;
-    document.querySelectorAll('.sm-sheet').forEach(sheet=>sheet.remove());
-    if(S.view==='chat'){
-        showList();
-        return true
-    }
-    hidePage();
-    return true
-}
+function page(){css();let p=document.getElementById('student-messages-page');if(p){S.page=p;return p}p=document.createElement('section');p.id='student-messages-page';p.setAttribute('aria-label','الرسائل');document.body.appendChild(p);S.page=p;return p}
+function toast(t){document.querySelector('.sm-toast')?.remove();let e=document.createElement('div');e.className='sm-toast';e.style='position:fixed;z-index:10100;left:50%;bottom:90px;transform:translateX(-50%);background:#172033;color:#fff;padding:11px 16px;border-radius:12px;max-width:88%;box-shadow:0 8px 22px rgba(0,0,0,.18)';e.textContent=t;document.body.appendChild(e);setTimeout(()=>e.remove(),2400)}
+async function user(){if(typeof currentUser!=='undefined'&&currentUser?.id)return currentUser;let c=sb();if(!c)return null;let{data}=await c.auth.getUser();return data?.user||null}
+async function init(){if(S.user?.id)return true;S.user=await user();if(!S.user){toast('سجّل الدخول أولًا');return false}return true}
+function avatar(p,small=false){const cls=`sm-avatar${small?' sm-small':''}`;const inner=p?.avatar_url?`<img class="${cls}" src="${esc(safeUrl(p.avatar_url,true))}" loading="lazy" decoding="async" alt="">`:`<div class="${cls}">${esc((p?.full_name||p?.display_name||p?.username||'?').slice(0,1))}</div>`;return typeof window.studentProfileFrameWrap==='function'?window.studentProfileFrameWrap(p,inner):inner}
+function profileId(row){return row?.other_user_id||row?.peer_id||row?.participant_id||row?.user_id||row?.profile_id||null}
+async function ensureProfiles(ids){ids=[...new Set((ids||[]).filter(Boolean).map(String))].filter(id=>!S.profiles[id]);if(!ids.length)return;const{data,error}=await sb().from('profiles').select('id,full_name,display_name,username,avatar_url,role,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url').in('id',ids);if(error){console.warn('Message profiles:',error);return}(data||[]).forEach(p=>{S.profiles[String(p.id)]=p})}
+function rowProfile(row){const id=profileId(row);return (id&&S.profiles[String(id)])||row||{}}
+function nameHtml(row,fallback='محادثة',size=13){const p=rowProfile(row);const name=p.full_name||p.display_name||p.title||p.username||row?.title||fallback;return `${esc(name)}${badge(p,size)}`}
+
+async function open(){if(!await init())return;const p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){try{history.pushState({studentMessages:'list'},'',location.href)}catch(_){}S.historyOpen=true}renderListShell();subscribeGlobal();loadConversations({silent:S.conversations.length>0}).catch(console.error)}
+function handleBack(){const p=document.getElementById('student-messages-page');if(!p||!p.classList.contains('sm-open'))return false;const sheet=document.querySelector('.sm-sheet');if(sheet){sheet.remove();return true}if(S.view==='chat'){showList();return true}hidePage();return true}
 function close(){handleBack()}
 function hidePage(){S.page?.classList.remove('sm-open');document.body.style.overflow='';unsubscribeChat();S.historyOpen=false;S.view='list';S.current=null}
-function showList(){S.view='list';S.current=null;S.messages=[];unsubscribeChat();renderList()}
-async function loadConversations(){let c=sb();S.loading=true;renderList();let{data,error}=await c.rpc('student_get_conversations');S.loading=false;if(error){console.error(error);S.conversations=[];renderList();toast(error.message||'\u062A\u0639\u0630\u0631 \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0627\u062A');return}S.conversations=data||[];renderList();updateBadge()}
-function renderList(){let p=page();p.innerHTML=`<header class="sm-head"><button class="sm-back">\u2039</button><div class="sm-title">\u0627\u0644\u0631\u0633\u0627\u0626\u0644</div><button class="sm-icon" id="sm-create" title="\u0625\u0646\u0634\u0627\u0621">\uFF0B</button></header><div class="sm-search"><div class="sm-searchbox">\uD83D\uDD0E<input id="sm-search-users" placeholder="\u0627\u0628\u062D\u062B \u0628\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div></div><main class="sm-body"><div id="sm-user-search"></div><div class="sm-list" id="sm-conversations"></div></main><button class="sm-fab" id="sm-new">\u270E</button>`;p.querySelector('.sm-back').onclick=close;p.querySelector('#sm-create').onclick=openCreate;p.querySelector('#sm-new').onclick=()=>openUserSearch('direct');let input=p.querySelector('#sm-search-users');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchUsers(input.value),300)};let list=p.querySelector('#sm-conversations');if(S.loading){list.innerHTML='<div class="sm-empty">\u062C\u0627\u0631\u064D \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</div>';return}if(!S.conversations.length){list.innerHTML='<div class="sm-empty">\u0644\u0627 \u062A\u0648\u062C\u062F \u0645\u062D\u0627\u062F\u062B\u0627\u062A \u0628\u0639\u062F.<br>\u0627\u0628\u062D\u062B \u0639\u0646 \u0634\u062E\u0635 \u0648\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u0631\u0627\u0633\u0644\u0629.</div>';return}list.innerHTML=S.conversations.map(x=>`<article class="sm-row" data-id="${esc(x.conversation_id)}">${x.avatar_url?`<img class="sm-avatar" src="${esc(safeUrl(x.avatar_url, true))}">`:`<div class="sm-avatar">${esc((x.title||'?').slice(0,1))}</div>`}<div class="sm-main"><div class="sm-name">${esc(x.title||'\u0645\u062D\u0627\u062F\u062B\u0629')}</div><div class="sm-preview">${esc(x.last_message||'\u0644\u0627 \u062A\u0648\u062C\u062F \u0631\u0633\u0627\u0626\u0644')}</div></div><div><div class="sm-time">${esc(fmt(x.last_message_at))}</div>${Number(x.unread_count)>0?`<div class="sm-count">${x.unread_count}</div>`:''}</div></article>`).join('');list.querySelectorAll('.sm-row').forEach(e=>{
-        e.setAttribute('role','button');
-        e.setAttribute('tabindex','0');
-        const activate=()=>openChat(e.dataset.id);
-        e.onclick=activate;
-        e.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate()}}
-    })}
-async function searchUsers(q){let box=document.getElementById('sm-user-search');if(!box)return;q=safeSearch(q);if(q.length<2){box.innerHTML='';return}let c=sb();let{data}=await c.from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').neq('id',S.user.id).or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(25);box.innerHTML=`<div class="sm-list">${(data||[]).map(p=>`<article class="sm-row" data-user="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}${studentVerificationBadge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div><button class="sm-icon">\u2709</button></article>`).join('')}</div>`;box.querySelectorAll('[data-user]').forEach(e=>e.onclick=()=>startDirect(e.dataset.user))}
-function conversationId(value){
-    if(!value)return null;
-    if(typeof value==='string')return value;
-    if(Array.isArray(value))return conversationId(value[0]);
-    return value.conversation_id||value.id||value.conversation||value.chat_id||null
-}
-async function startDirect(uid){
-    if(!uid||S.loading)return;
-    let c=sb();
-    S.loading=true;
-    toast('جارٍ فتح المحادثة...');
-    try{
-        let{data,error}=await c.rpc('student_start_direct_chat',{p_other_user:uid});
-        if(error)throw error;
-        const id=conversationId(data);
-        if(!id)throw new Error('لم يرجع النظام رقم المحادثة.');
-        await openChat(id)
-    }catch(error){
-        console.error('Start direct chat:',error);
-        toast(error?.message||'تعذر فتح المحادثة.')
-    }finally{S.loading=false}
-}
-async function openChat(value){
-    const id=conversationId(value);
-    if(!id){toast('رقم المحادثة غير صالح.');return}
-    let c=sb();
-    try{
-        let{data:conv,error}=await c.rpc('student_get_conversation',{p_conversation:id});
-        if(error)throw error;
-        if(Array.isArray(conv))conv=conv[0];
-        if(!conv)throw new Error('تعذر العثور على المحادثة.');
-        S.current=conv;
-        S.view='chat';
-        history.pushState({studentMessages:'chat'},'',location.href);
-        const [messagesResult,membersResult]=await Promise.all([
-            c.rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:100}),
-            c.rpc('student_get_conversation_members',{p_conversation:id})
-        ]);
-        if(messagesResult.error)throw messagesResult.error;
-        S.messages=(messagesResult.data||[]).reverse();
-        S.members=membersResult.error?[]:(membersResult.data||[]);
-        renderChat();
-        await markRead();
-        subscribeChat(id)
-    }catch(error){
-        console.error('Open chat:',error);
-        S.view='list';
-        toast(error?.message||'تعذر فتح المحادثة.');
-        renderList()
-    }
-}
-function canPost(){return S.current?.kind!=='channel'||S.current?.my_role==='owner'||S.current?.my_role==='admin'}
-function renderChat(){let p=page();let title=S.current?.title||'\u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629';p.innerHTML=`<div class="sm-chat"><header class="sm-head"><button class="sm-back">\u2039</button>${S.current?.avatar_url?`<img class="sm-avatar" src="${esc(safeUrl(S.current.avatar_url, true))}">`:`<div class="sm-avatar">${esc(title.slice(0,1))}</div>`}<div style="min-width:0;flex:1"><div class="sm-title">${esc(title)}</div><div class="sm-sub">${esc(S.current?.kind==='channel'?'\u0642\u0646\u0627\u0629':S.current?.kind==='group'?`${S.members.length} \u0623\u0639\u0636\u0627\u0621`:'\u0645\u062D\u0627\u062F\u062B\u0629 \u062E\u0627\u0635\u0629')}</div></div><button class="sm-icon" id="sm-info">\u22EE</button></header><div class="sm-msgs" id="sm-msgs"></div><div class="sm-replybar" id="sm-replybar"></div>${canPost()?`<div class="sm-compose"><button class="sm-icon" id="sm-attach">\uFF0B</button><textarea id="sm-input" placeholder="\u0627\u0643\u062A\u0628 \u0631\u0633\u0627\u0644\u0629..."></textarea><button class="sm-send" id="sm-send">\u27A4</button><input type="file" id="sm-file" hidden></div>`:`<div class="sm-compose" style="justify-content:center;color:#758091">\u0627\u0644\u0646\u0634\u0631 \u0644\u0644\u0645\u0634\u0631\u0641\u064A\u0646 \u0641\u0642\u0637</div>`}</div>`;p.querySelector('.sm-back').onclick=handleBack;p.querySelector('#sm-info').onclick=openInfo;let box=p.querySelector('#sm-msgs');box.innerHTML=S.messages.map(messageHtml).join('')||'<div class="sm-empty">\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629 \u0627\u0644\u0622\u0646</div>';box.scrollTop=box.scrollHeight;box.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>messageAction(b.dataset.action,b.dataset.id));if(canPost()){p.querySelector('#sm-send').onclick=send;p.querySelector('#sm-input').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};p.querySelector('#sm-attach').onclick=()=>p.querySelector('#sm-file').click();p.querySelector('#sm-file').onchange=e=>upload(e.target.files[0])}}
-function messageHtml(m){if(m.message_type==='system')return`<div class="sm-msg system">${esc(m.body)}</div>`;let mine=m.sender_id===S.user.id;let media='';if(m.media_url){if(m.message_type==='image')media=`<img class="sm-media" src="${esc(safeUrl(m.media_url, true))}">`;else if(m.message_type==='video')media=`<video class="sm-media" controls src="${esc(safeUrl(m.media_url, true))}"></video>`;else if(m.message_type==='audio')media=`<audio controls src="${esc(safeUrl(m.media_url, true))}"></audio>`;else media=`<a class="sm-file" href="${esc(safeUrl(m.media_url))}" target="_blank" rel="noopener noreferrer">\uD83D\uDCCE ${esc(m.file_name||'\u0645\u0644\u0641')}</a>`}return`<article class="sm-msg ${mine?'mine':''}" tabindex="0">${S.current?.kind!=='direct'&&!mine?`<div class="sm-author">${esc(m.sender_name||m.sender_username||'\u0645\u0633\u062A\u062E\u062F\u0645')}</div>`:''}${m.reply_body?`<div class="sm-reply">${esc(m.reply_body)}</div>`:''}<div class="sm-text">${esc(m.deleted_at?'\u062A\u0645 \u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629':m.body||'')}</div>${media}<div class="sm-meta">${esc(fmt(m.created_at))}${m.edited_at?' \u00B7 \u0645\u0639\u062F\u0644\u0629':''}${mine?m.read_count>0?' \u00B7 \u2713\u2713':' \u00B7 \u2713':''}</div>${!m.deleted_at?`<div class="sm-actions"><button class="sm-mini" data-action="reply" data-id="${m.id}">\u21A9</button>${mine?`<button class="sm-mini" data-action="edit" data-id="${m.id}">\u270E</button><button class="sm-mini" data-action="delete" data-id="${m.id}">\uD83D\uDDD1</button>`:''}${S.current?.my_role==='owner'||S.current?.my_role==='admin'?`<button class="sm-mini" data-action="pin" data-id="${m.id}">\uD83D\uDCCC</button>`:''}</div>`:''}</article>`}
-function messageAction(a,id){let m=S.messages.find(x=>String(x.id)===String(id));if(!m)return;if(a==='reply'){S.reply=m;showReply('\u0631\u062F \u0639\u0644\u0649: '+(m.body||m.file_name||'\u0631\u0633\u0627\u0644\u0629'))}if(a==='edit'){S.editing=m;let i=document.getElementById('sm-input');i.value=m.body||'';i.focus();showReply('\u062A\u0639\u062F\u064A\u0644 \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}if(a==='delete')removeMessage(id);if(a==='pin')pinMessage(id)}
-function showReply(t){let b=document.getElementById('sm-replybar');if(!b)return;b.classList.add('show');b.innerHTML=`<div style="flex:1">${esc(t)}</div><button class="sm-mini" id="sm-cancel-reply">\u2715</button>`;b.querySelector('#sm-cancel-reply').onclick=()=>{S.reply=null;S.editing=null;b.classList.remove('show')}}
-async function send(){let i=document.getElementById('sm-input'),body=i?.value.trim();if(!body)return;let c=sb();if(S.editing){let{error}=await c.rpc('student_edit_message',{p_message:S.editing.id,p_body:body});if(error){toast(error.message);return}S.editing=null}else{let{error}=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:body,p_reply_to:S.reply?.id||null,p_message_type:'text',p_media_url:null,p_file_name:null,p_file_size:null});if(error){toast(error.message);return}}i.value='';S.reply=null;document.getElementById('sm-replybar')?.classList.remove('show')}
-async function upload(file){if(!file)return;if(file.size>20*1024*1024){toast('\u0627\u0644\u062D\u062F \u0627\u0644\u0623\u0642\u0635\u0649 20MB');return}let c=sb(),ext=file.name.split('.').pop(),path=`${S.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;toast('\u062C\u0627\u0631\u064D \u0627\u0644\u0631\u0641\u0639...');let{error}=await c.storage.from('chat-media').upload(path,file);if(error){toast(error.message);return}let{data}=c.storage.from('chat-media').getPublicUrl(path);let type=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';let r=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:'',p_reply_to:S.reply?.id||null,p_message_type:type,p_media_url:data.publicUrl,p_file_name:file.name,p_file_size:file.size});if(r.error)toast(r.error.message);S.reply=null}
-async function removeMessage(id){if(!confirm('\u062D\u0630\u0641 \u0627\u0644\u0631\u0633\u0627\u0644\u0629\u061F'))return;let{error}=await sb().rpc('student_delete_message',{p_message:id});if(error)toast(error.message)}
-async function pinMessage(id){let{error}=await sb().rpc('student_pin_message',{p_conversation:S.current.id,p_message:id});if(error)toast(error.message);else toast('\u062A\u0645 \u062A\u062B\u0628\u064A\u062A \u0627\u0644\u0631\u0633\u0627\u0644\u0629')}
-async function markRead(){await sb().rpc('student_mark_conversation_read',{p_conversation:S.current.id});updateBadge()}
-function subscribeChat(id){unsubscribeChat();S.channel=sb().channel('student-chat-'+id).on('postgres_changes',{event:'*',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},async()=>{let{data}=await sb().rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:100});S.messages=(data||[]).reverse();renderChat();await markRead()}).subscribe()}
-function unsubscribeChat(){if(S.channel){sb()?.removeChannel(S.channel);S.channel=null}}
-function subscribeGlobal(){if(window.__studentMessagesGlobal)return;window.__studentMessagesGlobal=sb().channel('student-messages-global').on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>{if(S.view==='list')loadConversations();else updateBadge()}).subscribe()}
-async function updateBadge(){if(!S.user)S.user=await user();if(!S.user)return;let{data}=await sb().rpc('student_unread_messages_count');let n=Number(data||0);document.querySelectorAll('[data-section="messages"]').forEach(a=>{a.style.position='relative';a.querySelector('.sm-badge')?.remove();if(n>0){let b=document.createElement('span');b.className='sm-badge';b.textContent=n>99?'99+':n;a.appendChild(b)}})}
-function openCreate(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0646\u0634\u0627\u0621 \u062C\u062F\u064A\u062F</h3><div class="sm-actions-row" style="justify-content:stretch"><button class="sm-btn" id="sm-direct" style="flex:1">\u0645\u062D\u0627\u062F\u062B\u0629</button><button class="sm-btn" id="sm-group" style="flex:1">\u0645\u062C\u0645\u0648\u0639\u0629</button><button class="sm-btn" id="sm-channel" style="flex:1">\u0642\u0646\u0627\u0629</button></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close">\u0625\u0644\u063A\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close').onclick=()=>sh.remove();sh.querySelector('#sm-direct').onclick=()=>{sh.remove();openUserSearch('direct')};sh.querySelector('#sm-group').onclick=()=>{sh.remove();createCommunity('group')};sh.querySelector('#sm-channel').onclick=()=>{sh.remove();createCommunity('channel')}}
-function openUserSearch(){let i=document.getElementById('sm-search-users');i?.focus()}
-function createCommunity(kind){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>${kind==='group'?'\u0625\u0646\u0634\u0627\u0621 \u0645\u062C\u0645\u0648\u0639\u0629':'\u0625\u0646\u0634\u0627\u0621 \u0642\u0646\u0627\u0629'}</h3><div class="sm-field"><label>\u0627\u0644\u0627\u0633\u0645</label><input id="sm-name"></div><div class="sm-field"><label>\u0627\u0644\u0648\u0635\u0641</label><textarea id="sm-desc"></textarea></div><div class="sm-field"><label>\u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629</label><select id="sm-public"><option value="false">\u062E\u0627\u0635\u0629</option><option value="true">\u0639\u0627\u0645\u0629</option></select></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-cancel">\u0625\u0644\u063A\u0627\u0621</button><button class="sm-btn" id="sm-save">\u0625\u0646\u0634\u0627\u0621</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-cancel').onclick=()=>sh.remove();sh.querySelector('#sm-save').onclick=async()=>{let name=sh.querySelector('#sm-name').value.trim();if(!name)return toast('\u0627\u0643\u062A\u0628 \u0627\u0644\u0627\u0633\u0645');let{data,error}=await sb().rpc('student_create_community',{p_kind:kind,p_title:name,p_description:sh.querySelector('#sm-desc').value.trim(),p_is_public:sh.querySelector('#sm-public').value==='true'});if(error)return toast(error.message);sh.remove();openChat(data)}}
-function openInfo(){let sh=document.createElement('div');sh.className='sm-sheet';let admin=S.current?.my_role==='owner'||S.current?.my_role==='admin';sh.innerHTML=`<div class="sm-card"><h3>${esc(S.current.title)}</h3><p>${esc(S.current.description||'')}</p>${S.current.kind!=='direct'?`<h4>\u0627\u0644\u0623\u0639\u0636\u0627\u0621 (${S.members.length})</h4><div class="sm-user-results">${S.members.map(m=>`<div class="sm-row">${avatar(m)}<div class="sm-main"><div class="sm-name">${esc(m.full_name||m.username)}</div><div class="sm-preview">${esc(m.role)}</div></div>${admin&&m.user_id!==S.user.id?`<button class="sm-mini" data-remove="${m.user_id}">\u062D\u0630\u0641</button>`:''}</div>`).join('')}</div>${admin?`<button class="sm-btn" id="sm-add-member">\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</button>`:''}<button class="sm-btn danger" id="sm-leave">\u0645\u063A\u0627\u062F\u0631\u0629</button>`:''}<div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close-info">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close-info').onclick=()=>sh.remove();sh.querySelector('#sm-leave')&&(sh.querySelector('#sm-leave').onclick=async()=>{let{error}=await sb().rpc('student_leave_conversation',{p_conversation:S.current.id});if(error)return toast(error.message);sh.remove();showList();loadConversations()});sh.querySelectorAll('[data-remove]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_remove_member',{p_conversation:S.current.id,p_user:b.dataset.remove});if(error)toast(error.message);else{sh.remove();openChat(S.current.id)}});sh.querySelector('#sm-add-member')&&(sh.querySelector('#sm-add-member').onclick=()=>{sh.remove();addMemberSheet()})}
-function addMemberSheet(){let sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>\u0625\u0636\u0627\u0641\u0629 \u0639\u0636\u0648</h3><div class="sm-field"><input id="sm-member-search" placeholder="\u0627\u0644\u0627\u0633\u0645 \u0623\u0648 \u0627\u0644\u064A\u0648\u0632\u0631"></div><div id="sm-member-results"></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-member-close">\u0625\u063A\u0644\u0627\u0642</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-member-close').onclick=()=>sh.remove();let t;sh.querySelector('#sm-member-search').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{let q=safeSearch(e.target.value);if(q.length<2)return;let{data}=await sb().from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color').or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);let box=sh.querySelector('#sm-member-results');box.innerHTML=(data||[]).map(p=>`<div class="sm-row" data-add="${p.id}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username)}${studentVerificationBadge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div></div>`).join('');box.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{let{error}=await sb().rpc('student_add_member',{p_conversation:S.current.id,p_user:b.dataset.add});if(error)toast(error.message);else{toast('\u062A\u0645\u062A \u0627\u0644\u0625\u0636\u0627\u0641\u0629');sh.remove();openChat(S.current.id)}});},300);};}
+function showList(){S.view='list';S.current=null;S.messages=[];S.members=[];S.reply=null;S.editing=null;unsubscribeChat();renderListShell();renderConversationRows()}
 
-window.addEventListener('popstate',()=>{
-    if(!S.historyOpen)return;
-    handleBack();
-});
-window.StudentMessages={open,close,handleBack,updateBadge,openTarget:async function(conversationId){await open();if(conversationId)await openChat(conversationId);}};window.openStudentMessages=open;document.addEventListener('DOMContentLoaded',()=>setTimeout(updateBadge,1800));setTimeout(updateBadge,2200);
+function renderListShell(){const p=page();if(S.view!=='list')return;p.innerHTML=`<header class="sm-head"><button class="sm-back" aria-label="رجوع"><i class="fa-solid fa-arrow-right"></i></button><div class="sm-heading"><div class="sm-title">الرسائل</div><div class="sm-sub">محادثاتك في Student</div></div><button class="sm-icon" id="sm-create" title="إنشاء"><i class="fa-solid fa-pen-to-square"></i></button></header><div class="sm-search"><div class="sm-searchbox"><i class="fa-solid fa-magnifying-glass"></i><input id="sm-search-users" autocomplete="off" placeholder="ابحث بالاسم أو اليوزر"></div></div><main class="sm-body"><div id="sm-user-search"></div><div class="sm-list" id="sm-conversations"></div></main><button class="sm-fab" id="sm-new" aria-label="رسالة جديدة"><i class="fa-solid fa-pen"></i></button>`;p.querySelector('.sm-back').onclick=close;p.querySelector('#sm-create').onclick=openCreate;p.querySelector('#sm-new').onclick=()=>openUserSearch();let input=p.querySelector('#sm-search-users');let timer;input.oninput=()=>{clearTimeout(timer);timer=setTimeout(()=>searchUsers(input.value),260)};renderConversationRows()}
+function renderConversationRows(){const list=document.getElementById('sm-conversations');if(!list||S.view!=='list')return;if(S.loading&&!S.conversations.length){list.innerHTML='<div class="sm-skeleton"></div><div class="sm-skeleton"></div><div class="sm-skeleton"></div>';return}if(!S.conversations.length){list.innerHTML='<div class="sm-empty"><div class="sm-empty-icon"><i class="fa-regular fa-paper-plane"></i></div><strong>لا توجد محادثات بعد</strong><div style="margin-top:6px;font-size:12px">ابحث عن شخص وابدأ المراسلة.</div></div>';return}list.innerHTML=S.conversations.map(x=>{const p=rowProfile(x);const title=p.full_name||p.display_name||x.title||p.username||'محادثة';return `<article class="sm-row" data-id="${esc(x.conversation_id||x.id)}" role="button" tabindex="0">${avatar({...p,avatar_url:p.avatar_url||x.avatar_url,full_name:title})}<div class="sm-main"><div class="sm-name">${esc(title)}${badge(p,13)}</div><div class="sm-preview">${esc(x.last_message||'لا توجد رسائل')}</div></div><div class="sm-side"><div class="sm-time">${esc(fmt(x.last_message_at))}</div>${Number(x.unread_count)>0?`<div class="sm-count">${Number(x.unread_count)>99?'99+':Number(x.unread_count)}</div>`:''}</div></article>`}).join('');list.querySelectorAll('.sm-row').forEach(e=>{const activate=()=>openChat(e.dataset.id);e.onclick=activate;e.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();activate()}}})}
+async function loadConversations({silent=false}={}){if(S.loading)return;const c=sb();S.loading=true;if(!silent)renderConversationRows();const{data,error}=await c.rpc('student_get_conversations');S.loading=false;if(error){console.error(error);if(!S.conversations.length)renderConversationRows();toast(error.message||'تعذر تحميل المحادثات');return}S.conversations=data||[];await ensureProfiles(S.conversations.map(profileId));renderConversationRows();updateBadge().catch(()=>{})}
+async function searchUsers(q){const box=document.getElementById('sm-user-search');if(!box)return;q=safeSearch(q);const seq=++S.searchSeq;if(q.length<2){box.innerHTML='';return}box.innerHTML='<div style="padding:10px 14px;color:#8a95a4;font-size:12px">جارٍ البحث...</div>';const{data,error}=await sb().from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url').neq('id',S.user.id).or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);if(seq!==S.searchSeq||!box.isConnected)return;if(error){box.innerHTML='';return}box.innerHTML=`<div class="sm-list" style="padding-bottom:6px">${(data||[]).map(p=>`<article class="sm-row" data-user="${esc(p.id)}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username||'مستخدم')}${badge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div><button class="sm-icon" aria-label="مراسلة"><i class="fa-regular fa-paper-plane"></i></button></article>`).join('')||'<div class="sm-empty" style="padding:24px">لا توجد نتائج</div>'}</div>`;box.querySelectorAll('[data-user]').forEach(e=>e.onclick=()=>startDirect(e.dataset.user))}
+function conversationId(value){if(!value)return null;if(typeof value==='string')return value;if(Array.isArray(value))return conversationId(value[0]);return value.conversation_id||value.id||value.conversation||value.chat_id||null}
+async function startDirect(uid){if(!uid||S.loading)return;S.loading=true;try{const{data,error}=await sb().rpc('student_start_direct_chat',{p_other_user:uid});if(error)throw error;const id=conversationId(data);if(!id)throw new Error('لم يرجع النظام رقم المحادثة.');await openChat(id)}catch(error){console.error('Start direct chat:',error);toast(error?.message||'تعذر فتح المحادثة.')}finally{S.loading=false}}
+
+function cachedConversation(id){return S.conversations.find(x=>String(x.conversation_id||x.id)===String(id))||null}
+async function openChat(value){const id=conversationId(value);if(!id){toast('رقم المحادثة غير صالح.');return}const cached=cachedConversation(id);S.current=cached?{...cached,id}: {id,title:'المحادثة',kind:'direct'};S.view='chat';S.chatLoading=true;try{history.pushState({studentMessages:'chat'},'',location.href)}catch(_){}renderChatShell();try{const c=sb();const [convResult,messagesResult,membersResult]=await Promise.all([c.rpc('student_get_conversation',{p_conversation:id}),c.rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:60}),c.rpc('student_get_conversation_members',{p_conversation:id})]);if(convResult.error)throw convResult.error;let conv=Array.isArray(convResult.data)?convResult.data[0]:convResult.data;if(conv)S.current=conv;S.messages=(messagesResult.error?[]:(messagesResult.data||[])).reverse();S.members=membersResult.error?[]:(membersResult.data||[]);await ensureProfiles([profileId(S.current),...S.members.map(m=>m.user_id||m.id),...S.messages.map(m=>m.sender_id)]);S.chatLoading=false;renderChatHeader();renderMessages({stick:true});markReadSoon();subscribeChat(id)}catch(error){console.error('Open chat:',error);S.chatLoading=false;toast(error?.message||'تعذر فتح المحادثة.');showList()}}
+function canPost(){return S.current?.kind!=='channel'||S.current?.my_role==='owner'||S.current?.my_role==='admin'}
+function currentProfile(){return rowProfile(S.current)}
+function renderChatShell(){const p=page(),title=S.current?.title||'المحادثة',cp=currentProfile();p.innerHTML=`<div class="sm-chat"><header class="sm-head" id="sm-chat-head"><button class="sm-back"><i class="fa-solid fa-arrow-right"></i></button>${avatar({...cp,avatar_url:cp.avatar_url||S.current?.avatar_url,full_name:title},true)}<div class="sm-heading"><div class="sm-title" id="sm-chat-title">${esc(title)}${badge(cp,14)}</div><div class="sm-sub" id="sm-chat-sub">${S.chatLoading?'جارٍ تحميل المحادثة...':chatSubtitle()}</div></div><button class="sm-icon" id="sm-info"><i class="fa-solid fa-ellipsis-vertical"></i></button></header><div class="sm-msgs" id="sm-msgs">${S.chatLoading?'<div class="sm-skeleton"></div><div class="sm-skeleton"></div>':''}</div><div class="sm-replybar" id="sm-replybar"></div>${canPost()?`<div class="sm-compose"><button class="sm-icon" id="sm-attach" aria-label="إرفاق"><i class="fa-solid fa-plus"></i></button><textarea id="sm-input" rows="1" placeholder="اكتب رسالة..."></textarea><button class="sm-send" id="sm-send" aria-label="إرسال"><i class="fa-solid fa-paper-plane"></i></button><input type="file" id="sm-file" hidden></div>`:`<div class="sm-compose" style="justify-content:center;color:#758091">النشر للمشرفين فقط</div>`}</div>`;p.querySelector('.sm-back').onclick=handleBack;p.querySelector('#sm-info').onclick=openInfo;if(canPost()){const input=p.querySelector('#sm-input');p.querySelector('#sm-send').onclick=send;input.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};input.oninput=()=>{input.style.height='44px';input.style.height=Math.min(input.scrollHeight,112)+'px'};p.querySelector('#sm-attach').onclick=()=>p.querySelector('#sm-file').click();p.querySelector('#sm-file').onchange=e=>upload(e.target.files[0])}}
+function chatSubtitle(){return S.current?.kind==='channel'?'قناة':S.current?.kind==='group'?`${S.members.length} أعضاء`:'محادثة خاصة'}
+function renderChatHeader(){if(S.view!=='chat')return;const h=document.getElementById('sm-chat-head');if(!h)return;const cp=currentProfile(),title=cp.full_name||cp.display_name||S.current?.title||'المحادثة';const titleEl=document.getElementById('sm-chat-title'),sub=document.getElementById('sm-chat-sub');if(titleEl)titleEl.innerHTML=`${esc(title)}${badge(cp,14)}`;if(sub)sub.textContent=chatSubtitle()}
+function renderMessages({stick=false,preserve=false}={}){const box=document.getElementById('sm-msgs');if(!box||S.view!=='chat')return;const distance=box.scrollHeight-box.scrollTop-box.clientHeight;const oldHeight=box.scrollHeight;if(S.chatLoading&&!S.messages.length){box.innerHTML='<div class="sm-skeleton"></div><div class="sm-skeleton"></div>';return}box.innerHTML=S.messages.map(messageHtml).join('')||'<div class="sm-empty"><div class="sm-empty-icon"><i class="fa-regular fa-comments"></i></div>ابدأ المحادثة الآن</div>';bindMessageActions(box);requestAnimationFrame(()=>{if(stick||distance<100)box.scrollTop=box.scrollHeight;else if(preserve)box.scrollTop+=box.scrollHeight-oldHeight})}
+function senderProfile(m){return S.profiles[String(m.sender_id)]||m||{}}
+function messageHtml(m){if(m.message_type==='system')return`<div class="sm-msg system">${esc(m.body)}</div>`;const mine=m.sender_id===S.user.id;const p=senderProfile(m);let media='';if(m.media_url){const url=esc(safeUrl(m.media_url,true));if(m.message_type==='image')media=`<img class="sm-media" loading="lazy" decoding="async" src="${url}" alt="">`;else if(m.message_type==='video')media=`<video class="sm-media" controls preload="metadata" src="${url}"></video>`;else if(m.message_type==='audio')media=`<audio controls preload="metadata" src="${url}"></audio>`;else media=`<a class="sm-file" href="${esc(safeUrl(m.media_url))}" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-paperclip"></i> ${esc(m.file_name||'ملف')}</a>`}const senderName=p.full_name||p.display_name||m.sender_name||p.username||m.sender_username||'مستخدم';return`<article class="sm-msg ${mine?'mine':''} ${m.__pending?'pending':''}" tabindex="0" data-message-id="${esc(m.id)}">${S.current?.kind!=='direct'&&!mine?`<div class="sm-author">${esc(senderName)}${badge(p,12)}</div>`:''}${m.reply_body?`<div class="sm-reply">${esc(m.reply_body)}</div>`:''}<div class="sm-text">${esc(m.deleted_at?'تم حذف الرسالة':m.body||'')}</div>${media}<div class="sm-meta">${m.__pending?'جارٍ الإرسال…':esc(fmt(m.created_at))}${m.edited_at?' · معدلة':''}${mine&&!m.__pending?(m.read_count>0?' · ✓✓':' · ✓'):''}</div>${!m.deleted_at&&!m.__pending?`<div class="sm-actions"><button class="sm-mini" data-action="reply" data-id="${esc(m.id)}" title="رد"><i class="fa-solid fa-reply"></i></button>${mine?`<button class="sm-mini" data-action="edit" data-id="${esc(m.id)}" title="تعديل"><i class="fa-solid fa-pen"></i></button><button class="sm-mini" data-action="delete" data-id="${esc(m.id)}" title="حذف"><i class="fa-solid fa-trash"></i></button>`:''}${S.current?.my_role==='owner'||S.current?.my_role==='admin'?`<button class="sm-mini" data-action="pin" data-id="${esc(m.id)}" title="تثبيت"><i class="fa-solid fa-thumbtack"></i></button>`:''}</div>`:''}</article>`}
+function bindMessageActions(box){box.querySelectorAll('[data-action]').forEach(b=>b.onclick=e=>{e.stopPropagation();messageAction(b.dataset.action,b.dataset.id)})}
+function messageAction(a,id){const m=S.messages.find(x=>String(x.id)===String(id));if(!m)return;if(a==='reply'){S.reply=m;S.editing=null;showReply(`رد على: ${(m.body||'رسالة').slice(0,60)}`)}if(a==='edit'){S.editing=m;S.reply=null;const i=document.getElementById('sm-input');if(i){i.value=m.body||'';i.focus()}showReply('تعديل الرسالة')}if(a==='delete')confirmRemoveMessage(id);if(a==='pin')pinMessage(id)}
+function showReply(t){const b=document.getElementById('sm-replybar');if(!b)return;b.classList.add('show');b.innerHTML=`<div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t)}</div><button class="sm-mini" id="sm-cancel-reply"><i class="fa-solid fa-xmark"></i></button>`;b.querySelector('#sm-cancel-reply').onclick=()=>{S.reply=null;S.editing=null;b.classList.remove('show')}}
+async function send(){const i=document.getElementById('sm-input'),body=i?.value.trim();if(!body||!S.current?.id)return;const c=sb();const reply=S.reply;const editing=S.editing;if(editing){const old=editing.body;editing.body=body;editing.edited_at=new Date().toISOString();i.value='';S.editing=null;document.getElementById('sm-replybar')?.classList.remove('show');renderMessages();const{error}=await c.rpc('student_edit_message',{p_message:editing.id,p_body:body});if(error){editing.body=old;renderMessages();toast(error.message)}return}const temp={id:`tmp-${Date.now()}`,conversation_id:S.current.id,sender_id:S.user.id,body,message_type:'text',created_at:new Date().toISOString(),reply_body:reply?.body||null,__pending:true};S.messages.push(temp);i.value='';i.style.height='44px';S.reply=null;document.getElementById('sm-replybar')?.classList.remove('show');renderMessages({stick:true});const{error}=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:body,p_reply_to:reply?.id||null,p_message_type:'text',p_media_url:null,p_file_name:null,p_file_size:null});if(error){S.messages=S.messages.filter(x=>x.id!==temp.id);renderMessages();toast(error.message);return}scheduleChatRefresh(90)}
+async function upload(file){if(!file)return;if(file.size>20*1024*1024){toast('الحد الأقصى 20MB');return}const c=sb(),ext=(file.name.split('.').pop()||'bin').replace(/[^a-z0-9]/gi,''),path=`${S.user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;toast('جارٍ رفع الملف...');const{error}=await c.storage.from('chat-media').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||undefined});if(error){toast(error.message);return}const{data}=c.storage.from('chat-media').getPublicUrl(path);const type=file.type.startsWith('image/')?'image':file.type.startsWith('video/')?'video':file.type.startsWith('audio/')?'audio':'file';const r=await c.rpc('student_send_message',{p_conversation:S.current.id,p_body:'',p_reply_to:S.reply?.id||null,p_message_type:type,p_media_url:data.publicUrl,p_file_name:file.name,p_file_size:file.size});if(r.error)toast(r.error.message);else scheduleChatRefresh(90);S.reply=null}
+function confirmRemoveMessage(id){const sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML='<div class="sm-card"><h3>حذف الرسالة؟</h3><p style="color:#657184;line-height:1.7">سيتم حذف هذه الرسالة من المحادثة.</p><div class="sm-actions-row"><button class="sm-btn secondary" data-cancel>إلغاء</button><button class="sm-btn danger" data-delete>حذف</button></div></div>';document.body.appendChild(sh);sh.querySelector('[data-cancel]').onclick=()=>sh.remove();sh.querySelector('[data-delete]').onclick=async e=>{e.currentTarget.disabled=true;const{error}=await sb().rpc('student_delete_message',{p_message:id});if(error){e.currentTarget.disabled=false;toast(error.message);return}sh.remove();const m=S.messages.find(x=>String(x.id)===String(id));if(m)m.deleted_at=new Date().toISOString();renderMessages()}}
+async function pinMessage(id){const{error}=await sb().rpc('student_pin_message',{p_conversation:S.current.id,p_message:id});if(error)toast(error.message);else toast('تم تثبيت الرسالة')}
+async function refreshMessages(){if(S.view!=='chat'||!S.current?.id)return;const id=S.current.id;const{data,error}=await sb().rpc('student_get_messages',{p_conversation:id,p_before:null,p_limit:60});if(error)return;const rows=(data||[]).reverse();await ensureProfiles(rows.map(m=>m.sender_id));S.messages=rows;renderMessages({preserve:true});markReadSoon()}
+function scheduleChatRefresh(delay=180){clearTimeout(S.chatRefreshTimer);S.chatRefreshTimer=setTimeout(()=>refreshMessages().catch(console.error),delay)}
+function markReadSoon(){const now=Date.now();if(now-S.lastReadAt<700)return;S.lastReadAt=now;setTimeout(()=>markRead().catch(()=>{}),60)}
+async function markRead(){if(!S.current?.id)return;await sb().rpc('student_mark_conversation_read',{p_conversation:S.current.id});updateBadge().catch(()=>{})}
+function subscribeChat(id){unsubscribeChat();S.channel=sb().channel('student-chat-'+id).on('postgres_changes',{event:'*',schema:'public',table:'chat_messages',filter:`conversation_id=eq.${id}`},()=>scheduleChatRefresh()).subscribe()}
+function unsubscribeChat(){clearTimeout(S.chatRefreshTimer);if(S.channel){sb()?.removeChannel(S.channel);S.channel=null}}
+function scheduleListRefresh(){clearTimeout(S.listRefreshTimer);S.listRefreshTimer=setTimeout(()=>{if(S.view==='list')loadConversations({silent:true}).catch(console.error);else updateBadge().catch(()=>{})},350)}
+function subscribeGlobal(){if(window.__studentMessagesGlobal)return;window.__studentMessagesGlobal=sb().channel('student-messages-global').on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},scheduleListRefresh).subscribe()}
+async function updateBadge(){if(!S.user)S.user=await user();if(!S.user)return;const{data,error}=await sb().rpc('student_unread_messages_count');if(error)return;const n=Number(data||0);document.querySelectorAll('[data-section="messages"]').forEach(a=>{a.style.position='relative';a.querySelector('.sm-badge')?.remove();if(n>0){const b=document.createElement('span');b.className='sm-badge';b.textContent=n>99?'99+':n;a.appendChild(b)}})}
+function openCreate(){const sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML='<div class="sm-card"><h3>إنشاء جديد</h3><div class="sm-actions-row" style="justify-content:stretch"><button class="sm-btn" id="sm-direct" style="flex:1">محادثة</button><button class="sm-btn" id="sm-group" style="flex:1">مجموعة</button><button class="sm-btn" id="sm-channel" style="flex:1">قناة</button></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close">إلغاء</button></div></div>';document.body.appendChild(sh);sh.querySelector('#sm-close').onclick=()=>sh.remove();sh.querySelector('#sm-direct').onclick=()=>{sh.remove();openUserSearch()};sh.querySelector('#sm-group').onclick=()=>{sh.remove();createCommunity('group')};sh.querySelector('#sm-channel').onclick=()=>{sh.remove();createCommunity('channel')}}
+function openUserSearch(){document.getElementById('sm-search-users')?.focus()}
+function createCommunity(kind){const sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML=`<div class="sm-card"><h3>${kind==='group'?'إنشاء مجموعة':'إنشاء قناة'}</h3><div class="sm-field"><label>الاسم</label><input id="sm-name" maxlength="80"></div><div class="sm-field"><label>الوصف</label><textarea id="sm-desc" maxlength="300"></textarea></div><div class="sm-field"><label>الخصوصية</label><select id="sm-public"><option value="false">خاصة</option><option value="true">عامة</option></select></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-cancel">إلغاء</button><button class="sm-btn" id="sm-save">إنشاء</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-cancel').onclick=()=>sh.remove();sh.querySelector('#sm-save').onclick=async()=>{const name=sh.querySelector('#sm-name').value.trim();if(!name)return toast('اكتب الاسم');const{data,error}=await sb().rpc('student_create_community',{p_kind:kind,p_title:name,p_description:sh.querySelector('#sm-desc').value.trim(),p_is_public:sh.querySelector('#sm-public').value==='true'});if(error)return toast(error.message);sh.remove();openChat(data)}}
+async function enrichMembers(){await ensureProfiles(S.members.map(m=>m.user_id||m.id));S.members=S.members.map(m=>({...m,...(S.profiles[String(m.user_id||m.id)]||{})}))}
+async function openInfo(){await enrichMembers();const sh=document.createElement('div');sh.className='sm-sheet';const admin=S.current?.my_role==='owner'||S.current?.my_role==='admin';sh.innerHTML=`<div class="sm-card"><h3>${esc(S.current.title||'المحادثة')}</h3><p>${esc(S.current.description||'')}</p>${S.current.kind!=='direct'?`<h4>الأعضاء (${S.members.length})</h4><div class="sm-user-results">${S.members.map(m=>`<div class="sm-row">${avatar(m)}<div class="sm-main"><div class="sm-name">${esc(m.full_name||m.display_name||m.username||'مستخدم')}${badge(m,13)}</div><div class="sm-preview">${esc(m.role||'عضو')}</div></div>${admin&&(m.user_id||m.id)!==S.user.id?`<button class="sm-mini" data-remove="${esc(m.user_id||m.id)}" title="إزالة"><i class="fa-solid fa-user-minus"></i></button>`:''}</div>`).join('')}</div>${admin?'<button class="sm-btn" id="sm-add-member">إضافة عضو</button>':''}<button class="sm-btn danger" id="sm-leave">مغادرة</button>`:''}<div class="sm-actions-row"><button class="sm-btn secondary" id="sm-close-info">إغلاق</button></div></div>`;document.body.appendChild(sh);sh.querySelector('#sm-close-info').onclick=()=>sh.remove();sh.querySelector('#sm-leave')&&(sh.querySelector('#sm-leave').onclick=()=>confirmLeave(sh));sh.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>confirmRemoveMember(b.dataset.remove,sh));sh.querySelector('#sm-add-member')&&(sh.querySelector('#sm-add-member').onclick=()=>{sh.remove();addMemberSheet()})}
+function confirmLeave(parent){const sh=document.createElement('div');sh.className='sm-sheet';sh.style.zIndex='10090';sh.innerHTML='<div class="sm-card"><h3>مغادرة المحادثة؟</h3><p style="color:#657184">لن تظهر لك رسائلها الجديدة بعد المغادرة.</p><div class="sm-actions-row"><button class="sm-btn secondary" data-no>إلغاء</button><button class="sm-btn danger" data-yes>مغادرة</button></div></div>';document.body.appendChild(sh);sh.querySelector('[data-no]').onclick=()=>sh.remove();sh.querySelector('[data-yes]').onclick=async e=>{e.currentTarget.disabled=true;const{error}=await sb().rpc('student_leave_conversation',{p_conversation:S.current.id});if(error){e.currentTarget.disabled=false;toast(error.message);return}sh.remove();parent.remove();showList();loadConversations({silent:true})}}
+function confirmRemoveMember(uid,parent){const sh=document.createElement('div');sh.className='sm-sheet';sh.style.zIndex='10090';sh.innerHTML='<div class="sm-card"><h3>إزالة العضو؟</h3><p style="color:#657184">سيتم إخراجه من هذه المحادثة.</p><div class="sm-actions-row"><button class="sm-btn secondary" data-no>إلغاء</button><button class="sm-btn danger" data-yes>إزالة</button></div></div>';document.body.appendChild(sh);sh.querySelector('[data-no]').onclick=()=>sh.remove();sh.querySelector('[data-yes]').onclick=async e=>{e.currentTarget.disabled=true;const{error}=await sb().rpc('student_remove_member',{p_conversation:S.current.id,p_user:uid});if(error){e.currentTarget.disabled=false;toast(error.message);return}sh.remove();parent.remove();openChat(S.current.id)}}
+function addMemberSheet(){const sh=document.createElement('div');sh.className='sm-sheet';sh.innerHTML='<div class="sm-card"><h3>إضافة عضو</h3><div class="sm-field"><input id="sm-member-search" placeholder="الاسم أو اليوزر"></div><div id="sm-member-results"></div><div class="sm-actions-row"><button class="sm-btn secondary" id="sm-member-close">إغلاق</button></div></div>';document.body.appendChild(sh);sh.querySelector('#sm-member-close').onclick=()=>sh.remove();let t,seq=0;sh.querySelector('#sm-member-search').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{const q=safeSearch(e.target.value),mySeq=++seq;if(q.length<2){sh.querySelector('#sm-member-results').innerHTML='';return}const{data}=await sb().from('profiles').select('id,full_name,username,avatar_url,role,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url').or(`full_name.ilike.%${q}%,username.ilike.%${q}%`).limit(20);if(mySeq!==seq)return;const box=sh.querySelector('#sm-member-results');box.innerHTML=(data||[]).map(p=>`<div class="sm-row" data-add="${esc(p.id)}">${avatar(p)}<div class="sm-main"><div class="sm-name">${esc(p.full_name||p.username||'مستخدم')}${badge(p,13)}</div><div class="sm-preview">@${esc(p.username||'')}</div></div></div>`).join('');box.querySelectorAll('[data-add]').forEach(b=>b.onclick=async()=>{const{error}=await sb().rpc('student_add_member',{p_conversation:S.current.id,p_user:b.dataset.add});if(error)toast(error.message);else{toast('تمت الإضافة');sh.remove();openChat(S.current.id)}})},260)}}
+
+window.addEventListener('popstate',()=>{if(S.historyOpen)handleBack()});
+window.StudentMessages={open,close,handleBack,updateBadge,openTarget:async function(id){await open();if(id)await openChat(id)}};
+window.openStudentMessages=open;
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>updateBadge().catch(()=>{}),1600));
+setTimeout(()=>updateBadge().catch(()=>{}),2100);
 })();
