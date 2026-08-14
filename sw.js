@@ -3,7 +3,7 @@
    Offline shell + runtime cache + Firebase Cloud Messaging
 ========================================================= */
 
-const CACHE_VERSION = "student-v6.1.0";
+const CACHE_VERSION = "student-v7.0.0";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "./index.html";
@@ -127,8 +127,8 @@ self.addEventListener("fetch", (event) => {
 });
 
 /* ===== Firebase Cloud Messaging ===== */
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/12.17.1/firebase-messaging-compat.js");
 
 firebase.initializeApp({
     apiKey: "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0",
