@@ -2277,11 +2277,6 @@ function openBottomSection(section) {
             return;
         }
     }
-    if (section === "reels") {
-        window.openStudentReels?.(0);
-        return;
-    }
-
     if (section === "messages") {
         window.openStudentMessages?.();
         return;
@@ -3542,7 +3537,6 @@ document.addEventListener(
         const link = String(item?.link || "").toLowerCase();
         const actorId = item?.actor_id || meta.actor_id || meta.user_id || null;
         const storyId = meta.story_id || null;
-        const reelId = meta.reel_id || null;
         const postId = meta.post_id || null;
         const conversationId = meta.conversation_id || meta.chat_id || null;
         const orderId = meta.order_id || null;
@@ -3567,18 +3561,6 @@ document.addEventListener(
             }
             if (typeof window.openStoriesSection === "function") {
                 window.openStoriesSection();
-                return;
-            }
-        }
-
-        if (reelId || kind.startsWith("reel_") || link === "reels") {
-            if (typeof window.StudentOpenReelById === "function" && reelId) {
-                await window.StudentOpenReelById(reelId);
-                return;
-            }
-            document.dispatchEvent(new CustomEvent("student:open-reel", { detail: { reelId } }));
-            if (typeof window.openReelsSection === "function") {
-                window.openReelsSection();
                 return;
             }
         }
