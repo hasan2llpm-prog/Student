@@ -3236,8 +3236,8 @@ document.addEventListener(
         appId: "1:898081758778:web:7c7f0fa6b2cb52387e5f03"
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
-    const FIREBASE_SDK_VERSION = "10.14.1";
-    const SW_URL = "./sw.js?v=6.1.0";
+    const FIREBASE_SDK_VERSION = "12.17.1";
+    const SW_URL = "./sw.js?v=7.0.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -3731,10 +3731,16 @@ document.addEventListener(
             if (typeof messagingSdk.isSupported === "function" && !(await messagingSdk.isSupported())) {
                 throw new Error("FCM_UNSUPPORTED");
             }
-            const firebaseApp = appSdk.getApps().length ? appSdk.getApp() : appSdk.initializeApp(FIREBASE_CONFIG);
+
+            const firebaseApp = appSdk.getApps().length
+                ? appSdk.getApp()
+                : appSdk.initializeApp(FIREBASE_CONFIG);
+
             return {
                 messaging: messagingSdk.getMessaging(firebaseApp),
-                getToken: messagingSdk.getToken
+                register: messagingSdk.register,
+                onRegistered: messagingSdk.onRegistered,
+                onMessage: messagingSdk.onMessage
             };
         })();
         return firebaseMessagingPromise;
@@ -3788,29 +3794,69 @@ document.addEventListener(
         }
 
         const registration = await registerServiceWorker();
-        const { messaging, getToken } = await getFirebaseMessagingClient();
+        const {
+            messaging,
+            register: registerMessaging,
+            onRegistered
+        } = await getFirebaseMessagingClient();
+
+        if (typeof registerMessaging !== "function" || typeof onRegistered !== "function") {
+            throw new Error("FCM_FID_API_UNAVAILABLE");
+        }
 
         /*
-         * IMPORTANT:
-         * Always bind FCM to Student's existing Service Worker.
-         * Do not call deleteToken() here because this app uses a custom
-         * ServiceWorkerRegistration instead of Firebase's default
-         * /firebase-cloud-messaging-push-scope registration.
+         * Firebase JS SDK 12.14+ uses Firebase Installation ID (FID)
+         * registration. The same Student service worker and VAPID key are
+         * passed explicitly so Firebase never creates a second default scope.
          */
-        const token = await getToken(messaging, {
-            vapidKey: FIREBASE_VAPID_KEY,
-            serviceWorkerRegistration: registration
-        });
-        if (!token) throw new Error("FCM_TOKEN_EMPTY");
+        const fid = await new Promise(async (resolve, reject) => {
+            let finished = false;
+            let unsubscribe = () => {};
 
+            const finish = (value, error = null) => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(timeout);
+                try { unsubscribe(); } catch (_) {}
+                if (error) reject(error);
+                else resolve(value);
+            };
+
+            const timeout = setTimeout(() => {
+                finish(null, new Error("FCM_FID_TIMEOUT"));
+            }, 15000);
+
+            try {
+                unsubscribe = onRegistered(messaging, (installationId) => {
+                    const value = String(installationId || "").trim();
+                    if (value) finish(value);
+                });
+
+                await registerMessaging(messaging, {
+                    vapidKey: FIREBASE_VAPID_KEY,
+                    serviceWorkerRegistration: registration
+                });
+            } catch (error) {
+                finish(null, error);
+            }
+        });
+
+        if (!fid) throw new Error("FCM_FID_EMPTY");
+
+        /*
+         * Keep the existing database/RPC contract for now. During Firebase's
+         * migration period the backend send target accepts an FID where the
+         * legacy registration token was used.
+         */
         const { error } = await client.rpc("student_register_push_token", {
-            p_token: token,
+            p_token: fid,
             p_user_agent: navigator.userAgent || null,
-            p_platform: "web"
+            p_platform: "web-fid"
         });
         if (error) throw error;
 
-        localStorage.setItem(`student-fcm-token:${state.user.id}`, token);
+        localStorage.removeItem(`student-fcm-token:${state.user.id}`);
+        localStorage.setItem(`student-fcm-fid:${state.user.id}`, fid);
         localStorage.setItem(`student-push-asked:${state.user.id}`, "yes");
         renderPermission();
         if (!silent) toast("تم تفعيل الإشعارات الخارجية.");
@@ -4016,7 +4062,17 @@ document.addEventListener(
         await load();
         await subscribeRealtime();
         if (Notification.permission === "granted") {
-            syncFirebasePushToken({ requestPermission:false, silent:true }).catch(error => console.warn("FCM token sync failed:", error));
+            syncFirebasePushToken({ requestPermission:false, silent:true }).catch(error => console.warn("FCM FID sync failed:", error));
+
+            getFirebaseMessagingClient().then(({ messaging, onMessage }) => {
+                if (typeof onMessage !== "function" || window.__studentFcmForegroundBound) return;
+                window.__studentFcmForegroundBound = true;
+                onMessage(messaging, (payload) => {
+                    const title = payload?.notification?.title || payload?.data?.title || "Student";
+                    const body = payload?.notification?.body || payload?.data?.body || "لديك إشعار جديد";
+                    toast(`${title}: ${body}`);
+                });
+            }).catch(() => {});
         }
         const openedExternal = await openExternalNotificationIfNeeded().catch(() => false);
         if (!openedExternal) showFirstLoginPrompt();
