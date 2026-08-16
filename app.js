@@ -3237,7 +3237,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "12.17.1";
-    const SW_URL = "./sw.js?v=8.0.0";
+    const SW_URL = "./sw.js?v=8.2.0";
     let firebaseMessagingPromise = null;
 
     const state = {
