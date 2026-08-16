@@ -3,7 +3,7 @@
    Offline shell + runtime cache + Firebase Cloud Messaging
 ========================================================= */
 
-const CACHE_VERSION = "student-v8.2.0";
+const CACHE_VERSION = "student-v8.2.1";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "./index.html";
@@ -59,11 +59,17 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 self.addEventListener("install", (event) => {
-    event.waitUntil(
-        caches.open(STATIC_CACHE)
-            .then((cache) => cache.addAll(APP_SHELL))
-            .then(() => self.skipWaiting())
-    );
+    event.waitUntil((async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        // Cache files independently so one optional/missing asset never blocks the whole update.
+        await Promise.allSettled(APP_SHELL.map(async (url) => {
+            try {
+                const response = await fetch(url, { cache: "reload" });
+                if (response.ok) await cache.put(url, response.clone());
+            } catch (_) {}
+        }));
+        await self.skipWaiting();
+    })());
 });
 
 self.addEventListener("activate", (event) => {
