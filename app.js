@@ -1966,7 +1966,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education-admin.js?v=1.1.0";
+        script.src = "education-admin.js?v=1.2.0";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2234,7 +2234,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js?v=1.2.0";
+    script.src = "store.js?v=1.3.0";
     script.async = true;
     script.dataset.studentStore = "true";
 
@@ -2455,7 +2455,7 @@ function loadNavigationManager() { return Promise.resolve(window.StudentNavigati
 function loadAdminSystem() {
 
     loadExternalScript(
-        "education-admin.js?v=1.1.0",
+        "education-admin.js?v=1.2.0",
         "student-admin",
         "Student Admin"
     );
@@ -2477,7 +2477,7 @@ function loadMenuSystem() { return loadSettingsSystem();
 function loadSettingsSystem() {
 
     loadExternalScript(
-        "settings.js",
+        "settings.js?v=1.1.0",
         "student-settings",
         "Student Settings"
     );
@@ -2896,7 +2896,7 @@ document.addEventListener(
 (function () {
     "use strict";
 
-    if (window.StudentNavigation?.version === "clean-4") return;
+    if (window.StudentNavigation?.version === "clean-5") return;
 
     const navStyle = document.createElement("style");
     navStyle.id = "student-navigation-core-style";
@@ -3000,6 +3000,8 @@ document.addEventListener(
             ["#student-teachers-education-overlay.show", "closeStudentTeachersEducation"],
             [".student-admin-overlay.show", "closeStudentAdminPanel"],
             ["#student-store-overlay.show, #student-store-overlay.active", "closeStudentStore"],
+            ["#student-settings-overlay.show", "closeStudentSettings"],
+            ["#student-saved-overlay.show", "closeStudentSaved"],
             ["#student-education-overlay.show, #student-education-overlay.active", "closeEducationPanel"],
             ["#floating-panel.show", "closeFloatingPanel"],
             ["#student-main-menu.is-open", "closeStudentMenu"]
@@ -3020,7 +3022,35 @@ document.addEventListener(
         return false;
     }
 
+    const rootClosers = {
+        notifications: () => window.StudentNotifications?.close?.({ clearReturn:true }),
+        messages: () => {
+            const p=document.getElementById("student-messages-page");
+            if (!p?.classList.contains("sm-open")) return;
+            try { window.StudentMessages?.handleBack?.(); } catch (_) {}
+            if (p.classList.contains("sm-open")) { try { window.StudentMessages?.handleBack?.(); } catch (_) {} }
+        },
+        store: () => window.StudentStore?.close?.(),
+        settings: () => window.closeStudentSettings?.(),
+        saved: () => window.closeStudentSaved?.(),
+        admin: () => window.closeStudentAdminPanel?.(),
+        menu: () => window.closeStudentMenu?.()
+    };
+
+    function prepareRoot(name) {
+        /* Root pages are mutually exclusive. Temporary confirms/sheets are not roots. */
+        if (name !== "internal") clearPages();
+        for (const [key, closeFn] of Object.entries(rootClosers)) {
+            if (key === name) continue;
+            try { closeFn?.(); } catch (_) {}
+        }
+        document.body.classList.remove("student-internal-page-open");
+        return true;
+    }
+
     function openPage({ id = "page", title = "", html = "", onClose = null, reuse = true } = {}) {
+        /* A StudentNavigation page owns the screen; no unrelated root page remains underneath. */
+        for (const [key, closeFn] of Object.entries(rootClosers)) { try { closeFn?.(); } catch (_) {} }
         const existingIndex = reuse ? pageStack.findIndex((entry) => entry.id === id && entry.element?.isConnected) : -1;
         if (existingIndex >= 0) {
             while (pageStack.length - 1 > existingIndex) {
@@ -3101,6 +3131,13 @@ document.addEventListener(
                 return true;
             }
 
+            /* Feature-internal back comes before closing the whole feature. */
+            if (window.StudentMenuHandleBack?.()) return true;
+            if (window.StudentAdminSubpageBack?.()) return true;
+            if (window.StudentAI?.handleBack?.()) return true;
+            if (document.querySelector('[data-student-nav-page="education-browser"]:not([hidden])') && window.StudentEducationBack?.()) return true;
+            if (document.getElementById("student-store-overlay")?.classList.contains("show") && window.StudentStore?.handleBack?.()) return true;
+
             if (window.StudentNotifications?.isOpen?.()) {
                 window.StudentNotifications.close({ clearReturn:true });
                 return true;
@@ -3133,7 +3170,7 @@ document.addEventListener(
             }
             if (window.StudentNotifications?.restoreAfterBack?.()) return true;
             showExitConfirm();
-            return false;
+            return true;
         } finally {
             setTimeout(() => { handlingBack = false; }, 0);
         }
@@ -3160,7 +3197,12 @@ document.addEventListener(
         exitDialog.querySelector("[data-exit]").onclick = () => {
             exitDialog.remove();
             exitDialog = null;
-            try { window.close(); } catch (_) {}
+            try {
+                if (window.StudentAndroid?.exitApp) return window.StudentAndroid.exitApp();
+                if (window.AndroidBridge?.exitApp) return window.AndroidBridge.exitApp();
+                document.dispatchEvent(new CustomEvent("student:exit-requested"));
+                window.close();
+            } catch (_) {}
         };
     }
 
@@ -3205,13 +3247,14 @@ document.addEventListener(
 
     window.StudentHandleAndroidBack = back;
     window.StudentNavigation = {
-        version: "clean-4",
+        version: "clean-5",
         openPage,
         back,
         closePage,
         closeById,
         clearPages,
         closeTopLayer,
+        prepareRoot,
         showExitConfirm
     };
 })();
@@ -3237,7 +3280,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "12.17.1";
-    const SW_URL = "./sw.js?v=8.2.0";
+    const SW_URL = "./sw.js?v=8.3.0";
     let firebaseMessagingPromise = null;
 
     const state = {
@@ -4113,6 +4156,7 @@ document.addEventListener(
     }
 
     async function open(options = {}) {
+        window.StudentNavigation?.prepareRoot?.("notifications");
         const page = ensurePage();
         if (!options.fromReturn) {
             state.returnPending = false;
