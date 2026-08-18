@@ -31,6 +31,7 @@
         agents: [],
         agencyStatus: null,
         diamondRequests: [],
+        ownedFrames: [],
         agencyApplications: [],
         agentStockRequests: [],
         agentSales: [],
@@ -268,6 +269,15 @@
             .student-store-save:disabled { opacity:.6; cursor:not-allowed; }
             .student-store-form-message { min-height:22px; text-align:center; color:#687384; font-size:12px; }
             .student-store-form-message.error { color:#b42318; }
+
+            .student-store-frame-preview{height:150px;border-radius:22px;background:linear-gradient(145deg,#0b1325,#162949);display:grid;place-items:center;overflow:hidden;position:relative;margin-bottom:12px}
+            .student-store-frame-preview .student-avatar-frame{transform:scale(1.55)}
+            .student-store-frame-preview img{width:62px;height:62px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.8)}
+            .student-store-frame-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:#fff3e6;color:#b44600;font-size:11px;font-weight:900}
+            .student-store-frame-admin{background:#f3e8ff;color:#6d28d9}
+            .student-store-frame-owned{background:#e8fff4;color:#087f5b}
+            .student-store-frame-card{background:#fff;border:1px solid #e6ebf2;border-radius:20px;padding:14px;box-shadow:0 7px 22px rgba(14,31,53,.05)}
+            .student-store-frame-actions{display:flex;gap:8px;margin-top:10px}.student-store-frame-actions button{flex:1;border:0;border-radius:12px;padding:10px;font-weight:900;background:#087cff;color:#fff}.student-store-frame-actions button.secondary{background:#edf3fa;color:#24415f}
             .student-store-confirm-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
             .student-store-confirm-button { min-height:44px; border:0; border-radius:12px; font-weight:900; cursor:pointer; }
             .student-store-confirm-button.cancel { background:#eef0f3; color:#374151; }
@@ -486,7 +496,7 @@
         const button = document.getElementById("student-store-admin-add");
         button?.classList.toggle("show", state.isAdmin);
         const label = document.getElementById("student-store-admin-add-label");
-        if (button) button.style.visibility = ["home","orders","diamonds","wallet","agency"].includes(state.activeTab) ? "hidden" : "visible";
+        if (button) button.style.visibility = ["home","orders","diamonds","wallet","agency","frames"].includes(state.activeTab) ? "hidden" : "visible";
         if (label) label.textContent = state.activeTab === "tasks" ? "مهمة" : "منتج";
     }
 
@@ -540,6 +550,7 @@
             ["wallet","fa-solid fa-wallet","المحفظة","الرصيد المتاح وسجل الإضافة والخصم",Number(state.balance||0).toLocaleString("ar-IQ")],
             ["diamonds","fa-solid fa-gem","شراء الألماس","باقات الشحن المباشر من التطبيق",state.diamondPackages.length],
             ["agency","fa-solid fa-user-shield","الوكالة","الوكلاء المعتمدون وطلبات الوكالة",state.agents.length],
+            ["frames","fa-solid fa-fire-flame-curved","إطاراتي","الإطارات المميزة التي تملكها",state.ownedFrames.length],
             ["orders","fa-solid fa-box","الطلبات",state.isAdmin?"مراجعة وإدارة طلبات المستخدمين":"متابعة مشترياتك وحالة التوصيل",pendingOrders]
         ];
         body.innerHTML = `<div class="student-store-home">
@@ -580,6 +591,7 @@
                             <span class="student-store-card-bookmark" aria-hidden="true"><i class="fa-regular fa-bookmark"></i></span>
                             ${product.image_url
                                 ? `<img class="student-store-image" src="${esc(product.image_url)}" alt="${esc(product.name)}" loading="lazy" decoding="async">`
+                                : product.product_type === "frame" ? framePreview(product.frame_key)
                                 : `<div class="student-store-image-placeholder"><i class="fa-solid fa-box-open"></i></div>`}
                             <div class="student-store-card-body">
                                 <div class="student-store-card-top">
@@ -589,7 +601,7 @@
                                 <div class="student-store-description">${esc(product.description || "لا يوجد وصف للمنتج.")}</div>
                                 <div class="student-store-prices">
                                     ${product.allow_money ? `<span class="student-store-price"><i class="fa-solid fa-money-bill-wave"></i>${money(product.price_money, product.currency)}</span>` : ""}
-                                    ${product.allow_diamonds ? `<span class="student-store-price diamonds"><i class="fa-solid fa-gem"></i>${Number(product.price_diamonds || 0)} ألماسة</span>` : ""}${product.allow_cod ? `<span class="student-store-price"><i class="fa-solid fa-truck"></i>عند الاستلام</span>` : ""}${product.product_type === "verification" ? `<span class="student-store-price diamonds"><i class="fa-solid fa-circle-check"></i>توثيق الحساب</span>` : ""}
+                                    ${product.allow_diamonds ? `<span class="student-store-price diamonds"><i class="fa-solid fa-gem"></i>${Number(product.price_diamonds || 0)} ألماسة</span>` : ""}${product.allow_cod ? `<span class="student-store-price"><i class="fa-solid fa-truck"></i>عند الاستلام</span>` : ""}${product.product_type === "verification" ? `<span class="student-store-price diamonds"><i class="fa-solid fa-circle-check"></i>توثيق الحساب</span>` : ""}${product.product_type === "frame" ? `<span class="student-store-frame-chip"><i class="fa-solid fa-fire"></i>${esc(frameLabel(product.frame_key))}</span>${state.isAdmin && product.frame_store_visible === false ? `<span class="student-store-frame-chip student-store-frame-admin">للأدمن فقط</span>` : ""}` : ""}
                                 </div>
                                 <div class="student-store-stock">${soldOut ? "نفد المخزون" : product.stock === null ? "متوفر" : `المتوفر: ${Number(product.stock)}`}</div>
                                 ${inactive ? "" : `<button class="student-store-buy" type="button" data-store-product="${esc(product.id)}" ${soldOut ? "disabled" : ""}>${soldOut ? "غير متوفر" : "شراء"}</button>`}
@@ -658,6 +670,25 @@
         } catch (_) {
             return { sender: "", last4: "" };
         }
+    }
+
+    function frameLabel(key) {
+        return ({"fire":"نار مشتعلة","blue-fire":"النار الزرقاء","neon":"نيون متحرك","lightning":"برق كهربائي","royal":"ذهبي ملكي","ember":"جمر متوهج"})[key] || key || "إطار";
+    }
+
+    function framePreview(key, imageUrl="") {
+        const safeKey = String(key || "fire").replace(/[^a-z0-9_-]/g, "");
+        const src = imageUrl || "icon-192.png";
+        const inner = `<img src="${esc(src)}" alt="إطار الحساب">`;
+        const wrapped = typeof window.studentProfileFrameWrap === "function" ? window.studentProfileFrameWrap({profile_frame_url:`student-frame:${safeKey}`}, inner) : inner;
+        return `<div class="student-store-frame-preview">${wrapped}</div>`;
+    }
+
+    function renderFrames() {
+        const body = bodyElement(); if (!body) return;
+        const now = Date.now();
+        const rows = (state.ownedFrames || []).filter(f => !f.expires_at || Date.parse(f.expires_at) > now);
+        body.innerHTML = `${pageHead("fa-regular fa-gem", "إطاراتي", "بدّل إطار حسابك في أي وقت")}<div class="student-store-grid">${rows.map(f=>`<article class="student-store-frame-card">${framePreview(f.frame_key)}<strong>${esc(frameLabel(f.frame_key))}</strong><div class="student-store-description">${f.expires_at ? `صالح حتى ${new Date(f.expires_at).toLocaleDateString("ar-IQ")}` : "ملكية دائمة"}</div><div class="student-store-frame-actions"><button type="button" data-store-equip-frame="${esc(f.id)}">${f.is_active ? "مفعّل الآن" : "تفعيل الإطار"}</button>${f.is_active ? `<button class="secondary" type="button" data-store-clear-frame>إزالة مؤقتًا</button>` : ""}</div></article>`).join("") || `<div class="student-store-empty"><i class="fa-regular fa-gem"></i><strong>لا تملك إطارات بعد</strong><span>يمكنك الحصول عليها من المتجر أو كهدايا من الإدارة.</span></div>`}</div>`;
     }
 
     function renderOrders() {
@@ -771,6 +802,7 @@
         else if (state.activeTab === "wallet") renderWallet();
         else if (state.activeTab === "tasks") renderTasks();
         else if (state.activeTab === "orders") renderOrders();
+        else if (state.activeTab === "frames") renderFrames();
         else renderProducts();
     }
 
@@ -794,10 +826,18 @@
     }
 
     async function loadProducts(client) {
-        const fields = "id,name,description,image_url,image_path,price_money,currency,price_diamonds,allow_money,allow_diamonds,allow_cod,product_type,delivery_fee,stock,sort_order,is_active,created_at";
+        const fields = "id,name,description,image_url,image_path,price_money,currency,price_diamonds,allow_money,allow_diamonds,allow_cod,product_type,delivery_fee,stock,sort_order,is_active,created_at,frame_key,frame_store_visible,frame_duration_days";
         let query = client.from("store_products").select(fields);
         if (!state.isAdmin) query = query.eq("is_active", true);
         let result = await query.order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+
+        if (result.error && (isMissingColumn(result.error, "frame_key") || isMissingColumn(result.error, "frame_store_visible") || isMissingColumn(result.error, "frame_duration_days"))) {
+            const oldFields = "id,name,description,image_url,image_path,price_money,currency,price_diamonds,allow_money,allow_diamonds,allow_cod,product_type,delivery_fee,stock,sort_order,is_active,created_at";
+            let fallbackNew = client.from("store_products").select(oldFields);
+            if (!state.isAdmin) fallbackNew = fallbackNew.eq("is_active", true);
+            result = await fallbackNew.order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+            if (result.data) result.data = result.data.map(item => ({...item, frame_key:null, frame_store_visible:true, frame_duration_days:null}));
+        }
 
         if (result.error && isMissingColumn(result.error, "image_path")) {
             let fallback = client.from("store_products").select(fields.replace(",image_path", "").replace(",allow_cod,product_type,delivery_fee", ""));
@@ -810,7 +850,15 @@
             if (isMissingTable(result.error)) return [];
             throw result.error;
         }
-        return result.data || [];
+        const rows = result.data || [];
+        return state.isAdmin ? rows : rows.filter(item => item.product_type !== "frame" || item.frame_store_visible !== false);
+    }
+
+    async function loadOwnedFrames(client) {
+        if (!state.user) return [];
+        const { data, error } = await client.from("student_profile_frames").select("id,frame_key,product_id,source,expires_at,is_active,created_at").eq("user_id", state.user.id).order("created_at", {ascending:false});
+        if (error) { if (isMissingTable(error)) return []; console.warn("Owned frames:", error); return []; }
+        return data || [];
     }
 
     async function loadTasks(client) {
@@ -900,14 +948,16 @@
         try {
             state.user = await currentUser(client);
             state.isAdmin = await checkAdmin(client, state.user);
-            const [products, tasks, balance] = await Promise.all([
+            const [products, tasks, balance, ownedFrames] = await Promise.all([
                 loadProducts(client),
                 loadTasks(client),
-                loadBalance(client, state.user)
+                loadBalance(client, state.user),
+                loadOwnedFrames(client)
             ]);
             state.products = products;
             state.tasks = tasks;
             state.balance = balance;
+            state.ownedFrames = ownedFrames;
             await loadWallet(client);
             await loadDiamondSystem(client);
         } catch (error) {
@@ -1034,8 +1084,18 @@
                         <label class="student-store-check"><input id="student-store-allow-money" type="checkbox" ${allowMoney ? "checked" : ""}> الدفع بالمال</label>
                         <label class="student-store-check"><input id="student-store-allow-diamonds" type="checkbox" ${allowDiamonds ? "checked" : ""}> الدفع بالألماس</label>
                         <label class="student-store-check"><input id="student-store-allow-cod" type="checkbox" ${product?.allow_cod ? "checked" : ""}> الدفع عند الاستلام</label>
-                        <div class="student-store-field"><label>نوع المنتج</label><select id="student-store-product-type" class="student-store-input"><option value="physical" ${product?.product_type === "physical" ? "selected" : ""}>منتج حقيقي</option><option value="digital" ${product?.product_type === "digital" ? "selected" : ""}>منتج رقمي</option><option value="verification" ${product?.product_type === "verification" ? "selected" : ""}>علامة توثيق</option></select></div>
+                        <div class="student-store-field"><label>نوع المنتج</label><select id="student-store-product-type" class="student-store-input"><option value="physical" ${product?.product_type === "physical" ? "selected" : ""}>منتج حقيقي</option><option value="digital" ${product?.product_type === "digital" ? "selected" : ""}>منتج رقمي</option><option value="verification" ${product?.product_type === "verification" ? "selected" : ""}>علامة توثيق</option><option value="frame" ${product?.product_type === "frame" ? "selected" : ""}>إطار حساب متحرك</option></select></div>
                         <div class="student-store-field"><label>أجور التوصيل</label><input id="student-store-delivery-fee" class="student-store-input" type="number" min="0" value="${Number(product?.delivery_fee || 0)}"></div>
+                    </div>
+
+                    <div id="student-store-frame-fields" style="${product?.product_type === 'frame' ? '' : 'display:none'}">
+                        <div class="student-store-frame-preview" id="student-store-frame-live-preview">${framePreview(product?.frame_key || 'fire', product?.image_url || '')}</div>
+                        <div class="student-store-form-row">
+                            <div class="student-store-field"><label>شكل الإطار</label><select id="student-store-frame-key" class="student-store-input"><option value="fire" ${product?.frame_key==='fire'?'selected':''}>🔥 نار مشتعلة</option><option value="blue-fire" ${product?.frame_key==='blue-fire'?'selected':''}>💙 نار زرقاء</option><option value="neon" ${product?.frame_key==='neon'?'selected':''}>🌈 نيون</option><option value="lightning" ${product?.frame_key==='lightning'?'selected':''}>⚡ برق</option><option value="royal" ${product?.frame_key==='royal'?'selected':''}>👑 ذهبي ملكي</option><option value="ember" ${product?.frame_key==='ember'?'selected':''}>🔥 جمر</option></select></div>
+                            <div class="student-store-field"><label>مدة الملكية بالأيام</label><input id="student-store-frame-duration" class="student-store-input" type="number" min="1" step="1" value="${product?.frame_duration_days ?? ''}" placeholder="فارغ = دائم"></div>
+                        </div>
+                        <label class="student-store-check"><input id="student-store-frame-visible" type="checkbox" ${product?.frame_store_visible === false ? '' : 'checked'}> عرض الإطار في المتجر للمستخدمين</label>
+                        <div class="student-store-note">إذا ألغيت هذا الخيار يبقى الإطار محفوظًا ويمكن للأدمن منحه كهديّة، لكنه لا يظهر للبيع.</div>
                     </div>
                     <div class="student-store-form-row">
                         <div class="student-store-field">
@@ -1194,7 +1254,7 @@
         if (!name) throw new Error("اكتب اسم المنتج.");
         if (!allowMoney && !allowDiamonds && !allowCod) throw new Error("اختر طريقة دفع واحدة على الأقل.");
         const productType = productFormValue("student-store-product-type")?.value || "physical";
-        if ((productType === "digital" || productType === "verification") && allowCod) {
+        if ((productType === "digital" || productType === "verification" || productType === "frame") && allowCod) {
             throw new Error("الدفع عند الاستلام متاح للمنتجات الحقيقية فقط.");
         }
 
@@ -1222,7 +1282,10 @@
             delivery_fee: Number(productFormValue("student-store-delivery-fee")?.value || 0),
             stock,
             sort_order: sortOrder,
-            is_active: Boolean(productFormValue("student-store-product-active")?.checked)
+            is_active: Boolean(productFormValue("student-store-product-active")?.checked),
+            frame_key: productType === "frame" ? (productFormValue("student-store-frame-key")?.value || "fire") : null,
+            frame_store_visible: productType === "frame" ? Boolean(productFormValue("student-store-frame-visible")?.checked) : true,
+            frame_duration_days: productType === "frame" && productFormValue("student-store-frame-duration")?.value !== "" ? Math.max(1, Number(productFormValue("student-store-frame-duration")?.value || 1)) : null
         };
     }
 
@@ -1404,7 +1467,13 @@
                 updateBalance();
             }
             if (paymentMethod === "money") showPaymentReceipt(product, result || {});
-            else { closeModal(); toast("تم شراء المنتج بالألماس."); }
+            else {
+                if (product.product_type === "frame") {
+                    const orderId = result?.order_id || result?.id || result?.orderId || null;
+                    if (orderId) { const grant = await client.rpc("student_store_grant_frame_from_order", {p_order_id: orderId}); if (grant.error) console.warn("Frame grant:", grant.error); }
+                }
+                closeModal(); toast(product.product_type === "frame" ? "تم شراء الإطار وتفعيله على حسابك." : "تم شراء المنتج بالألماس.");
+            }
             await refresh();
         } catch (error) {
             console.error("Create store order:", error);
@@ -1416,7 +1485,7 @@
 
     async function updateOrderStatus(orderId,status,button){
         if(!state.isAdmin||!orderId||!status||button?.disabled)return; const client=db(); if(!client)return; button.disabled=true;
-        try{const {error}=await client.rpc("admin_update_store_order",{p_order_id:orderId,p_status:status}); if(error)throw error; toast("تم تحديث حالة الطلب."); await refresh();}
+        try{const {error}=await client.rpc("admin_update_store_order",{p_order_id:orderId,p_status:status}); if(error)throw error; if(status==="completed"){const g=await client.rpc("student_store_grant_frame_from_order",{p_order_id:orderId});if(g.error)console.warn("Frame order grant:",g.error)} toast("تم تحديث حالة الطلب."); await refresh();}
         catch(error){console.error(error);toast(error?.message||"تعذر تحديث الطلب.");button.disabled=false;}
     }
 
@@ -1476,11 +1545,16 @@
     async function reviewStoreRequest(type,id,approve,button){const client=db();button.disabled=true;const rpc=type==='diamond'?'admin_review_diamond_request':type==='agency'?'admin_review_agency_application':'admin_review_agent_stock';const args=type==='diamond'?{p_request_id:id,p_approve:approve}:type==='agency'?{p_application_id:id,p_approve:approve,p_note:null}:{p_request_id:id,p_approve:approve};try{const {error}=await client.rpc(rpc,args);if(error)throw error;toast("تم تحديث الطلب.");await refresh();}catch(e){toast(e.message||"تعذر تحديث الطلب.");button.disabled=false;}}
     async function handleBodySubmit(event){if(event.target.id!=="student-store-agent-sale-form")return;event.preventDefault();const client=db();const b=event.submitter;b.disabled=true;try{const {data,error}=await client.rpc("store_agent_sell_diamonds",{p_customer_username:document.getElementById('student-store-sale-username').value,p_diamonds:Number(document.getElementById('student-store-sale-diamonds').value),p_sale_amount_iqd:Number(document.getElementById('student-store-sale-amount').value)});if(error)throw error;toast("تم تحويل الألماس للمستخدم.");event.target.reset();await refresh();}catch(e){toast(e.message||"تعذر تنفيذ البيع.");b.disabled=false;}}
 
-    function handleBodyClick(event) {
+    async function handleBodyClick(event) {
         const sectionButton = event.target.closest("[data-store-section]");
         if (sectionButton) { event.preventDefault(); setSection(sectionButton.dataset.storeSection); return; }
         const homeButton = event.target.closest("[data-store-home]");
         if (homeButton) { event.preventDefault(); setSection("home", false); return; }
+        const equipFrame = event.target.closest("[data-store-equip-frame]");
+        if (equipFrame) { equipFrame.disabled=true; const {error}=await db().rpc("student_equip_profile_frame",{p_owned_frame_id:equipFrame.dataset.storeEquipFrame}); if(error){toast(error.message||"تعذر تفعيل الإطار");equipFrame.disabled=false}else{toast("تم تفعيل الإطار.");await refresh()} return; }
+        const clearFrame = event.target.closest("[data-store-clear-frame]");
+        if (clearFrame) { clearFrame.disabled=true; const {error}=await db().rpc("student_clear_profile_frame"); if(error){toast(error.message||"تعذر إزالة الإطار");clearFrame.disabled=false}else{toast("تمت إزالة الإطار مؤقتًا.");await refresh()} return; }
+
         const buyDiamond = event.target.closest("[data-store-buy-diamond]");
         if (buyDiamond) { event.preventDefault(); openDiamondPayment(buyDiamond.dataset.storeBuyDiamond); return; }
         const agencyForm = event.target.closest("[data-store-open-agency-form]");
@@ -1535,7 +1609,7 @@
 
     function openCodForm(product) {
         if (!product) return;
-        if (product.product_type === "digital" || product.product_type === "verification") return toast("هذا المنتج لا يدعم الدفع عند الاستلام.");
+        if (product.product_type === "digital" || product.product_type === "verification" || product.product_type === "frame") return toast("هذا المنتج لا يدعم الدفع عند الاستلام.");
         showModal(`<div class="student-store-modal-card">
           <div class="student-store-modal-head"><div class="student-store-modal-title">بيانات التوصيل</div><button class="student-store-modal-close" data-store-modal-close>×</button></div>
           <form id="student-store-cod-form" class="student-store-cod-form">
@@ -1647,6 +1721,14 @@
             return;
         }
 
+        if (event.target.id === "student-store-product-type") {
+            const frame = event.target.value === "frame";
+            const fields = document.getElementById("student-store-frame-fields"); if (fields) fields.style.display = frame ? "" : "none";
+            const cod = document.getElementById("student-store-allow-cod"); if (frame && cod) cod.checked = false;
+        }
+        if (event.target.id === "student-store-frame-key") {
+            const box=document.getElementById("student-store-frame-live-preview"); if(box) box.innerHTML=framePreview(event.target.value);
+        }
         if (event.target.id === "student-store-allow-diamonds") {
             const input = document.getElementById("student-store-price-diamonds");
             if (input) input.disabled = !event.target.checked;
