@@ -920,6 +920,7 @@
     }
 
     function open() {
+        window.StudentNavigation?.prepareRoot?.("store");
         injectStyles();
         createOverlay();
         overlay.classList.add("show");
@@ -947,6 +948,15 @@
     function close() {
         state.historyActive = false;
         hide();
+    }
+
+    function handleBack() {
+        if (!overlay?.classList.contains("show")) return false;
+        const modal = modalElement();
+        if (modal?.classList.contains("show")) { closeModal(); return true; }
+        if (state.activeTab !== "home") { setSection("home", false); return true; }
+        close();
+        return true;
     }
 
     function selectedProduct(id) {
@@ -1654,7 +1664,9 @@
         version: "2.2.0",
         open,
         close,
-        refresh
+        refresh,
+        handleBack
     };
     window.openStudentStore = open;
+    window.closeStudentStore = close;
 })();
