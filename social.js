@@ -7301,7 +7301,7 @@ async function ensureProfiles(ids){ids=[...new Set((ids||[]).filter(Boolean).map
 function rowProfile(row){const id=profileId(row);return (id&&S.profiles[String(id)])||row||{}}
 function nameHtml(row,fallback='محادثة',size=13){const p=rowProfile(row);const name=p.full_name||p.display_name||p.title||p.username||row?.title||fallback;return `${esc(name)}${badge(p,size)}`}
 
-async function open(){if(!await init())return;const p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){try{history.pushState({studentMessages:'list'},'',location.href)}catch(_){}S.historyOpen=true}renderListShell();subscribeGlobal();loadConversations({silent:S.conversations.length>0}).catch(console.error)}
+async function open(){window.StudentNavigation?.prepareRoot?.('messages');if(!await init())return;const p=page();p.classList.add('sm-open');document.body.style.overflow='hidden';S.view='list';if(!S.historyOpen){try{history.pushState({studentMessages:'list'},'',location.href)}catch(_){}S.historyOpen=true}renderListShell();subscribeGlobal();loadConversations({silent:S.conversations.length>0}).catch(console.error)}
 function handleBack(){const p=document.getElementById('student-messages-page');if(!p||!p.classList.contains('sm-open'))return false;const sheet=document.querySelector('.sm-sheet');if(sheet){sheet.remove();return true}if(S.view==='chat'){showList();return true}hidePage();return true}
 function close(){handleBack()}
 function hidePage(){S.page?.classList.remove('sm-open');document.body.style.overflow='';unsubscribeChat();S.historyOpen=false;S.view='list';S.current=null}
