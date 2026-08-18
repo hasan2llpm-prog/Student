@@ -34,8 +34,20 @@ function ensureCosmeticStyles() {
     const style = document.createElement("style");
     style.id = "student-profile-cosmetics-style";
     style.textContent = `
-        .student-avatar-frame{position:relative;display:inline-grid;place-items:center;flex:0 0 auto}
+        .student-avatar-frame{position:relative;display:inline-grid;place-items:center;flex:0 0 auto;isolation:isolate}
         .student-avatar-frame:after{content:"";position:absolute;inset:-6px;background-image:var(--student-profile-frame);background-size:100% 100%;background-position:center;background-repeat:no-repeat;pointer-events:none;z-index:2}
+        .student-avatar-frame.student-frame-animated:before,.student-avatar-frame.student-frame-animated:after{content:"";position:absolute;pointer-events:none;border-radius:50%;z-index:2}
+        .student-avatar-frame.student-frame-animated:before{inset:-6px;background:var(--student-frame-ring);padding:3px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;filter:drop-shadow(0 0 6px var(--student-frame-glow));animation:studentFrameSpin 2.6s linear infinite}
+        .student-avatar-frame.student-frame-animated:after{inset:-9px;background:var(--student-frame-aura);filter:blur(5px);opacity:.72;z-index:-1;animation:studentFramePulse 1.35s ease-in-out infinite alternate}
+        .student-avatar-frame.student-frame-fire{--student-frame-ring:conic-gradient(from 0deg,#ff2d00,#ff8a00,#ffd54a,#ff3d00,#8f1200,#ff2d00);--student-frame-glow:#ff5a00;--student-frame-aura:radial-gradient(circle,transparent 54%,rgba(255,77,0,.25) 62%,rgba(255,153,0,.46) 69%,transparent 77%)}
+        .student-avatar-frame.student-frame-blue-fire{--student-frame-ring:conic-gradient(from 0deg,#00d9ff,#3577ff,#8a5cff,#00f0ff,#0059ff,#00d9ff);--student-frame-glow:#00bfff;--student-frame-aura:radial-gradient(circle,transparent 54%,rgba(0,179,255,.28) 63%,rgba(81,93,255,.48) 70%,transparent 78%)}
+        .student-avatar-frame.student-frame-neon{--student-frame-ring:conic-gradient(#ff00c8,#8b5cff,#00e7ff,#00ff9d,#ffea00,#ff00c8);--student-frame-glow:#a855f7;--student-frame-aura:radial-gradient(circle,transparent 55%,rgba(168,85,247,.34) 65%,rgba(0,231,255,.32) 72%,transparent 79%)}
+        .student-avatar-frame.student-frame-lightning{--student-frame-ring:conic-gradient(#fff,#5fd7ff,#147cff,#fff,#8cecff,#147cff,#fff);--student-frame-glow:#57c7ff;--student-frame-aura:radial-gradient(circle,transparent 53%,rgba(255,255,255,.22) 61%,rgba(0,136,255,.48) 69%,transparent 77%)}
+        .student-avatar-frame.student-frame-royal{--student-frame-ring:conic-gradient(#f8d66d,#9a6b00,#fff2a5,#d3a518,#7c5200,#f8d66d);--student-frame-glow:#e8b928;--student-frame-aura:radial-gradient(circle,transparent 54%,rgba(255,215,79,.26) 64%,rgba(138,91,0,.35) 72%,transparent 79%)}
+        .student-avatar-frame.student-frame-ember{--student-frame-ring:conic-gradient(#4a0900,#d62c00,#ff6b00,#ffb000,#8d1300,#4a0900);--student-frame-glow:#ff3c00;--student-frame-aura:radial-gradient(circle,transparent 55%,rgba(190,32,0,.34) 65%,rgba(255,111,0,.42) 72%,transparent 80%)}
+        @keyframes studentFrameSpin{to{transform:rotate(360deg)}}
+        @keyframes studentFramePulse{from{transform:scale(.97);opacity:.48}to{transform:scale(1.06);opacity:.88}}
+        @media (prefers-reduced-motion:reduce){.student-avatar-frame.student-frame-animated:before,.student-avatar-frame.student-frame-animated:after{animation:none!important}}
         .student-custom-badge{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 2px;border-radius:999px;color:#fff;font-size:10px;font-weight:900;line-height:1;margin-inline-start:3px;vertical-align:-1px;box-sizing:border-box}
     `;
     document.head.appendChild(style);
@@ -62,7 +74,15 @@ function verificationBadge(profile, size = 15) {
 }
 
 function profileFrameWrap(profile, innerHtml) {
-    const url = safeUrl(profile?.profile_frame_url || "", false);
+    const raw = String(profile?.profile_frame_url || "").trim();
+    if (!raw) return innerHtml;
+    if (raw.startsWith("student-frame:")) {
+        const key = raw.slice(14).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+        const allowed = new Set(["fire","blue-fire","neon","lightning","royal","ember"]);
+        if (!allowed.has(key)) return innerHtml;
+        return `<span class="student-avatar-frame student-frame-animated student-frame-${esc(key)}" data-student-frame="${esc(key)}">${innerHtml}</span>`;
+    }
+    const url = safeUrl(raw, false);
     if (!url) return innerHtml;
     return `<span class="student-avatar-frame" style="--student-profile-frame:url('${esc(url)}')">${innerHtml}</span>`;
 }
