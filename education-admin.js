@@ -2187,7 +2187,7 @@
             }
 
             const script = document.createElement("script");
-            script.src = "education-admin.js?v=1.1.0";
+            script.src = "education-admin.js?v=1.2.0";
             script.async = true;
             script.dataset.studentEducationManagement = "true";
             script.onload = resolve;
@@ -2288,6 +2288,7 @@
     ===================================================== */
 
     async function openAdminPanel() {
+        window.StudentNavigation?.prepareRoot?.("admin");
         overlay.classList.add("show");
         document.body.classList.add("student-admin-page-open");
         try { history.pushState({ studentPage: "admin" }, "", location.href); } catch (_) {}
@@ -2408,6 +2409,7 @@ function styles(){if(document.getElementById('student-release-tools-style'))retu
 function badge(p){return typeof window.studentVerificationBadge==='function'?window.studentVerificationBadge(p,12):''}
 function page(id,title){styles();let p=document.getElementById(id);if(!p){p=document.createElement('section');p.id=id;p.className='srt-page';p.innerHTML=`<header class="srt-head"><button class="srt-back"><i class="fa-solid fa-arrow-right"></i></button><div class="srt-title">${esc(title)}</div></header><main class="srt-body"></main>`;document.body.appendChild(p);p.querySelector('.srt-back').onclick=()=>closePage(p)}p.classList.add('show');document.querySelector('.student-admin-overlay')?.classList.remove('show');return p.querySelector('.srt-body')}
 function closePage(p){p?.classList.remove('show');document.querySelector('.student-admin-overlay')?.classList.add('show');return true}
+window.StudentAdminSubpageBack=function(){const p=[...document.querySelectorAll('.srt-page.show')].pop();if(!p)return false;return closePage(p)}
 function confirmAction(title,text,onConfirm){const m=document.createElement('div');m.className='srt-confirm';m.innerHTML=`<div class="srt-confirm-card"><h3 style="margin-top:0">${esc(title)}</h3><p style="color:#657184;line-height:1.7">${esc(text)}</p><div class="srt-actions" style="justify-content:flex-end"><button class="srt-btn secondary" data-no>إلغاء</button><button class="srt-btn" data-yes>تأكيد</button></div></div>`;document.body.appendChild(m);m.querySelector('[data-no]').onclick=()=>m.remove();m.querySelector('[data-yes]').onclick=async e=>{e.currentTarget.disabled=true;try{await onConfirm();m.remove()}catch(err){e.currentTarget.disabled=false;let box=m.querySelector('.srt-confirm-error');if(!box){box=document.createElement('div');box.className='srt-status warn srt-confirm-error';box.style.marginTop='10px';m.querySelector('.srt-confirm-card')?.appendChild(box)}box.textContent=err?.message||'تعذر تنفيذ العملية'}}}
 
 async function openRecent(){const body=page('student-recent-users-page','المسجلون حديثًا');body.innerHTML='<div class="srt-empty">جارٍ تحميل أحدث الحسابات...</div>';let query=client.from('profiles').select('id,full_name,username,email,role,created_at,is_verified,verification_color').order('created_at',{ascending:false}).limit(30);let{data,error}=await query;if(error){const rpc=await client.rpc('student_admin_recent_users',{p_limit:30});data=rpc.data;error=rpc.error}if(error){body.innerHTML=`<div class="srt-status warn">${esc(error.message)}</div>`;return}const rows=data||[];body.innerHTML=`<div class="srt-status">آخر ${rows.length} حسابًا مرتبة من الأحدث إلى الأقدم.</div>${rows.map(u=>`<article class="srt-card srt-user"><div class="srt-user-main"><div class="srt-name">${esc(u.full_name||u.username||'مستخدم')}${badge(u)}</div><div class="srt-meta">${esc(u.email||'لا يوجد بريد ظاهر')}</div><div class="srt-meta">@${esc(u.username||'')} · ${esc(u.role||'student')}</div></div><time class="srt-time">${u.created_at?esc(new Date(u.created_at).toLocaleString('ar-IQ')):''}</time></article>`).join('')||'<div class="srt-empty">لا توجد حسابات.</div>'}`}
