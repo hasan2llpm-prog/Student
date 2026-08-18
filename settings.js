@@ -2317,6 +2317,7 @@
     ===================================================== */
 
     async function openMenu() {
+        window.StudentNavigation?.prepareRoot?.("menu");
 
         if (menuOpeningPromise) {
             return menuOpeningPromise;
@@ -2424,6 +2425,12 @@
             closeMainMenu();
 
         };
+
+    window.StudentMenuHandleBack = function () {
+        if (!menuElement?.classList.contains("is-open")) return false;
+        goBackInsideMenu();
+        return true;
+    };
 
 
     window.clearStudentMenuFeatureCache =
@@ -3186,6 +3193,7 @@
     ===================================================== */
 
     function openSettings() {
+        window.StudentNavigation?.prepareRoot?.("settings");
 
         injectStyles();
 
@@ -5153,6 +5161,7 @@
     ===================================================== */
 
     async function openSaved() {
+        window.StudentNavigation?.prepareRoot?.("saved");
 
         injectStyles();
 
