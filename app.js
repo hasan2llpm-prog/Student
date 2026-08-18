@@ -2179,32 +2179,15 @@ function showSettingsPanel() {
 ========================================================= */
 
 function openNotifications() {
-
-    showFloatingPanel(
-        "الإشعارات",
-        `
-        <div style="
-            text-align:center;
-            padding:30px 10px;
-        ">
-
-            <div style="
-                font-size:50px;
-                margin-bottom:15px;
-            ">
-                🔔
-            </div>
-
-            <p style="
-                color:#666;
-                margin:0;
-            ">
-                لا توجد إشعارات جديدة.
-            </p>
-
-        </div>
-        `
-    );
+    // Always use the real full-screen notifications module.
+    if (window.StudentNotifications?.open) {
+        window.StudentNotifications.open();
+        return;
+    }
+    if (typeof window.openNotifications === "function" && window.openNotifications !== openNotifications) {
+        window.openNotifications();
+        return;
+    }
 }
 
 
@@ -2259,10 +2242,11 @@ function openStudentStoreSection() {
 function openBottomSection(section) {
 
     if (section === "home") {
-        if (typeof closeFloatingPanel === "function") {
-            closeFloatingPanel();
-        }
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        // Home is a real root: close every other root/internal page first.
+        window.StudentNavigation?.prepareRoot?.("home");
+        if (typeof closeFloatingPanel === "function") closeFloatingPanel();
+        document.querySelectorAll("nav a").forEach(a => a.classList.toggle("active", a.dataset.section === "home"));
+        window.scrollTo({ top: 0, behavior: "auto" });
         return;
     }
 
@@ -2272,6 +2256,8 @@ function openBottomSection(section) {
     }
 
     if (section === "search") {
+        // Bottom-nav Search starts from a clean root, never on top of another feature.
+        window.StudentNavigation?.prepareRoot?.("search");
         if (typeof window.openStudentSearch === "function") {
             window.openStudentSearch();
             return;
@@ -2332,7 +2318,8 @@ function bindInterfaceButtons() {
 
                 event.preventDefault();
 
-                openNotifications();
+                if (window.StudentNotifications?.open) window.StudentNotifications.open();
+                else openNotifications();
             }
         );
     }
@@ -2896,7 +2883,7 @@ document.addEventListener(
 (function () {
     "use strict";
 
-    if (window.StudentNavigation?.version === "clean-5") return;
+    if (window.StudentNavigation?.version === "clean-6") return;
 
     const navStyle = document.createElement("style");
     navStyle.id = "student-navigation-core-style";
@@ -3246,8 +3233,9 @@ document.addEventListener(
     installHistoryGuard();
 
     window.StudentHandleAndroidBack = back;
+    window.StudentAndroidBack = back;
     window.StudentNavigation = {
-        version: "clean-5",
+        version: "clean-6",
         openPage,
         back,
         closePage,
