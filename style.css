@@ -281,3 +281,14 @@ body:not(.student-session-resolved)::before {
   #student-settings-overlay,#student-saved-overlay{padding:0!important;align-items:stretch!important;background:#f7f9fb!important}
   #student-settings-overlay .student-settings-window,#student-saved-overlay .student-saved-window{max-width:none!important;max-height:none!important;width:100%!important;height:100dvh!important;border-radius:0!important;box-shadow:none!important}
 }
+
+
+/* ===== Student navigation UI hotfix v8.3.1 ===== */
+.student-exit-confirm{position:fixed;inset:0;z-index:2147483647;background:rgba(7,15,27,.48);display:grid;place-items:center;padding:20px;direction:rtl;backdrop-filter:blur(3px)}
+.student-exit-card{width:min(360px,100%);background:#fff;border-radius:24px;padding:22px;box-sizing:border-box;box-shadow:0 24px 70px rgba(0,0,0,.22);text-align:right}
+.student-exit-card h3{margin:0;color:#172033;font-size:20px}
+@media (max-width: 900px){
+  /* Navigation in the Android build is owned by the phone Back key. */
+  .student-internal-back{display:none!important}
+  .student-internal-header{padding-inline:16px!important}
+}
