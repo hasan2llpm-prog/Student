@@ -685,6 +685,13 @@
         if (q) adminSearch(q); else adminPendingRequests();
     }
 
-    window.StudentAI = Object.freeze({ version: "2.0.0", open, close: () => window.StudentNavigation?.closeById?.(PAGE_ID) });
+    function handleBack() {
+        const page = document.querySelector(`[data-student-nav-page="${PAGE_ID}"]`);
+        if (!page || page.hidden) return false;
+        if (state.currentTool && state.currentTool !== "home") { renderHome(); return true; }
+        window.StudentNavigation?.closeById?.(PAGE_ID);
+        return true;
+    }
+    window.StudentAI = Object.freeze({ version: "2.1.0", open, close: () => window.StudentNavigation?.closeById?.(PAGE_ID), handleBack });
     window.openStudentAI = open;
 })();
