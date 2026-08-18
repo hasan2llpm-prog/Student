@@ -1966,7 +1966,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education-admin.js?v=1.2.0";
+        script.src = "education-admin.js?v=1.3.0";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2217,7 +2217,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js?v=1.3.0";
+    script.src = "store.js?v=1.4.0";
     script.async = true;
     script.dataset.studentStore = "true";
 
@@ -2442,7 +2442,7 @@ function loadNavigationManager() { return Promise.resolve(window.StudentNavigati
 function loadAdminSystem() {
 
     loadExternalScript(
-        "education-admin.js?v=1.2.0",
+        "education-admin.js?v=1.3.0",
         "student-admin",
         "Student Admin"
     );
@@ -3268,7 +3268,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "12.17.1";
-    const SW_URL = "./sw.js?v=8.3.0";
+    const SW_URL = "./sw.js?v=8.4.0";
     let firebaseMessagingPromise = null;
 
     const state = {
