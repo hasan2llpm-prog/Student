@@ -1553,7 +1553,27 @@
 
     async function handleBodyClick(event) {
         const sectionButton = event.target.closest("[data-store-section]");
-        if (sectionButton) { event.preventDefault(); setSection(sectionButton.dataset.storeSection); return; }
+        if (sectionButton) {
+            event.preventDefault();
+            const targetSection = sectionButton.dataset.storeSection || "home";
+            if (targetSection === "frames") {
+                state.activeTab = "frames";
+                updateTabs();
+                updateStoreHeader();
+                renderFrames();
+                try {
+                    state.ownedFrames = await loadOwnedFrames(db());
+                    renderFrames();
+                } catch (error) {
+                    console.error("Frames section:", error);
+                    toast("تعذر تحميل إطاراتك. جرّب مرة أخرى.");
+                }
+                try { history.pushState({ studentStore: "frames" }, "", location.href); } catch (_) {}
+                return;
+            }
+            setSection(targetSection);
+            return;
+        }
         const homeButton = event.target.closest("[data-store-home]");
         if (homeButton) { event.preventDefault(); setSection("home", false); return; }
         const equipFrame = event.target.closest("[data-store-equip-frame]");
