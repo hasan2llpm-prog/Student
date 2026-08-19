@@ -3,7 +3,7 @@
    Offline shell + runtime cache + Firebase Cloud Messaging
 ========================================================= */
 
-const CACHE_VERSION = "student-v8.5.1";
+const CACHE_VERSION = "student-v8.5.2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = "./index.html";
