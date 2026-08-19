@@ -3195,22 +3195,18 @@ document.addEventListener(
 
     /* One permanent browser-history guard. No feature is allowed to own exit logic. */
     function installHistoryGuard() {
-        try {
-            history.replaceState({ ...(history.state || {}), [GUARD_KEY]: "root" }, "", location.href);
-            history.pushState({ [GUARD_KEY]: "guard" }, "", location.href);
-        } catch (_) {}
+        try { const root={...(history.state||{}),[GUARD_KEY]:"root"}; history.replaceState(root,"",location.href); history.pushState({...root,[GUARD_KEY]:"guard",studentGuardAt:Date.now()},"",location.href); } catch (_) {}
     }
+    function ensureHistoryGuard(){ try{ if(history.state?.[GUARD_KEY]!=="guard") history.pushState({...(history.state||{}),[GUARD_KEY]:"guard",studentGuardAt:Date.now()},"",location.href); }catch(_){} }
 
     function onPopState(event) {
-        event.stopImmediatePropagation();
-        event.stopPropagation();
-        const handled = back();
-        try { history.pushState({ [GUARD_KEY]: "guard" }, "", location.href); } catch (_) {}
-        return handled;
+        event.stopImmediatePropagation(); event.stopPropagation(); const handled=back(); setTimeout(ensureHistoryGuard,0); return handled;
     }
 
     /* capture phase runs before old bubble listeners still present in feature files */
     window.addEventListener("popstate", onPopState, true);
+    window.addEventListener("pageshow",()=>setTimeout(ensureHistoryGuard,50),true);
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(ensureHistoryGuard,50)});
     document.addEventListener("backbutton", (event) => {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -3235,7 +3231,7 @@ document.addEventListener(
     window.StudentHandleAndroidBack = back;
     window.StudentAndroidBack = back;
     window.StudentNavigation = {
-        version: "clean-6",
+        version: "clean-7",
         openPage,
         back,
         closePage,
