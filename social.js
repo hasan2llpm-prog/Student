@@ -112,24 +112,26 @@ function ensureCosmeticStyles() {
         @keyframes studentLightningFlash{0%,30%,100%{opacity:.35;transform:scale(.98) rotate(-1deg)}35%,42%{opacity:1;transform:scale(1.06) rotate(1deg)}55%{opacity:.55}60%,66%{opacity:1;transform:scale(1.03) rotate(-.5deg)}}
         /* v8.5: real inline SVG effects for fire, blue fire, lightning and ember. */
         .student-avatar-frame{overflow:visible!important}
+        .student-avatar-frame > :not(.student-frame-fx){position:relative;z-index:3}
         .student-avatar-frame.student-frame-rich:after{display:none!important}
-        .student-avatar-frame.student-frame-rich:before{inset:-5px;z-index:3;opacity:.78}
-        .student-frame-fx{position:absolute;left:50%;bottom:50%;width:182%;height:215%;transform:translate(-50%,56%);pointer-events:none;z-index:4;overflow:visible;contain:layout style}
+        .student-avatar-frame.student-frame-rich:before{inset:-4px;z-index:2;opacity:.72}
+        /* v8.5.1 final fit: effects hug the avatar instead of covering the profile UI. */
+        .student-frame-fx{position:absolute;left:50%;top:50%;width:136%;height:150%;transform:translate(-50%,-50%);pointer-events:none;z-index:1;overflow:visible;contain:layout style}
         .student-frame-fx svg{display:block;width:100%;height:100%;overflow:visible}
-        .student-frame-fx-fire{width:190%;height:235%;transform:translate(-50%,59%);mix-blend-mode:normal}
-        .student-frame-fx-fire svg{filter:saturate(1.18) contrast(1.04)}
+        .student-frame-fx-fire{width:140%;height:158%;transform:translate(-50%,-53%);mix-blend-mode:normal}
+        .student-frame-fx-fire svg{filter:saturate(1.12) contrast(1.02)}
         .student-frame-flame-glow{animation:studentRealFlameGlow .68s ease-in-out infinite alternate;transform-origin:80px 118px}
         .student-frame-fx-fire path{transform-origin:80px 155px;animation:studentRealFlameBody .62s ease-in-out infinite alternate}
         .student-frame-fx-fire path:nth-of-type(2){animation-duration:.48s;animation-direction:alternate-reverse}
         .student-frame-fx-fire path:nth-of-type(3){animation-duration:.4s}
         .student-frame-sparks circle{animation:studentSparkRise 1.35s linear infinite;transform-box:fill-box;transform-origin:center}
         .student-frame-sparks circle:nth-child(2){animation-delay:-.36s;animation-duration:1.08s}.student-frame-sparks circle:nth-child(3){animation-delay:-.72s;animation-duration:1.48s}.student-frame-sparks circle:nth-child(4){animation-delay:-.2s;animation-duration:1.18s}.student-frame-sparks circle:nth-child(5){animation-delay:-.9s}
-        .student-frame-fx-lightning{width:188%;height:208%;transform:translate(-50%,57%)}
+        .student-frame-fx-lightning{width:142%;height:150%;transform:translate(-50%,-51%)}
         .student-frame-electric-ring{transform-origin:80px 96px;animation:studentElectricSpin 4.2s linear infinite}
         .student-frame-bolts{animation:studentBoltFlash .88s steps(1,end) infinite}
         .student-frame-bolts path:nth-child(2){animation-delay:-.25s}.student-frame-bolts path:nth-child(3){animation-delay:-.48s}.student-frame-bolts path:nth-child(4){animation-delay:-.66s}
         .student-frame-electric-sparks{animation:studentBoltFlash .62s steps(1,end) infinite reverse}
-        .student-frame-fx-ember{width:180%;height:220%;transform:translate(-50%,58%)}
+        .student-frame-fx-ember{width:136%;height:150%;transform:translate(-50%,-51%)}
         .student-frame-embers circle{animation:studentEmberParticle 1.7s linear infinite;transform-box:fill-box;transform-origin:center}.student-frame-embers circle:nth-child(2){animation-delay:-.2s}.student-frame-embers circle:nth-child(3){animation-delay:-.6s}.student-frame-embers circle:nth-child(4){animation-delay:-1.1s}.student-frame-embers circle:nth-child(5){animation-delay:-.9s}.student-frame-embers circle:nth-child(6){animation-delay:-.45s}.student-frame-embers circle:nth-child(7){animation-delay:-1.3s}.student-frame-embers circle:nth-child(8){animation-delay:-.75s}
         @keyframes studentRealFlameBody{0%{transform:scale(.96,.93) skewX(-1.8deg) translateY(3px)}55%{transform:scale(1.03,1.06) skewX(1.4deg) translateY(-2px)}100%{transform:scale(.99,1.11) skewX(-.8deg) translateY(-5px)}}
         @keyframes studentRealFlameGlow{from{opacity:.5;transform:scale(.96)}to{opacity:.9;transform:scale(1.07)}}
