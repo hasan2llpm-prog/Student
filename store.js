@@ -685,7 +685,7 @@
     }
 
     function renderFrames() {
-        const body = bodyElement(); if (!body) return;
+        const body = document.getElementById("student-store-body"); if (!body) return;
         const now = Date.now();
         const rows = (state.ownedFrames || []).filter(f => !f.expires_at || Date.parse(f.expires_at) > now);
         body.innerHTML = `${pageHead("fa-regular fa-gem", "إطاراتي", "تحكم بإطارات حسابك")}
