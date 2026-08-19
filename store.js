@@ -688,7 +688,8 @@
         const body = bodyElement(); if (!body) return;
         const now = Date.now();
         const rows = (state.ownedFrames || []).filter(f => !f.expires_at || Date.parse(f.expires_at) > now);
-        body.innerHTML = `${pageHead("fa-regular fa-gem", "إطاراتي", "بدّل إطار حسابك في أي وقت")}<div class="student-store-grid">${rows.map(f=>`<article class="student-store-frame-card">${framePreview(f.frame_key)}<strong>${esc(frameLabel(f.frame_key))}</strong><div class="student-store-description">${f.expires_at ? `صالح حتى ${new Date(f.expires_at).toLocaleDateString("ar-IQ")}` : "ملكية دائمة"}</div><div class="student-store-frame-actions"><button type="button" data-store-equip-frame="${esc(f.id)}">${f.is_active ? "مفعّل الآن" : "تفعيل الإطار"}</button>${f.is_active ? `<button class="secondary" type="button" data-store-clear-frame>إزالة مؤقتًا</button>` : ""}</div></article>`).join("") || `<div class="student-store-empty"><i class="fa-regular fa-gem"></i><strong>لا تملك إطارات بعد</strong><span>يمكنك الحصول عليها من المتجر أو كهدايا من الإدارة.</span></div>`}</div>`;
+        body.innerHTML = `${pageHead("fa-regular fa-gem", "إطاراتي", "تحكم بإطارات حسابك")}
+        <div class="student-store-grid">${rows.map(f=>`<article class="student-store-frame-card">${framePreview(f.frame_key)}<strong>${esc(frameLabel(f.frame_key))}</strong><div class="student-store-description">${f.expires_at ? `صالح حتى ${new Date(f.expires_at).toLocaleDateString("ar-IQ")}` : "ملكية دائمة"}</div><div class="student-store-frame-actions"><button type="button" data-store-equip-frame="${esc(f.id)}" ${f.is_active?'disabled':''}>${f.is_active ? "مفعّل على ملفي" : "وضع على ملفي"}</button>${f.is_active ? `<button class="secondary" type="button" data-store-clear-frame>إزالة من ملفي</button>` : ""}<button class="secondary" style="color:#c62828;background:#fff0f0" type="button" data-store-delete-owned-frame="${esc(f.id)}">حذف نهائي</button></div></article>`).join("") || `<div class="student-store-empty"><i class="fa-regular fa-gem"></i><strong>لا تملك إطارات بعد</strong><span>يمكنك الحصول عليها من المتجر أو كهدايا من الإدارة.</span></div>`}</div>`;
     }
 
     function renderOrders() {
@@ -856,6 +857,11 @@
 
     async function loadOwnedFrames(client) {
         if (!state.user) return [];
+        try {
+            const rpc = await client.rpc("student_get_my_profile_frames");
+            if (!rpc.error && Array.isArray(rpc.data)) return rpc.data;
+            if (rpc.error) console.warn("Owned frames RPC:", rpc.error);
+        } catch (error) { console.warn("Owned frames RPC:", error); }
         const { data, error } = await client.from("student_profile_frames").select("id,frame_key,product_id,source,expires_at,is_active,created_at").eq("user_id", state.user.id).order("created_at", {ascending:false});
         if (error) { if (isMissingTable(error)) return []; console.warn("Owned frames:", error); return []; }
         return data || [];
@@ -1554,6 +1560,8 @@
         if (equipFrame) { equipFrame.disabled=true; const {error}=await db().rpc("student_equip_profile_frame",{p_owned_frame_id:equipFrame.dataset.storeEquipFrame}); if(error){toast(error.message||"تعذر تفعيل الإطار");equipFrame.disabled=false}else{toast("تم تفعيل الإطار.");await refresh()} return; }
         const clearFrame = event.target.closest("[data-store-clear-frame]");
         if (clearFrame) { clearFrame.disabled=true; const {error}=await db().rpc("student_clear_profile_frame"); if(error){toast(error.message||"تعذر إزالة الإطار");clearFrame.disabled=false}else{toast("تمت إزالة الإطار مؤقتًا.");await refresh()} return; }
+        const deleteOwnedFrame = event.target.closest("[data-store-delete-owned-frame]");
+        if (deleteOwnedFrame) { event.preventDefault(); const id=deleteOwnedFrame.dataset.storeDeleteOwnedFrame; showModal(`<div class="student-store-confirm"><h3>حذف الإطار؟</h3><p>سيُحذف هذا الإطار من مقتنياتك نهائيًا.</p><div class="student-store-modal-actions"><button type="button" data-store-modal-close>إلغاء</button><button class="danger" type="button" data-store-confirm-delete-owned-frame="${esc(id)}">حذف</button></div></div>`); return; }
 
         const buyDiamond = event.target.closest("[data-store-buy-diamond]");
         if (buyDiamond) { event.preventDefault(); openDiamondPayment(buyDiamond.dataset.storeBuyDiamond); return; }
@@ -1675,6 +1683,8 @@
             deleteProduct(deleteButton.dataset.storeConfirmDelete, deleteButton);
             return;
         }
+        const deleteOwned = event.target.closest("[data-store-confirm-delete-owned-frame]");
+        if (deleteOwned) { event.preventDefault(); deleteOwned.disabled=true; (async()=>{ const {error}=await db().rpc("student_delete_profile_frame",{p_owned_frame_id:deleteOwned.dataset.storeConfirmDeleteOwnedFrame}); if(error){toast(error.message||"تعذر حذف الإطار");deleteOwned.disabled=false;return;} closeModal(); toast("تم حذف الإطار."); await refresh(); })(); return; }
 
         const saveTaskButton = event.target.closest("[data-store-save-task]");
         if (saveTaskButton) { event.preventDefault(); saveTask(saveTaskButton); return; }
