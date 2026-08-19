@@ -2611,9 +2611,12 @@ window.StudentSuggestions = { open:openSuggestions };
 
         if (profile?.avatar_url) cacheStoryAvatar(profile);
 
-        const picture = cachedAvatar
+        const ownAvatarInner = cachedAvatar
             ? `<img class="student-story-preview" src="${escapeHtml(cachedAvatar)}" alt="صورتك" loading="eager" decoding="async">`
             : `<div class="student-story-placeholder student-story-own-placeholder student-story-own-skeleton" aria-label="جاري تحميل صورة الحساب"></div>`;
+        const picture = profile && typeof window.studentProfileFrameWrap === "function"
+            ? window.studentProfileFrameWrap(profile, ownAvatarInner)
+            : ownAvatarInner;
 
         item.innerHTML = `
             <div
@@ -2652,7 +2655,7 @@ window.StudentSuggestions = { open:openSuggestions };
 
         if (!cachedAvatar && currentUser?.id) {
             sb.from("profiles")
-                .select("id,display_name,avatar_url")
+                .select("id,display_name,avatar_url,profile_frame_url")
                 .eq("id", currentUser.id)
                 .maybeSingle()
                 .then(({ data }) => {
@@ -2660,13 +2663,10 @@ window.StudentSuggestions = { open:openSuggestions };
                     cacheStoryAvatar(data);
                     const inner = item.querySelector(".story-ring-inner");
                     if (!inner) return;
-                    const img = document.createElement("img");
-                    img.className = "student-story-preview";
-                    img.alt = "صورتك";
-                    img.loading = "eager";
-                    img.decoding = "async";
-                    img.src = data.avatar_url;
-                    inner.replaceChildren(img);
+                    const avatarHTML = `<img class="student-story-preview" src="${escapeHtml(data.avatar_url)}" alt="صورتك" loading="eager" decoding="async">`;
+                    inner.innerHTML = typeof window.studentProfileFrameWrap === "function"
+                        ? window.studentProfileFrameWrap(data, avatarHTML)
+                        : avatarHTML;
                 })
                 .catch(() => {});
         }
