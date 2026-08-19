@@ -45,8 +45,71 @@ function ensureCosmeticStyles() {
         .student-avatar-frame.student-frame-lightning{--student-frame-ring:conic-gradient(#fff,#5fd7ff,#147cff,#fff,#8cecff,#147cff,#fff);--student-frame-glow:#57c7ff;--student-frame-aura:radial-gradient(circle,transparent 53%,rgba(255,255,255,.22) 61%,rgba(0,136,255,.48) 69%,transparent 77%)}
         .student-avatar-frame.student-frame-royal{--student-frame-ring:conic-gradient(#f8d66d,#9a6b00,#fff2a5,#d3a518,#7c5200,#f8d66d);--student-frame-glow:#e8b928;--student-frame-aura:radial-gradient(circle,transparent 54%,rgba(255,215,79,.26) 64%,rgba(138,91,0,.35) 72%,transparent 79%)}
         .student-avatar-frame.student-frame-ember{--student-frame-ring:conic-gradient(#4a0900,#d62c00,#ff6b00,#ffb000,#8d1300,#4a0900);--student-frame-glow:#ff3c00;--student-frame-aura:radial-gradient(circle,transparent 55%,rgba(190,32,0,.34) 65%,rgba(255,111,0,.42) 72%,transparent 80%)}
+
+        /* v8.4.1: stronger high effects for fire / blue-fire / lightning / ember.
+           Neon and royal intentionally keep the v8.4 look. */
+        .student-avatar-frame.student-frame-fire:after,
+        .student-avatar-frame.student-frame-blue-fire:after,
+        .student-avatar-frame.student-frame-ember:after{
+            inset:-50% -31% -27%;
+            border-radius:44% 44% 50% 50%;
+            z-index:1;
+            opacity:.96;
+            filter:drop-shadow(0 0 5px var(--student-frame-glow)) drop-shadow(0 -8px 11px var(--student-frame-glow));
+            -webkit-mask:radial-gradient(circle at 50% 58%,transparent 0 30%,#000 32% 100%);
+            mask:radial-gradient(circle at 50% 58%,transparent 0 30%,#000 32% 100%);
+            transform-origin:50% 72%;
+            animation:studentFlameRise .72s ease-in-out infinite alternate;
+        }
+        .student-avatar-frame.student-frame-fire:after{
+            background:
+              radial-gradient(ellipse at 50% 6%,#fff2a8 0 3%,#ffb000 7%,#ff4b00 17%,transparent 36%),
+              radial-gradient(ellipse at 27% 25%,#ffd35c 0 4%,#ff6a00 12%,#ff2500 23%,transparent 40%),
+              radial-gradient(ellipse at 73% 23%,#fff0a0 0 3%,#ff8b00 11%,#ff2d00 22%,transparent 41%),
+              radial-gradient(ellipse at 12% 46%,#ff8a00 0 7%,#ff2500 19%,transparent 36%),
+              radial-gradient(ellipse at 88% 48%,#ffd250 0 6%,#ff4a00 18%,transparent 37%),
+              conic-gradient(from 8deg at 50% 64%,#7c0900,#ff2100,#ff9b00,#fff1a0,#ff6a00,#b20d00,#ff2d00);
+        }
+        .student-avatar-frame.student-frame-blue-fire:after{
+            background:
+              radial-gradient(ellipse at 50% 5%,#e9ffff 0 3%,#68f4ff 7%,#057cff 18%,transparent 36%),
+              radial-gradient(ellipse at 28% 25%,#aafcff 0 4%,#00bfff 12%,#244eff 23%,transparent 40%),
+              radial-gradient(ellipse at 72% 23%,#efffff 0 3%,#35dfff 11%,#3151ff 22%,transparent 41%),
+              radial-gradient(ellipse at 12% 46%,#00eaff 0 7%,#1760ff 19%,transparent 36%),
+              radial-gradient(ellipse at 88% 48%,#b9ffff 0 6%,#008cff 18%,transparent 37%),
+              conic-gradient(from 8deg at 50% 64%,#071a71,#004dff,#00e7ff,#e8ffff,#4b7cff,#17118f,#00bfff);
+        }
+        .student-avatar-frame.student-frame-ember:after{
+            inset:-39% -27% -24%;
+            opacity:.9;
+            background:
+              radial-gradient(circle at 20% 17%,#ffd268 0 2%,#ff4b00 3% 5%,transparent 6%),
+              radial-gradient(circle at 75% 8%,#fff0a0 0 1.7%,#ff6a00 3% 5%,transparent 6%),
+              radial-gradient(circle at 88% 33%,#ffb22b 0 2%,#d92300 3% 5%,transparent 6%),
+              radial-gradient(circle at 10% 42%,#ffcf55 0 2%,#f23800 3% 5%,transparent 6%),
+              radial-gradient(ellipse at 50% 15%,#ffb52e 0 5%,#e52c00 17%,transparent 36%),
+              conic-gradient(from 10deg at 50% 66%,#390300,#8f0a00,#ff5300,#ffad17,#8b0900,#3a0200);
+            animation:studentEmberFloat 1.15s ease-in-out infinite alternate;
+        }
+        .student-avatar-frame.student-frame-lightning:after{
+            inset:-25%;
+            z-index:1;
+            opacity:.98;
+            filter:drop-shadow(0 0 4px #fff) drop-shadow(0 0 9px #2d8cff);
+            background:
+              linear-gradient(118deg,transparent 0 34%,#dfffff 35% 38%,#168cff 39% 42%,transparent 43% 100%),
+              linear-gradient(63deg,transparent 0 55%,#fff 56% 58%,#37c7ff 59% 62%,transparent 63% 100%),
+              linear-gradient(148deg,transparent 0 64%,#eaffff 65% 67%,#1765ff 68% 71%,transparent 72% 100%),
+              radial-gradient(circle,transparent 48%,rgba(87,199,255,.3) 51%,rgba(255,255,255,.9) 54%,rgba(20,124,255,.65) 57%,transparent 61%);
+            -webkit-mask:radial-gradient(circle,transparent 0 36%,#000 38% 100%);
+            mask:radial-gradient(circle,transparent 0 36%,#000 38% 100%);
+            animation:studentLightningFlash .92s steps(2,end) infinite;
+        }
         @keyframes studentFrameSpin{to{transform:rotate(360deg)}}
         @keyframes studentFramePulse{from{transform:scale(.97);opacity:.48}to{transform:scale(1.06);opacity:.88}}
+        @keyframes studentFlameRise{0%{transform:translateY(4%) scale(.96,.92) rotate(-1deg);filter:drop-shadow(0 0 4px var(--student-frame-glow)) drop-shadow(0 -5px 8px var(--student-frame-glow))}55%{transform:translateY(-2%) scale(1.02,1.08) rotate(1deg)}100%{transform:translateY(-7%) scale(.99,1.16) rotate(-.6deg);filter:drop-shadow(0 0 7px var(--student-frame-glow)) drop-shadow(0 -12px 14px var(--student-frame-glow))}}
+        @keyframes studentEmberFloat{0%{transform:translateY(3%) scale(.98);background-position:0 0,0 0,0 0,0 0,50% 8%,50% 50%}100%{transform:translateY(-7%) scale(1.04);background-position:-3px -15px,5px -22px,-4px -13px,4px -18px,50% 0,50% 50%}}
+        @keyframes studentLightningFlash{0%,30%,100%{opacity:.35;transform:scale(.98) rotate(-1deg)}35%,42%{opacity:1;transform:scale(1.06) rotate(1deg)}55%{opacity:.55}60%,66%{opacity:1;transform:scale(1.03) rotate(-.5deg)}}
         @media (prefers-reduced-motion:reduce){.student-avatar-frame.student-frame-animated:before,.student-avatar-frame.student-frame-animated:after{animation:none!important}}
         .student-custom-badge{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 2px;border-radius:999px;color:#fff;font-size:10px;font-weight:900;line-height:1;margin-inline-start:3px;vertical-align:-1px;box-sizing:border-box}
     `;
