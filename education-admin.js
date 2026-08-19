@@ -1221,7 +1221,6 @@
 
     async function openAdmin(passedClient, options = {}) {
         closeCallback = typeof options.onClose === "function" ? options.onClose : null;
-        try { history.pushState({ studentPage: "teachers-admin" }, "", location.href); } catch (_) {}
         db(passedClient);
         loading("طلبات المدرسين");
         try {
@@ -2291,7 +2290,6 @@
         window.StudentNavigation?.prepareRoot?.("admin");
         overlay.classList.add("show");
         document.body.classList.add("student-admin-page-open");
-        try { history.pushState({ studentPage: "admin" }, "", location.href); } catch (_) {}
         await loadFeatures();
     }
 
@@ -2554,7 +2552,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         document.querySelector(".student-admin-overlay")?.classList.remove("show");
         const page = document.getElementById("student-ads-admin-page");
         page.classList.add("show");
-        try { history.pushState({ studentPage: "ads-admin" }, "", location.href); } catch (_) {}
         if (adsCache && Date.now() - adsCacheAt < 60000) renderAdsRows(adsCache);
         loadAds();
     }
