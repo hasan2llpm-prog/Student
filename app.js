@@ -361,6 +361,12 @@ async function loadProfile(userId) {
                     avatar_url,
                     account_status,
                     role,
+                    is_verified,
+                    verification_color,
+                    custom_badge_icon,
+                    custom_badge_label,
+                    custom_badge_color,
+                    profile_frame_url,
                     account_type_selected,
                     role_selected_at
                 `)
@@ -1063,41 +1069,24 @@ async function showProfilePanel() {
     const avatar =
         profile?.avatar_url;
 
-    const avatarHTML =
+    const avatarInnerHTML =
         avatar
             ? `
                 <img
-                    src="${escapeHTML(
-                        avatar
-                    )}"
+                    src="${escapeHTML(avatar)}"
                     alt=""
-                    style="
-                        width:96px;
-                        height:96px;
-                        border-radius:50%;
-                        object-fit:cover;
-                        display:block;
-                    "
+                    style="width:96px;height:96px;border-radius:50%;object-fit:cover;display:block"
                 >
               `
             : `
-                <div style="
-                    width:96px;
-                    height:96px;
-                    border-radius:50%;
-                    background:#eaf5ff;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    font-size:42px;
-                    color:#0095f6;
-                ">
-                    <i class="
-                        fa-solid
-                        fa-user
-                    "></i>
+                <div style="width:96px;height:96px;border-radius:50%;background:#eaf5ff;display:flex;align-items:center;justify-content:center;font-size:42px;color:#0095f6">
+                    <i class="fa-solid fa-user"></i>
                 </div>
               `;
+
+    const avatarHTML = typeof window.studentProfileFrameWrap === "function"
+        ? window.studentProfileFrameWrap(profile || {}, avatarInnerHTML)
+        : avatarInnerHTML;
 
     showFloatingPanel(
         "الملف الشخصي",
@@ -1966,7 +1955,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education-admin.js?v=1.3.0";
+        script.src = "education-admin.js?v=1.3.1";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2217,7 +2206,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js?v=1.4.0";
+    script.src = "store.js?v=1.4.1";
     script.async = true;
     script.dataset.studentStore = "true";
 
@@ -2442,7 +2431,7 @@ function loadNavigationManager() { return Promise.resolve(window.StudentNavigati
 function loadAdminSystem() {
 
     loadExternalScript(
-        "education-admin.js?v=1.3.0",
+        "education-admin.js?v=1.3.1",
         "student-admin",
         "Student Admin"
     );
@@ -3450,7 +3439,7 @@ document.addEventListener(
             .filter(id => !state.profiles[id]);
         if (!ids.length) return;
         const { data, error } = await client.from("profiles")
-            .select("id,full_name,username,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color")
+            .select("id,full_name,username,avatar_url,is_verified,verification_color,custom_badge_icon,custom_badge_label,custom_badge_color,profile_frame_url")
             .in("id", ids);
         if (error) return;
         (data || []).forEach(profile => { state.profiles[String(profile.id)] = profile; });
@@ -3510,7 +3499,7 @@ document.addEventListener(
             <article class="sn-item ${item.is_read ? "" : "unread"}" data-id="${escapeHtml(item.id)}">
                 <div class="sn-icon" style="--sn-icon-bg:${escapeHtml(visual.bg)};--sn-icon-color:${escapeHtml(visual.color)}">${escapeHtml(visual.icon)}</div>
                 <div class="sn-content">
-                    ${actor ? `<div class="sn-actor">${escapeHtml(actor.full_name || actor.username || "مستخدم")}${verificationBadgeHTML(actor,12)}</div>` : ""}
+                    ${actor ? `<div class="sn-actor">${typeof window.studentProfileFrameWrap === "function" ? window.studentProfileFrameWrap(actor, actor.avatar_url ? `<img src="${escapeHtml(actor.avatar_url)}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;display:block">` : `<span style="width:26px;height:26px;border-radius:50%;background:#eef3f8;display:grid;place-items:center;font-size:11px">👤</span>`) : ""}<span>${escapeHtml(actor.full_name || actor.username || "مستخدم")}${verificationBadgeHTML(actor,12)}</span></div>` : ""}
                     <div class="sn-item-title">${escapeHtml(item.title || "إشعار جديد")}</div>
                     <div class="sn-item-text">${escapeHtml(item.body || "")}</div>
                     <div class="sn-meta">${item.is_read ? "" : `<span class="sn-dot"></span>`}<span>${escapeHtml(dateText(item.created_at))}</span></div>
