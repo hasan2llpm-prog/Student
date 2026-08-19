@@ -524,7 +524,6 @@
         render();
         document.getElementById("student-store-body")?.scrollTo({ top: 0, behavior: "instant" });
         if (pushHistory && state.activeTab !== "home") {
-            try { history.pushState({ studentStore: state.activeTab }, "", location.href); } catch (_) {}
         }
     }
 
@@ -1568,7 +1567,6 @@
                     console.error("Frames section:", error);
                     toast("تعذر تحميل إطاراتك. جرّب مرة أخرى.");
                 }
-                try { history.pushState({ studentStore: "frames" }, "", location.href); } catch (_) {}
                 return;
             }
             setSection(targetSection);
@@ -1764,13 +1762,6 @@
             if (input) input.disabled = !event.target.checked;
         }
     }
-
-    window.addEventListener("popstate", function () {
-        if (!overlay?.classList.contains("show")) return;
-        if (state.activeTab !== "home") {
-            setSection("home", false);
-        }
-    });
 
     window.StudentStore = {
         version: "2.2.0",
