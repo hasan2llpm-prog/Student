@@ -110,6 +110,34 @@ function ensureCosmeticStyles() {
         @keyframes studentFlameRise{0%{transform:translateY(4%) scale(.96,.92) rotate(-1deg);filter:drop-shadow(0 0 4px var(--student-frame-glow)) drop-shadow(0 -5px 8px var(--student-frame-glow))}55%{transform:translateY(-2%) scale(1.02,1.08) rotate(1deg)}100%{transform:translateY(-7%) scale(.99,1.16) rotate(-.6deg);filter:drop-shadow(0 0 7px var(--student-frame-glow)) drop-shadow(0 -12px 14px var(--student-frame-glow))}}
         @keyframes studentEmberFloat{0%{transform:translateY(3%) scale(.98);background-position:0 0,0 0,0 0,0 0,50% 8%,50% 50%}100%{transform:translateY(-7%) scale(1.04);background-position:-3px -15px,5px -22px,-4px -13px,4px -18px,50% 0,50% 50%}}
         @keyframes studentLightningFlash{0%,30%,100%{opacity:.35;transform:scale(.98) rotate(-1deg)}35%,42%{opacity:1;transform:scale(1.06) rotate(1deg)}55%{opacity:.55}60%,66%{opacity:1;transform:scale(1.03) rotate(-.5deg)}}
+        /* v8.5: real inline SVG effects for fire, blue fire, lightning and ember. */
+        .student-avatar-frame{overflow:visible!important}
+        .student-avatar-frame.student-frame-rich:after{display:none!important}
+        .student-avatar-frame.student-frame-rich:before{inset:-5px;z-index:3;opacity:.78}
+        .student-frame-fx{position:absolute;left:50%;bottom:50%;width:182%;height:215%;transform:translate(-50%,56%);pointer-events:none;z-index:4;overflow:visible;contain:layout style}
+        .student-frame-fx svg{display:block;width:100%;height:100%;overflow:visible}
+        .student-frame-fx-fire{width:190%;height:235%;transform:translate(-50%,59%);mix-blend-mode:normal}
+        .student-frame-fx-fire svg{filter:saturate(1.18) contrast(1.04)}
+        .student-frame-flame-glow{animation:studentRealFlameGlow .68s ease-in-out infinite alternate;transform-origin:80px 118px}
+        .student-frame-fx-fire path{transform-origin:80px 155px;animation:studentRealFlameBody .62s ease-in-out infinite alternate}
+        .student-frame-fx-fire path:nth-of-type(2){animation-duration:.48s;animation-direction:alternate-reverse}
+        .student-frame-fx-fire path:nth-of-type(3){animation-duration:.4s}
+        .student-frame-sparks circle{animation:studentSparkRise 1.35s linear infinite;transform-box:fill-box;transform-origin:center}
+        .student-frame-sparks circle:nth-child(2){animation-delay:-.36s;animation-duration:1.08s}.student-frame-sparks circle:nth-child(3){animation-delay:-.72s;animation-duration:1.48s}.student-frame-sparks circle:nth-child(4){animation-delay:-.2s;animation-duration:1.18s}.student-frame-sparks circle:nth-child(5){animation-delay:-.9s}
+        .student-frame-fx-lightning{width:188%;height:208%;transform:translate(-50%,57%)}
+        .student-frame-electric-ring{transform-origin:80px 96px;animation:studentElectricSpin 4.2s linear infinite}
+        .student-frame-bolts{animation:studentBoltFlash .88s steps(1,end) infinite}
+        .student-frame-bolts path:nth-child(2){animation-delay:-.25s}.student-frame-bolts path:nth-child(3){animation-delay:-.48s}.student-frame-bolts path:nth-child(4){animation-delay:-.66s}
+        .student-frame-electric-sparks{animation:studentBoltFlash .62s steps(1,end) infinite reverse}
+        .student-frame-fx-ember{width:180%;height:220%;transform:translate(-50%,58%)}
+        .student-frame-embers circle{animation:studentEmberParticle 1.7s linear infinite;transform-box:fill-box;transform-origin:center}.student-frame-embers circle:nth-child(2){animation-delay:-.2s}.student-frame-embers circle:nth-child(3){animation-delay:-.6s}.student-frame-embers circle:nth-child(4){animation-delay:-1.1s}.student-frame-embers circle:nth-child(5){animation-delay:-.9s}.student-frame-embers circle:nth-child(6){animation-delay:-.45s}.student-frame-embers circle:nth-child(7){animation-delay:-1.3s}.student-frame-embers circle:nth-child(8){animation-delay:-.75s}
+        @keyframes studentRealFlameBody{0%{transform:scale(.96,.93) skewX(-1.8deg) translateY(3px)}55%{transform:scale(1.03,1.06) skewX(1.4deg) translateY(-2px)}100%{transform:scale(.99,1.11) skewX(-.8deg) translateY(-5px)}}
+        @keyframes studentRealFlameGlow{from{opacity:.5;transform:scale(.96)}to{opacity:.9;transform:scale(1.07)}}
+        @keyframes studentSparkRise{0%{opacity:0;transform:translate(0,12px) scale(.65)}18%{opacity:1}100%{opacity:0;transform:translate(5px,-44px) scale(.25)}}
+        @keyframes studentElectricSpin{to{transform:rotate(360deg)}}
+        @keyframes studentBoltFlash{0%,28%,42%,70%,100%{opacity:.08}30%,38%,72%,78%{opacity:1}}
+        @keyframes studentEmberParticle{0%{opacity:0;transform:translate(0,14px) scale(.7)}15%{opacity:1}70%{opacity:.8}100%{opacity:0;transform:translate(6px,-52px) scale(.2)}}
+        @media (prefers-reduced-motion:reduce){.student-frame-fx *{animation:none!important}.student-frame-fx{opacity:.88}}
         @media (prefers-reduced-motion:reduce){.student-avatar-frame.student-frame-animated:before,.student-avatar-frame.student-frame-animated:after{animation:none!important}}
         .student-custom-badge{display:inline-grid;place-items:center;min-width:15px;height:15px;padding:0 2px;border-radius:999px;color:#fff;font-size:10px;font-weight:900;line-height:1;margin-inline-start:3px;vertical-align:-1px;box-sizing:border-box}
     `;
@@ -136,6 +164,65 @@ function verificationBadge(profile, size = 15) {
     return html;
 }
 
+function studentFrameFxMarkup(key) {
+    const blue = key === "blue-fire";
+    if (key === "fire" || blue) {
+        const hot = blue ? "#dfffff" : "#fff7bd";
+        const mid = blue ? "#20d9ff" : "#ffb000";
+        const deep = blue ? "#1455ff" : "#ff3600";
+        const edge = blue ? "#3422c9" : "#8f0900";
+        const id = `sfx-${key}-${Math.random().toString(36).slice(2,8)}`;
+        return `<span class="student-frame-fx student-frame-fx-fire" aria-hidden="true">
+          <svg viewBox="0 0 160 190" focusable="false" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <radialGradient id="${id}-flame" cx="50%" cy="72%" r="66%">
+                <stop offset="0" stop-color="${hot}"/><stop offset=".2" stop-color="${mid}"/><stop offset=".58" stop-color="${deep}"/><stop offset="1" stop-color="${edge}" stop-opacity="0"/>
+              </radialGradient>
+              <filter id="${id}-wobble" x="-40%" y="-35%" width="180%" height="190%">
+                <feTurbulence type="fractalNoise" baseFrequency=".018 .045" numOctaves="2" seed="7" result="noise">
+                  <animate attributeName="baseFrequency" dur="1.15s" values=".018 .045;.026 .065;.016 .05;.018 .045" repeatCount="indefinite"/>
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="11" xChannelSelector="R" yChannelSelector="B"/>
+                <feGaussianBlur stdDeviation=".45"/>
+              </filter>
+              <filter id="${id}-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <g class="student-frame-flame-glow" filter="url(#${id}-glow)" opacity=".72">
+              <ellipse cx="80" cy="112" rx="57" ry="56" fill="none" stroke="${deep}" stroke-width="9"/>
+            </g>
+            <g filter="url(#${id}-wobble)" fill="url(#${id}-flame)">
+              <path d="M20 124 C5 98 18 78 31 62 C28 88 45 85 39 54 C55 68 59 48 57 25 C79 44 77 65 85 73 C95 62 103 42 99 16 C125 39 116 70 128 78 C139 63 142 50 139 37 C158 61 151 95 139 120 C127 149 106 163 80 166 C52 163 31 151 20 124Z"/>
+              <path opacity=".92" d="M38 125 C26 105 36 89 48 78 C48 98 59 94 58 69 C74 82 70 101 80 107 C91 96 96 77 93 57 C111 75 105 99 119 103 C126 94 128 86 126 76 C140 96 130 128 111 142 C95 153 65 153 48 142 C42 137 39 131 38 125Z"/>
+              <path opacity=".95" d="M58 132 C48 116 58 102 66 94 C66 108 76 107 77 88 C91 101 84 117 95 121 C102 114 105 104 103 94 C118 110 108 137 93 145 C78 153 65 144 58 132Z" fill="${hot}"/>
+            </g>
+            <g class="student-frame-sparks" fill="${mid}">
+              <circle cx="35" cy="42" r="2.2"/><circle cx="56" cy="19" r="1.7"/><circle cx="109" cy="27" r="2"/><circle cx="132" cy="52" r="1.8"/><circle cx="25" cy="75" r="1.4"/>
+            </g>
+          </svg>
+        </span>`;
+    }
+    if (key === "lightning") {
+        const id = `sfx-light-${Math.random().toString(36).slice(2,8)}`;
+        return `<span class="student-frame-fx student-frame-fx-lightning" aria-hidden="true"><svg viewBox="0 0 160 180" focusable="false">
+          <defs><filter id="${id}-g" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <circle cx="80" cy="96" r="53" fill="none" stroke="#46cfff" stroke-width="4" stroke-dasharray="7 8" filter="url(#${id}-g)" class="student-frame-electric-ring"/>
+          <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#${id}-g)" class="student-frame-bolts">
+            <path d="M75 4 L61 42 L75 39 L58 76" stroke="#efffff" stroke-width="4"/><path d="M139 31 L119 61 L132 62 L112 91" stroke="#57cfff" stroke-width="4"/><path d="M151 111 L125 108 L132 123 L102 127" stroke="#efffff" stroke-width="3.5"/><path d="M25 36 L44 61 L31 63 L52 89" stroke="#57cfff" stroke-width="3.5"/>
+          </g>
+          <g fill="#fff" class="student-frame-electric-sparks"><circle cx="49" cy="22" r="2"/><circle cx="126" cy="18" r="1.8"/><circle cx="145" cy="81" r="2.3"/><circle cx="18" cy="99" r="1.7"/></g>
+        </svg></span>`;
+    }
+    if (key === "ember") {
+        const id = `sfx-ember-${Math.random().toString(36).slice(2,8)}`;
+        return `<span class="student-frame-fx student-frame-fx-ember" aria-hidden="true"><svg viewBox="0 0 160 190" focusable="false">
+          <defs><filter id="${id}-g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <circle cx="80" cy="112" r="54" fill="none" stroke="#ff4a00" stroke-width="5" filter="url(#${id}-g)" opacity=".9"/>
+          <g class="student-frame-embers" filter="url(#${id}-g)"><circle cx="28" cy="124" r="3" fill="#ff5a00"/><circle cx="41" cy="73" r="2.2" fill="#ffd35c"/><circle cx="58" cy="35" r="3" fill="#ff6b00"/><circle cx="79" cy="18" r="2" fill="#fff0a0"/><circle cx="105" cy="38" r="2.7" fill="#ff8a00"/><circle cx="126" cy="67" r="3.1" fill="#ff3d00"/><circle cx="142" cy="106" r="2.2" fill="#ffd35c"/><circle cx="119" cy="142" r="2.5" fill="#ff5a00"/></g>
+        </svg></span>`;
+    }
+    return "";
+}
+
 function profileFrameWrap(profile, innerHtml) {
     const raw = String(profile?.profile_frame_url || "").trim();
     if (!raw) return innerHtml;
@@ -143,7 +230,10 @@ function profileFrameWrap(profile, innerHtml) {
         const key = raw.slice(14).toLowerCase().replace(/[^a-z0-9_-]/g, "");
         const allowed = new Set(["fire","blue-fire","neon","lightning","royal","ember"]);
         if (!allowed.has(key)) return innerHtml;
-        return `<span class="student-avatar-frame student-frame-animated student-frame-${esc(key)}" data-student-frame="${esc(key)}">${innerHtml}</span>`;
+        const richFx = new Set(["fire","blue-fire","lightning","ember"]);
+        const fx = richFx.has(key) ? studentFrameFxMarkup(key) : "";
+        const extra = richFx.has(key) ? " student-frame-rich" : "";
+        return `<span class="student-avatar-frame student-frame-animated student-frame-${esc(key)}${extra}" data-student-frame="${esc(key)}">${innerHtml}${fx}</span>`;
     }
     const url = safeUrl(raw, false);
     if (!url) return innerHtml;
