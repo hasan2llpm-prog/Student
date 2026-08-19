@@ -1955,7 +1955,7 @@ function loadEducationModule() {
         }
 
         const script = document.createElement("script");
-        script.src = "education-admin.js?v=1.3.1";
+        script.src = "education-admin.js?v=1.3.2";
         script.async = true;
         script.dataset.studentEducation = "true";
         script.onload = resolve;
@@ -2206,7 +2206,7 @@ function openStudentStoreSection() {
     }
 
     const script = document.createElement("script");
-    script.src = "store.js?v=1.4.1";
+    script.src = "store.js?v=1.4.2";
     script.async = true;
     script.dataset.studentStore = "true";
 
@@ -2431,7 +2431,7 @@ function loadNavigationManager() { return Promise.resolve(window.StudentNavigati
 function loadAdminSystem() {
 
     loadExternalScript(
-        "education-admin.js?v=1.3.1",
+        "education-admin.js?v=1.3.2",
         "student-admin",
         "Student Admin"
     );
@@ -2453,7 +2453,7 @@ function loadMenuSystem() { return loadSettingsSystem();
 function loadSettingsSystem() {
 
     loadExternalScript(
-        "settings.js?v=1.1.0",
+        "settings.js?v=1.1.1",
         "student-settings",
         "Student Settings"
     );
@@ -3182,23 +3182,41 @@ document.addEventListener(
         };
     }
 
-    /* One permanent browser-history guard. No feature is allowed to own exit logic. */
+    /* Central back controller: one owner for browser/PWA/Android back. */
+    let restoringGuard = false;
+    function guardState(kind) {
+        return { ...(history.state || {}), [GUARD_KEY]: kind, studentGuardAt: Date.now() };
+    }
     function installHistoryGuard() {
-        try { const root={...(history.state||{}),[GUARD_KEY]:"root"}; history.replaceState(root,"",location.href); history.pushState({...root,[GUARD_KEY]:"guard",studentGuardAt:Date.now()},"",location.href); } catch (_) {}
+        try {
+            history.replaceState(guardState("root"), "", location.href);
+            history.pushState(guardState("guard"), "", location.href);
+        } catch (_) {}
     }
-    function ensureHistoryGuard(){ try{ if(history.state?.[GUARD_KEY]!=="guard") history.pushState({...(history.state||{}),[GUARD_KEY]:"guard",studentGuardAt:Date.now()},"",location.href); }catch(_){} }
-
+    function ensureHistoryGuard() {
+        if (restoringGuard) return;
+        try {
+            if (history.state?.[GUARD_KEY] === "guard") return;
+            restoringGuard = true;
+            history.pushState(guardState("guard"), "", location.href);
+        } catch (_) {
+        } finally {
+            setTimeout(() => { restoringGuard = false; }, 0);
+        }
+    }
     function onPopState(event) {
-        event.stopImmediatePropagation(); event.stopPropagation(); const handled=back(); setTimeout(ensureHistoryGuard,0); return handled;
+        try { event.preventDefault?.(); } catch (_) {}
+        try { event.stopImmediatePropagation?.(); event.stopPropagation?.(); } catch (_) {}
+        back();
+        /* Put the sentinel back after handling exactly one Student navigation step. */
+        setTimeout(ensureHistoryGuard, 0);
     }
 
-    /* capture phase runs before old bubble listeners still present in feature files */
     window.addEventListener("popstate", onPopState, true);
-    window.addEventListener("pageshow",()=>setTimeout(ensureHistoryGuard,50),true);
-    document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(ensureHistoryGuard,50)});
+    window.addEventListener("pageshow", () => setTimeout(ensureHistoryGuard, 50), true);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(ensureHistoryGuard, 50); });
     document.addEventListener("backbutton", (event) => {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+        try { event.preventDefault(); event.stopImmediatePropagation(); } catch (_) {}
         back();
     }, true);
 
@@ -3220,7 +3238,7 @@ document.addEventListener(
     window.StudentHandleAndroidBack = back;
     window.StudentAndroidBack = back;
     window.StudentNavigation = {
-        version: "clean-7",
+        version: "clean-8.5.5",
         openPage,
         back,
         closePage,
@@ -3253,7 +3271,7 @@ document.addEventListener(
     };
     const FIREBASE_VAPID_KEY = "BEfbopLOdfBaj07M5LVNzV6TcJNGHcthLWLIBSu_lDrgIdIcLWB6fk3VIr1XQwSkk7ikrBPKeunTxrntWd9CKHQ";
     const FIREBASE_SDK_VERSION = "12.17.1";
-    const SW_URL = "./sw.js?v=8.5.1";
+    const SW_URL = "./sw.js?v=8.5.5";
     let firebaseMessagingPromise = null;
 
     const state = {
