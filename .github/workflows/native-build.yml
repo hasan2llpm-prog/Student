@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX1.zip'
+      - 'Student-Native-Full-v1.0-FIX2-UI.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -25,23 +25,22 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student Full Native
+      - name: Extract Student Full Native project
         run: |
-          rm -rf native-build artifact
-          mkdir -p native-build artifact
-          unzip -q Student-Native-Full-v1.0-FIX1.zip -d native-build
+          rm -rf native-build
+          mkdir -p native-build
+          unzip -q Student-Native-Full-v1.0-FIX2-UI.zip -d native-build
 
       - name: Build debug APK
+        working-directory: native-build/Student-Native-Full-v1.0
         run: |
-          cd native-build/Student-Native-Full-v1.0
           chmod +x gradlew
           ./gradlew --no-daemon :app:assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk ../../artifact/Student-Full-Native-v1.0-FIX1-debug.apk
 
-      - name: Upload Student Full Native APK
+      - name: Upload Student APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Full-Native-v1.0-FIX1-debug
-          path: artifact/Student-Full-Native-v1.0-FIX1-debug.apk
+          name: Student-Full-Native-v1.0.1-FIX2-UI-debug
+          path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
