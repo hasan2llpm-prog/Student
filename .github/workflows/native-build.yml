@@ -1,10 +1,10 @@
-name: Build Student Native FIX4 APK
+name: Build Student Native FIX5 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX4.zip'
+      - 'Student-Native-Full-v1.0-FIX5.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -25,48 +25,11 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student Native FIX4
+      - name: Extract Student Native FIX5
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX4.zip -d native-build
-
-      - name: Patch FIX4 Kotlin compile errors
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          root = Path('native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home')
-
-          education = root / 'EducationScreen.kt'
-          text = education.read_text(encoding='utf-8')
-          text = text.replace(
-              'val uri = LocalUriHandler.current\n    val offline = remember { OfflineStore(LocalContext.current) }',
-              'val uri = LocalUriHandler.current\n    val context = LocalContext.current\n    val offline = remember(context) { OfflineStore(context) }'
-          )
-          education.write_text(text, encoding='utf-8')
-
-          learn = root / 'LearnEnglishScreen.kt'
-          text = learn.read_text(encoding='utf-8')
-          if 'import com.student.core.data.OfflineStore' not in text:
-              text = text.replace(
-                  'import com.student.core.data.LearnEnglishItem',
-                  'import com.student.core.data.LearnEnglishItem\nimport com.student.core.data.OfflineStore'
-              )
-          text = text.replace(
-              'val speech = rememberStudentSpeechController()\n    val offline = remember { OfflineStore(LocalContext.current) }',
-              'val speech = rememberStudentSpeechController()\n    val context = LocalContext.current\n    val offline = remember(context) { OfflineStore(context) }'
-          )
-          learn.write_text(text, encoding='utf-8')
-
-          print('FIX4 Kotlin patch applied successfully.')
-          PY
-
-      - name: Verify patch
-        run: |
-          grep -n "remember(context) { OfflineStore(context) }" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EducationScreen.kt
-          grep -n "import com.student.core.data.OfflineStore" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/LearnEnglishScreen.kt
-          grep -n "remember(context) { OfflineStore(context) }" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/LearnEnglishScreen.kt
+          unzip -q Student-Native-Full-v1.0-FIX5.zip -d native-build
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
@@ -79,10 +42,10 @@ jobs:
         run: |
           find native-build/Student-Native-Full-v1.0/app/build/outputs/apk -type f -name '*.apk' -print 2>/dev/null || true
 
-      - name: Upload Student FIX4 APK
+      - name: Upload Student FIX5 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Native-v1.0-FIX4-stable-debug
+          name: Student-Native-v1.0-FIX5-stable-debug
           path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
