@@ -31,6 +31,43 @@ jobs:
           mkdir -p native-build
           unzip -q Student-Native-Full-v1.0-FIX4.zip -d native-build
 
+      - name: Patch FIX4 Kotlin compile errors
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path('native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home')
+
+          education = root / 'EducationScreen.kt'
+          text = education.read_text(encoding='utf-8')
+          text = text.replace(
+              'val uri = LocalUriHandler.current\n    val offline = remember { OfflineStore(LocalContext.current) }',
+              'val uri = LocalUriHandler.current\n    val context = LocalContext.current\n    val offline = remember(context) { OfflineStore(context) }'
+          )
+          education.write_text(text, encoding='utf-8')
+
+          learn = root / 'LearnEnglishScreen.kt'
+          text = learn.read_text(encoding='utf-8')
+          if 'import com.student.core.data.OfflineStore' not in text:
+              text = text.replace(
+                  'import com.student.core.data.LearnEnglishItem',
+                  'import com.student.core.data.LearnEnglishItem\nimport com.student.core.data.OfflineStore'
+              )
+          text = text.replace(
+              'val speech = rememberStudentSpeechController()\n    val offline = remember { OfflineStore(LocalContext.current) }',
+              'val speech = rememberStudentSpeechController()\n    val context = LocalContext.current\n    val offline = remember(context) { OfflineStore(context) }'
+          )
+          learn.write_text(text, encoding='utf-8')
+
+          print('FIX4 Kotlin patch applied successfully.')
+          PY
+
+      - name: Verify patch
+        run: |
+          grep -n "remember(context) { OfflineStore(context) }" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EducationScreen.kt
+          grep -n "import com.student.core.data.OfflineStore" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/LearnEnglishScreen.kt
+          grep -n "remember(context) { OfflineStore(context) }" native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/LearnEnglishScreen.kt
+
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
