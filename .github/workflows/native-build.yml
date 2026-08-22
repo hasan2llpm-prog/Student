@@ -31,6 +31,63 @@ jobs:
           mkdir -p native-build
           unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
 
+      - name: Patch missing prettyTime helper
+        run: |
+          TARGET="native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/PrettyTime.kt"
+          cat > "$TARGET" <<'KOTLIN'
+          package com.student.feature.home
+
+          import java.text.SimpleDateFormat
+          import java.util.Date
+          import java.util.Locale
+          import java.util.TimeZone
+          import kotlin.math.abs
+
+          internal fun prettyTime(value: String?): String {
+              if (value.isNullOrBlank() || value.equals("null", ignoreCase = true)) return ""
+
+              val normalized = value.trim()
+              val patterns = listOf(
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                  "yyyy-MM-dd'T'HH:mm:ssXXX",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                  "yyyy-MM-dd'T'HH:mm:ss'Z'",
+                  "yyyy-MM-dd HH:mm:ssXXX",
+                  "yyyy-MM-dd HH:mm:ss"
+              )
+
+              var parsed: Date? = null
+              for (pattern in patterns) {
+                  try {
+                      val fmt = SimpleDateFormat(pattern, Locale.US).apply {
+                          isLenient = true
+                          timeZone = TimeZone.getTimeZone("UTC")
+                      }
+                      parsed = fmt.parse(normalized)
+                      if (parsed != null) break
+                  } catch (_: Exception) {
+                  }
+              }
+
+              val date = parsed ?: return normalized
+              val diff = System.currentTimeMillis() - date.time
+              val seconds = abs(diff) / 1000
+
+              return when {
+                  seconds < 60 -> "الآن"
+                  seconds < 3600 -> "منذ ${seconds / 60} د"
+                  seconds < 86400 -> "منذ ${seconds / 3600} س"
+                  seconds < 604800 -> "منذ ${seconds / 86400} ي"
+                  else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(date)
+              }
+          }
+          KOTLIN
+
+          echo "prettyTime helper added:"
+          sed -n '1,220p' "$TARGET"
+
       - name: Build FIX6 APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
