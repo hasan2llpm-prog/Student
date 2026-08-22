@@ -30,8 +30,72 @@ jobs:
           rm -rf native-build
           mkdir -p native-build
           unzip -q Student-Native-Full-v1.0-FIX5-COMPRESSED.zip -d native-build
-          echo "Extracted files:"
-          find native-build -maxdepth 2 -type d -print
+
+      - name: Patch FIX5 Kotlin compile errors
+        run: |
+          ROOT="native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home"
+
+          cat > "$ROOT/TimeUtils.kt" <<'KOTLIN'
+          package com.student.feature.home
+
+          import java.text.SimpleDateFormat
+          import java.util.Date
+          import java.util.Locale
+          import java.util.TimeZone
+
+          internal fun prettyTime(value: String?): String {
+              if (value.isNullOrBlank()) return ""
+              val patterns = listOf(
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                  "yyyy-MM-dd'T'HH:mm:ssXXX",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+                  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                  "yyyy-MM-dd'T'HH:mm:ss'Z'"
+              )
+              var parsed: Date? = null
+              for (pattern in patterns) {
+                  parsed = runCatching {
+                      SimpleDateFormat(pattern, Locale.ENGLISH).apply {
+                          timeZone = TimeZone.getTimeZone("UTC")
+                      }.parse(value)
+                  }.getOrNull()
+                  if (parsed != null) break
+              }
+              val date = parsed ?: return value
+              val seconds = ((System.currentTimeMillis() - date.time) / 1000L).coerceAtLeast(0L)
+              return when {
+                  seconds < 60 -> "الآن"
+                  seconds < 3600 -> "منذ ${seconds / 60} د"
+                  seconds < 86400 -> "منذ ${seconds / 3600} س"
+                  seconds < 604800 -> "منذ ${seconds / 86400} ي"
+                  else -> SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH).format(date)
+              }
+          }
+          KOTLIN
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/FeedScreen.kt")
+          s = p.read_text()
+          if "import androidx.compose.foundation.ExperimentalFoundationApi" not in s:
+              s = s.replace(
+                  "import androidx.compose.foundation.BorderStroke\n",
+                  "import androidx.compose.foundation.BorderStroke\nimport androidx.compose.foundation.ExperimentalFoundationApi\n",
+                  1
+              )
+          if "@OptIn(ExperimentalFoundationApi::class)\n@Composable\nfun FeedScreen" not in s:
+              s = s.replace(
+                  "@Composable\nfun FeedScreen(",
+                  "@OptIn(ExperimentalFoundationApi::class)\n@Composable\nfun FeedScreen(",
+                  1
+              )
+          p.write_text(s)
+          PY
+
+          echo "PATCH APPLIED"
+          grep -n "ExperimentalFoundationApi\|fun FeedScreen" "$ROOT/FeedScreen.kt" | head
+          test -f "$ROOT/TimeUtils.kt"
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
