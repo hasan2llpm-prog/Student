@@ -1,16 +1,15 @@
-name: Build Student Native FIX5 APK
+name: Build Student Native FIX6 APK
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'Student-Native-Full-v1.0-FIX5-COMPRESSED.zip'
-      - '.github/workflows/native-build.yml'
 
 jobs:
   build-stable:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -25,68 +24,19 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student Native FIX5
+      - name: Download FIX6 from GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX5-COMPRESSED.zip -d native-build
+          gh release download FIX6 \
+            --repo "${{ github.repository }}" \
+            --pattern "Student-Native-Full-v1.0-FIX6.zip" \
+            --dir .
 
-      - name: Patch FIX5 Kotlin compile errors
-        run: |
-          ROOT="native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home"
-
-          cat > "$ROOT/TimeUtils.kt" <<'KOTLIN'
-          package com.student.feature.home
-
-          import java.text.SimpleDateFormat
-          import java.util.Date
-          import java.util.Locale
-          import java.util.TimeZone
-
-          internal fun prettyTime(value: String?): String {
-              if (value.isNullOrBlank()) return ""
-              val patterns = listOf(
-                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
-                  "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-                  "yyyy-MM-dd'T'HH:mm:ssXXX",
-                  "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
-                  "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-                  "yyyy-MM-dd'T'HH:mm:ss'Z'"
-              )
-              var parsed: Date? = null
-              for (pattern in patterns) {
-                  parsed = runCatching {
-                      SimpleDateFormat(pattern, Locale.ENGLISH).apply {
-                          timeZone = TimeZone.getTimeZone("UTC")
-                      }.parse(value)
-                  }.getOrNull()
-                  if (parsed != null) break
-              }
-              val date = parsed ?: return value
-              val seconds = ((System.currentTimeMillis() - date.time) / 1000L).coerceAtLeast(0L)
-              return when {
-                  seconds < 60 -> "الآن"
-                  seconds < 3600 -> "منذ ${seconds / 60} د"
-                  seconds < 86400 -> "منذ ${seconds / 3600} س"
-                  seconds < 604800 -> "منذ ${seconds / 86400} ي"
-                  else -> SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH).format(date)
-              }
-          }
-          KOTLIN
-
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/FeedScreen.kt")
-          s = p.read_text()
-          marker = "@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)\n\n"
-          if not s.startswith(marker):
-              s = marker + s
-          p.write_text(s)
-          PY
-
-          echo "PATCH APPLIED"
-          head -5 "$ROOT/FeedScreen.kt"
-          test -f "$ROOT/TimeUtils.kt"
+          ls -lh Student-Native-Full-v1.0-FIX6.zip
+          unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
@@ -100,10 +50,10 @@ jobs:
           find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
             -type f -name '*.apk' -print 2>/dev/null || true
 
-      - name: Upload Student FIX5 APK
+      - name: Upload Student FIX6 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Native-v1.0-FIX5-stable-debug
+          name: Student-Native-v1.0-FIX6-stable-debug
           path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
