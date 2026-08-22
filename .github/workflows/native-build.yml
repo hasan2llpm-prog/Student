@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX5.zip'
+      - 'Student-Native-Full-v1.0-FIX5-COMPRESSED.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -29,7 +29,9 @@ jobs:
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX5.zip -d native-build
+          unzip -q Student-Native-Full-v1.0-FIX5-COMPRESSED.zip -d native-build
+          echo "Extracted files:"
+          find native-build -maxdepth 2 -type d -print
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
@@ -40,7 +42,8 @@ jobs:
       - name: Show APK output
         if: always()
         run: |
-          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk -type f -name '*.apk' -print 2>/dev/null || true
+          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
+            -type f -name '*.apk' -print 2>/dev/null || true
 
       - name: Upload Student FIX5 APK
         uses: actions/upload-artifact@v4
