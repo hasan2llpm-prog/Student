@@ -30,13 +30,19 @@ jobs:
         run: |
           rm -rf native-build
           mkdir -p native-build
+
           gh release download FIX6 \
             --repo "${{ github.repository }}" \
             --pattern "Student-Native-Full-v1.0-FIX6.zip" \
             --dir .
 
+          echo "Downloaded file:"
           ls -lh Student-Native-Full-v1.0-FIX6.zip
+
           unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
+
+          echo "Extracted project:"
+          find native-build -maxdepth 2 -type d -print
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
