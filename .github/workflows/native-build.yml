@@ -78,23 +78,14 @@ jobs:
           from pathlib import Path
           p = Path("native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/FeedScreen.kt")
           s = p.read_text()
-          if "import androidx.compose.foundation.ExperimentalFoundationApi" not in s:
-              s = s.replace(
-                  "import androidx.compose.foundation.BorderStroke\n",
-                  "import androidx.compose.foundation.BorderStroke\nimport androidx.compose.foundation.ExperimentalFoundationApi\n",
-                  1
-              )
-          if "@OptIn(ExperimentalFoundationApi::class)\n@Composable\nfun FeedScreen" not in s:
-              s = s.replace(
-                  "@Composable\nfun FeedScreen(",
-                  "@OptIn(ExperimentalFoundationApi::class)\n@Composable\nfun FeedScreen(",
-                  1
-              )
+          marker = "@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)\n\n"
+          if not s.startswith(marker):
+              s = marker + s
           p.write_text(s)
           PY
 
           echo "PATCH APPLIED"
-          grep -n "ExperimentalFoundationApi\|fun FeedScreen" "$ROOT/FeedScreen.kt" | head
+          head -5 "$ROOT/FeedScreen.kt"
           test -f "$ROOT/TimeUtils.kt"
 
       - name: Build stable debug APK
