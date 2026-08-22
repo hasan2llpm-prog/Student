@@ -24,11 +24,12 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Download FIX6 from GitHub Release
+      - name: Download FIX6 Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           rm -rf native-build
+          rm -f Student-Native-Full-v1.0-FIX6.zip
           mkdir -p native-build
 
           gh release download FIX6 \
@@ -36,30 +37,24 @@ jobs:
             --pattern "Student-Native-Full-v1.0-FIX6.zip" \
             --dir .
 
-          echo "Downloaded file:"
           ls -lh Student-Native-Full-v1.0-FIX6.zip
-
           unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
 
-          echo "Extracted project:"
-          find native-build -maxdepth 2 -type d -print
-
-      - name: Build stable debug APK
+      - name: Build FIX6 APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:assembleStableDebug
 
-      - name: Show APK output
+      - name: Find APK
         if: always()
         run: |
-          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
-            -type f -name '*.apk' -print 2>/dev/null || true
+          find native-build -type f -name "*.apk" -print || true
 
-      - name: Upload Student FIX6 APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Native-v1.0-FIX6-stable-debug
+          name: Student-Native-FIX6-APK
           path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
