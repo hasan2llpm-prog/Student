@@ -1,15 +1,16 @@
-name: Build Student Full Native APK
+name: Build Student Native FIX4 APK
 
 on:
   workflow_dispatch:
   push:
     paths:
+      - 'Student-Native-Full-v1.0-FIX4.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
-  build:
+  build-stable:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Checkout repository
@@ -24,28 +25,27 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
+      - name: Extract Student Native FIX4
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX2-UI.zip -d native-build
+          unzip -q Student-Native-Full-v1.0-FIX4.zip -d native-build
 
-      - name: Fix Compose border import
-        run: |
-          FILE="native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/FeedScreen.kt"
-          grep -q "import androidx.compose.foundation.border" "$FILE" || \
-          sed -i '/^package /a import androidx.compose.foundation.border' "$FILE"
-
-      - name: Build debug APK
+      - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew --no-daemon :app:assembleStableDebug
 
-      - name: Upload Student APK
+      - name: Show APK output
+        if: always()
+        run: |
+          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk -type f -name '*.apk' -print 2>/dev/null || true
+
+      - name: Upload Student FIX4 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Native-Full-FIX3-debug
-          path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/debug/app-debug.apk
+          name: Student-Native-v1.0-FIX4-stable-debug
+          path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
