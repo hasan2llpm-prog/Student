@@ -2,14 +2,15 @@ name: Build Student Native FIX6 APK
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'Student-Native-Full-v1.0-FIX6.zip'
+      - '.github/workflows/native-build.yml'
 
 jobs:
   build-stable:
     runs-on: ubuntu-latest
     timeout-minutes: 35
-
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout repository
@@ -24,20 +25,10 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Download FIX6 Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Extract FIX6
         run: |
           rm -rf native-build
-          rm -f Student-Native-Full-v1.0-FIX6.zip
           mkdir -p native-build
-
-          gh release download FIX6 \
-            --repo "${{ github.repository }}" \
-            --pattern "Student-Native-Full-v1.0-FIX6.zip" \
-            --dir .
-
-          ls -lh Student-Native-Full-v1.0-FIX6.zip
           unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
 
       - name: Build FIX6 APK
@@ -46,10 +37,11 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon :app:assembleStableDebug
 
-      - name: Find APK
+      - name: Show APK
         if: always()
         run: |
-          find native-build -type f -name "*.apk" -print || true
+          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
+            -type f -name '*.apk' -print 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
