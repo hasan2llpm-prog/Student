@@ -33,22 +33,41 @@ jobs:
           echo "Extracted project:"
           find native-build -maxdepth 2 -type d -print
 
-      - name: Verify project
+      - name: Restore Gradle wrapper script
+        working-directory: native-build/Student-Native-Full-v1.0
         run: |
-          test -f native-build/Student-Native-Full-v1.0/gradlew
-          test -f native-build/Student-Native-Full-v1.0/settings.gradle.kts
-          echo "FIX6 project structure found successfully"
+          if [ ! -f gradlew ]; then
+            cat > gradlew <<'EOF'
+          #!/bin/sh
+          APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+          CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+          if [ -n "$JAVA_HOME" ]; then
+            JAVACMD="$JAVA_HOME/bin/java"
+          else
+            JAVACMD=java
+          fi
+          exec "$JAVACMD" \
+            "-Dorg.gradle.appname=gradlew" \
+            -classpath "$CLASSPATH" \
+            org.gradle.wrapper.GradleWrapperMain "$@"
+          EOF
+          fi
+          chmod +x gradlew
+          test -f settings.gradle
+          test -f gradle/wrapper/gradle-wrapper.jar
+          test -f gradle/wrapper/gradle-wrapper.properties
+          echo "Gradle wrapper ready"
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
-          chmod +x gradlew
           ./gradlew --no-daemon :app:assembleStableDebug
 
       - name: Show APK output
         if: always()
         run: |
-          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk             -type f -name '*.apk' -print 2>/dev/null || true
+          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
+            -type f -name '*.apk' -print 2>/dev/null || true
 
       - name: Upload Student FIX6 APK
         uses: actions/upload-artifact@v4
