@@ -1,10 +1,10 @@
-name: Build Student Native FIX6 ALL FIXES APK
+name: Build Student FIX6 Translation Push APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX6.zip'
+      - 'Student-Native-Full-v1.0-FIX6-TRANSLATE-PUSH.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -25,66 +25,27 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student FIX6
+      - name: Extract Student FIX6 Translation Push
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX6.zip -d native-build
-          echo "Extracted project:"
-          find native-build -maxdepth 2 -type d -print
-
-      - name: Restore Gradle wrapper script
-        working-directory: native-build/Student-Native-Full-v1.0
-        run: |
-          if [ ! -f gradlew ]; then
-            cat > gradlew <<'EOF'
-          #!/bin/sh
-          APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-          CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-          if [ -n "$JAVA_HOME" ]; then
-            JAVACMD="$JAVA_HOME/bin/java"
-          else
-            JAVACMD=java
-          fi
-          exec "$JAVACMD" \
-            "-Dorg.gradle.appname=gradlew" \
-            -classpath "$CLASSPATH" \
-            org.gradle.wrapper.GradleWrapperMain "$@"
-          EOF
-          fi
-          chmod +x gradlew
-          test -f settings.gradle
-          test -f gradle/wrapper/gradle-wrapper.jar
-          test -f gradle/wrapper/gradle-wrapper.properties
-          echo "Gradle wrapper ready"
-
-      - name: Patch unsupported Pager parameter
-        working-directory: native-build/Student-Native-Full-v1.0
-        run: |
-          python3 - <<'PYFIX'
-          from pathlib import Path
-          p = Path("feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt")
-          s = p.read_text(encoding="utf-8")
-          s = s.replace("            beyondViewportPageCount = 1,\n", "")
-          p.write_text(s, encoding="utf-8")
-          print("Patched StoriesScreen.kt")
-          PYFIX
+          unzip -q Student-Native-Full-v1.0-FIX6-TRANSLATE-PUSH.zip -d native-build
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
+          chmod +x gradlew
           ./gradlew --no-daemon :app:assembleStableDebug
 
       - name: Show APK output
         if: always()
         run: |
-          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk \
-            -type f -name '*.apk' -print 2>/dev/null || true
+          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk             -type f -name '*.apk' -print 2>/dev/null || true
 
-      - name: Upload Student FIX6 APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Native-FIX6-ALL-FIXES-APK
+          name: Student-FIX6-Translation-Push-APK
           path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
