@@ -1,10 +1,10 @@
-name: Build Student FIX6 Translation Push APK
+name: Build Student FIX6 FINAL QA APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX6-TRANSLATE-PUSH.zip'
+      - 'Student-Native-Full-v1.0-FIX6-FINAL-QA.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -25,11 +25,20 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student FIX6 Translation Push
+      - name: Extract Student FINAL QA
         run: |
           rm -rf native-build
           mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX6-TRANSLATE-PUSH.zip -d native-build
+          unzip -q Student-Native-Full-v1.0-FIX6-FINAL-QA.zip -d native-build
+
+      - name: Verify project
+        run: |
+          test -f native-build/Student-Native-Full-v1.0/gradlew
+          test -f native-build/Student-Native-Full-v1.0/settings.gradle
+          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/NotificationsScreen.kt
+          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/SettingsScreen.kt
+          echo "FINAL QA project verified"
 
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
@@ -42,10 +51,10 @@ jobs:
         run: |
           find native-build/Student-Native-Full-v1.0/app/build/outputs/apk             -type f -name '*.apk' -print 2>/dev/null || true
 
-      - name: Upload APK
+      - name: Upload Student FINAL QA APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-FIX6-Translation-Push-APK
+          name: Student-FIX6-FINAL-QA-APK
           path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
           if-no-files-found: error
           retention-days: 14
