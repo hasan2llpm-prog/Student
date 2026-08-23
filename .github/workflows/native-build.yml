@@ -58,6 +58,18 @@ jobs:
           test -f gradle/wrapper/gradle-wrapper.properties
           echo "Gradle wrapper ready"
 
+      - name: Patch unsupported Pager parameter
+        working-directory: native-build/Student-Native-Full-v1.0
+        run: |
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          p = Path("feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace("            beyondViewportPageCount = 1,\n", "")
+          p.write_text(s, encoding="utf-8")
+          print("Patched StoriesScreen.kt")
+          PYFIX
+
       - name: Build stable debug APK
         working-directory: native-build/Student-Native-Full-v1.0
         run: |
