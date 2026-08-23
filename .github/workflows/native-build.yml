@@ -1,16 +1,16 @@
-name: Build Student FIX6 FINAL QA APK
+name: Build Student v1.0.0 Production
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-Full-v1.0-FIX6-FINAL-QA.zip'
-      - '.github/workflows/native-build.yml'
+      - 'Student-Native-v1.0.0-PRODUCTION.zip'
+      - '.github/workflows/release-build.yml'
 
 jobs:
-  build-stable:
+  release:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -22,39 +22,76 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 16 SDK
+        run: |
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student FINAL QA
+      - name: Extract production project
         run: |
-          rm -rf native-build
-          mkdir -p native-build
-          unzip -q Student-Native-Full-v1.0-FIX6-FINAL-QA.zip -d native-build
+          rm -rf production-build
+          mkdir -p production-build
+          unzip -q Student-Native-v1.0.0-PRODUCTION.zip -d production-build
+          test -f production-build/Student-Native-Full-v1.0/app/build.gradle
+          test -f production-build/Student-Native-Full-v1.0/gradlew
+          echo "Production project ready"
 
-      - name: Verify project
+      - name: Restore signing keystore
+        env:
+          STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
-          test -f native-build/Student-Native-Full-v1.0/gradlew
-          test -f native-build/Student-Native-Full-v1.0/settings.gradle
-          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
-          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/NotificationsScreen.kt
-          test -f native-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/SettingsScreen.kt
-          echo "FINAL QA project verified"
+          if [ -z "$STUDENT_KEYSTORE_B64" ]; then
+            echo "Missing STUDENT_KEYSTORE_B64 secret"
+            exit 1
+          fi
+          echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
+            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+          echo "Signing keystore verified"
 
-      - name: Build stable debug APK
-        working-directory: native-build/Student-Native-Full-v1.0
+      - name: Build signed Release APK and AAB
+        working-directory: production-build/Student-Native-Full-v1.0
+        env:
+          STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
+          STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          STUDENT_KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleStableDebug
+          ./gradlew --no-daemon \
+            :app:assembleStableRelease \
+            :app:bundleStableRelease
 
-      - name: Show APK output
-        if: always()
+      - name: Verify signed APK
         run: |
-          find native-build/Student-Native-Full-v1.0/app/build/outputs/apk             -type f -name '*.apk' -print 2>/dev/null || true
+          APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload Student FINAL QA APK
+      - name: Show production outputs
+        run: |
+          find production-build/Student-Native-Full-v1.0/app/build/outputs \
+            -type f \( -name '*.apk' -o -name '*.aab' \) -print
+
+      - name: Upload MediaFire APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-FIX6-FINAL-QA-APK
-          path: native-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/debug/app-stable-debug.apk
+          name: Student-v1.0.0-Release-APK-MediaFire
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload Google Play AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v1.0.0-Release-AAB-GooglePlay
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
+          if-no-files-found: error
+          retention-days: 30
