@@ -1,11 +1,11 @@
-name: Build Student v1.0.0 Production
+name: Build Student Final Admin Release
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-v1.0.0-PRODUCTION.zip'
-      - '.github/workflows/release-build.yml'
+      - 'Student-Native-v1.0.0-FINAL-ADMIN.zip'
+      - '.github/workflows/final-admin-release.yml'
 
 jobs:
   release:
@@ -32,32 +32,31 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract production project
+      - name: Extract project
         run: |
-          rm -rf production-build
-          mkdir -p production-build
-          unzip -q Student-Native-v1.0.0-PRODUCTION.zip -d production-build
-          test -f production-build/Student-Native-Full-v1.0/app/build.gradle
-          test -f production-build/Student-Native-Full-v1.0/gradlew
-          echo "Production project ready"
+          rm -rf final-admin-build
+          mkdir -p final-admin-build
+          unzip -q Student-Native-v1.0.0-FINAL-ADMIN.zip -d final-admin-build
+          test -f final-admin-build/Student-Native-Full-v1.0/gradlew
+          test -f final-admin-build/Student-Native-Full-v1.0/app/build.gradle
+          test -f final-admin-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AdminStoreManagementPane.kt
+          test -f final-admin-build/Student-Native-Full-v1.0/supabase/migrations/20260824_student_admin_store_control.sql
+          echo "Final admin project verified"
 
       - name: Restore signing keystore
         env:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
-          if [ -z "$STUDENT_KEYSTORE_B64" ]; then
-            echo "Missing STUDENT_KEYSTORE_B64 secret"
-            exit 1
-          fi
+          test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
           keytool -list \
             -keystore "$RUNNER_TEMP/student-release-upload.jks" \
             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
-          echo "Signing keystore verified"
+          echo "Signing key verified"
 
-      - name: Build signed Release APK and AAB
-        working-directory: production-build/Student-Native-Full-v1.0
+      - name: Build signed APK and AAB
+        working-directory: final-admin-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -71,27 +70,22 @@ jobs:
 
       - name: Verify signed APK
         run: |
-          APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
+          APK="final-admin-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-
-      - name: Show production outputs
-        run: |
-          find production-build/Student-Native-Full-v1.0/app/build/outputs \
-            -type f \( -name '*.apk' -o -name '*.aab' \) -print
 
       - name: Upload MediaFire APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.0.0-Release-APK-MediaFire
-          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
+          name: Student-Final-Admin-Release-APK-MediaFire
+          path: final-admin-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload Google Play AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.0.0-Release-AAB-GooglePlay
-          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
+          name: Student-Final-Admin-Release-AAB-GooglePlay
+          path: final-admin-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
           if-no-files-found: error
           retention-days: 30
