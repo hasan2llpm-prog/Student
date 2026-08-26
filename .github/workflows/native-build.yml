@@ -1,14 +1,14 @@
-name: Build Student English Beta v1.2.0
+name: Build Student English v1.3.0 Production
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-Beta-v1.2.0.zip'
-      - '.github/workflows/student-english-beta-build.yml'
+      - 'Student-English-v1.3.0-PRODUCTION.zip'
+      - '.github/workflows/student-english-production-v1.3.0-build.yml'
 
 jobs:
-  beta:
+  production:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -31,14 +31,15 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Beta project
+      - name: Extract production project
         run: |
-          rm -rf beta-build
-          mkdir beta-build
-          unzip -q Student-English-Beta-v1.2.0.zip -d beta-build
-          test -f beta-build/Student-Native-Full-v1.0/gradlew
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishSeedContent.kt
+          rm -rf production-build
+          mkdir production-build
+          unzip -q Student-English-v1.3.0-PRODUCTION.zip -d production-build
+          test -f production-build/Student-Native-Full-v1.0/gradlew
+          test -f production-build/Student-Native-Full-v1.0/app/build.gradle
+          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AcademicReportsScreen.kt
+          test -f production-build/Student-Native-Full-v1.0/supabase/functions/academic-report/index.ts
 
       - name: Restore signing key
         env:
@@ -46,10 +47,13 @@ jobs:
         run: |
           test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
-          keytool -list -keystore "$RUNNER_TEMP/student-release-upload.jks" -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+          keytool -list \
+            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
+            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed Beta APK
-        working-directory: beta-build/Student-Native-Full-v1.0
+      - name: Build signed APK and AAB
+        working-directory: production-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -57,18 +61,28 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaRelease
+          ./gradlew --no-daemon \
+            :app:assembleStableRelease \
+            :app:bundleStableRelease
 
-      - name: Verify Beta APK
+      - name: Verify signed APK
         run: |
-          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
+          APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
           test -f "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload Student Beta APK
+      - name: Upload APK for MediaFire
         uses: actions/upload-artifact@v4
         with:
-          name: Student-English-Beta-v1.2.0-APK
-          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
+          name: Student-English-v1.3.0-APK-MediaFire
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AAB for Google Play
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-English-v1.3.0-AAB-GooglePlay
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
           if-no-files-found: error
           retention-days: 30
