@@ -1,14 +1,14 @@
-name: Build Student Final Admin Release
+name: Build Student English Beta v1.1.0
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-Native-v1.0.0-FINAL-ADMIN.zip'
-      - '.github/workflows/final-admin-release.yml'
+      - 'Student-English-Beta-v1.1.0.zip'
+      - '.github/workflows/student-english-beta-build.yml'
 
 jobs:
-  release:
+  beta:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -25,38 +25,31 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android 16 SDK
-        run: |
-          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android SDK
+        run: yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
+      - name: Extract Beta project
         run: |
-          rm -rf final-admin-build
-          mkdir -p final-admin-build
-          unzip -q Student-Native-v1.0.0-FINAL-ADMIN.zip -d final-admin-build
-          test -f final-admin-build/Student-Native-Full-v1.0/gradlew
-          test -f final-admin-build/Student-Native-Full-v1.0/app/build.gradle
-          test -f final-admin-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AdminStoreManagementPane.kt
-          test -f final-admin-build/Student-Native-Full-v1.0/supabase/migrations/20260824_student_admin_store_control.sql
-          echo "Final admin project verified"
+          rm -rf beta-build
+          mkdir beta-build
+          unzip -q Student-English-Beta-v1.1.0.zip -d beta-build
+          test -f beta-build/Student-Native-Full-v1.0/gradlew
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishSeedContent.kt
 
-      - name: Restore signing keystore
+      - name: Restore signing key
         env:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
           test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
-          keytool -list \
-            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
-            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
-          echo "Signing key verified"
+          keytool -list -keystore "$RUNNER_TEMP/student-release-upload.jks" -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed APK and AAB
-        working-directory: final-admin-build/Student-Native-Full-v1.0
+      - name: Build signed Beta APK
+        working-directory: beta-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -64,28 +57,18 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon \
-            :app:assembleStableRelease \
-            :app:bundleStableRelease
+          ./gradlew --no-daemon :app:assembleBetaRelease
 
-      - name: Verify signed APK
+      - name: Verify Beta APK
         run: |
-          APK="final-admin-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
+          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
           test -f "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
 
-      - name: Upload MediaFire APK
+      - name: Upload Student Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Final-Admin-Release-APK-MediaFire
-          path: final-admin-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload Google Play AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-Final-Admin-Release-AAB-GooglePlay
-          path: final-admin-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
+          name: Student-English-Beta-v1.1.0-APK
+          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
           retention-days: 30
