@@ -1,10 +1,10 @@
-name: Build Student English Beta v1.1.0
+name: Build Student English Beta v1.2.0
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-Beta-v1.1.0.zip'
+      - 'Student-English-Beta-v1.2.0.zip'
       - '.github/workflows/student-english-beta-build.yml'
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
         run: |
           rm -rf beta-build
           mkdir beta-build
-          unzip -q Student-English-Beta-v1.1.0.zip -d beta-build
+          unzip -q Student-English-Beta-v1.2.0.zip -d beta-build
           test -f beta-build/Student-Native-Full-v1.0/gradlew
           test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/EnglishSeedContent.kt
@@ -68,7 +68,7 @@ jobs:
       - name: Upload Student Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-English-Beta-v1.1.0-APK
+          name: Student-English-Beta-v1.2.0-APK
           path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
           retention-days: 30
