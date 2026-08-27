@@ -1,39 +1,44 @@
-name: Build Student v1.5.3 Beta Recovery Fix
+name: Build Student v1.6.0 Production
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.5.3-BETA-RECOVERY-FIX.zip'
-      - '.github/workflows/student-v1.5.3-beta-recovery.yml'
+      - 'Student-English-v1.6.0-PRODUCTION-ALL-IN-ONE.zip'
+      - '.github/workflows/student-v1.6.0-production.yml'
 
 jobs:
-  beta:
+  production:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v5
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: android-actions/setup-android@v3
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install Android SDK 36
         run: yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract project
+      - name: Extract Student Production
         run: |
-          rm -rf beta-build
-          mkdir -p beta-build
-          unzip -q Student-English-v1.5.3-BETA-RECOVERY-FIX.zip -d beta-build
-          test -f beta-build/Student-Native-Full-v1.0/gradlew
-          test -f beta-build/Student-Native-Full-v1.0/feature/auth/src/main/java/com/student/feature/auth/ResetPasswordScreen.kt
-          grep -q 'student://reset-password' beta-build/Student-Native-Full-v1.0/core/data/src/main/java/com/student/core/data/StudentConfig.kt
+          rm -rf production-build
+          mkdir -p production-build
+          unzip -q Student-English-v1.6.0-PRODUCTION-ALL-IN-ONE.zip -d production-build
+          test -f production-build/Student-Native-Full-v1.0/gradlew
+          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/CommunityScreen.kt
+          test -f production-build/Student-Native-Full-v1.0/supabase/migrations/20260828_student_v16_global.sql
+          grep -q "versionName '1.6.0'" production-build/Student-Native-Full-v1.0/app/build.gradle
 
       - name: Restore signing key
         env:
@@ -46,8 +51,8 @@ jobs:
             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed Beta APK and AAB
-        working-directory: beta-build/Student-Native-Full-v1.0
+      - name: Build signed Production APK and AAB
+        working-directory: production-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -55,26 +60,26 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaRelease :app:bundleBetaRelease
+          ./gradlew --no-daemon :app:assembleStableRelease :app:bundleStableRelease
 
-      - name: Verify APK
+      - name: Verify signed APK
         run: |
-          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
+          APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload APK
+      - name: Upload Production APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.5.3-Beta-Recovery-APK
-          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
+          name: Student-v1.6.0-Production-APK
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload AAB
+      - name: Upload Production AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.5.3-Beta-Recovery-AAB
-          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/bundle/betaRelease/app-beta-release.aab
+          name: Student-v1.6.0-Production-AAB
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
           if-no-files-found: error
           retention-days: 30
