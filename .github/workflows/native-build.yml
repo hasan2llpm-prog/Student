@@ -1,14 +1,14 @@
-name: Build Student v1.5 Beta
+name: Build Student v1.5.1 Production
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.5.0-BETA.zip'
-      - '.github/workflows/student-v1.5-beta-build.yml'
+      - 'Student-English-v1.5.1-PRODUCTION.zip'
+      - '.github/workflows/student-v1.5.1-production-build.yml'
 
 jobs:
-  beta:
+  production:
     runs-on: ubuntu-latest
     timeout-minutes: 50
 
@@ -31,15 +31,15 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student v1.5 Beta
+      - name: Extract Student v1.5.1 Production
         run: |
-          rm -rf beta-build
-          mkdir -p beta-build
-          unzip -q Student-English-v1.5.0-BETA.zip -d beta-build
-          test -f beta-build/Student-Native-Full-v1.0/gradlew
-          test -f beta-build/Student-Native-Full-v1.0/app/build.gradle
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AskAiScreen.kt
-          test -f beta-build/Student-Native-Full-v1.0/supabase/migrations/20260827_student_v15_stability.sql
+          rm -rf production-build
+          mkdir -p production-build
+          unzip -q Student-English-v1.5.1-PRODUCTION.zip -d production-build
+          test -f production-build/Student-Native-Full-v1.0/gradlew
+          test -f production-build/Student-Native-Full-v1.0/app/build.gradle
+          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/TeacherPortalScreen.kt
+          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AskAiScreen.kt
 
       - name: Restore signing key
         env:
@@ -52,8 +52,8 @@ jobs:
             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed Beta APK
-        working-directory: beta-build/Student-Native-Full-v1.0
+      - name: Build signed Production APK and AAB
+        working-directory: production-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -61,18 +61,28 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaRelease
+          ./gradlew --no-daemon \
+            :app:assembleStableRelease \
+            :app:bundleStableRelease
 
-      - name: Verify Beta APK
+      - name: Verify signed APK
         run: |
-          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
+          APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload Student v1.5 Beta APK
+      - name: Upload APK for MediaFire
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.5.0-Beta-APK
-          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
+          name: Student-v1.5.1-APK-MediaFire
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AAB for Google Play
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v1.5.1-AAB-GooglePlay
+          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
           if-no-files-found: error
           retention-days: 30
