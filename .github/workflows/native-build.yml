@@ -1,20 +1,20 @@
-name: Build Student v1.5.2 Beta Fix
+name: Build Student v1.5.3 Beta Recovery Fix
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.5.2-BETA-FIX.zip'
-      - '.github/workflows/student-v1.5.2-beta-fix.yml'
+      - 'Student-English-v1.5.3-BETA-RECOVERY-FIX.zip'
+      - '.github/workflows/student-v1.5.3-beta-recovery.yml'
 
 jobs:
   beta:
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -30,21 +30,23 @@ jobs:
         run: |
           rm -rf beta-build
           mkdir -p beta-build
-          unzip -q Student-English-v1.5.2-BETA-FIX.zip -d beta-build
+          unzip -q Student-English-v1.5.3-BETA-RECOVERY-FIX.zip -d beta-build
           test -f beta-build/Student-Native-Full-v1.0/gradlew
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          test -f beta-build/Student-Native-Full-v1.0/feature/auth/src/main/java/com/student/feature/auth/ResetPasswordScreen.kt
+          grep -q 'student://reset-password' beta-build/Student-Native-Full-v1.0/core/data/src/main/java/com/student/core/data/StudentConfig.kt
 
       - name: Restore signing key
         env:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
+          test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
           keytool -list \
             -keystore "$RUNNER_TEMP/student-release-upload.jks" \
             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed Beta APK
+      - name: Build signed Beta APK and AAB
         working-directory: beta-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
@@ -53,7 +55,7 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaRelease
+          ./gradlew --no-daemon :app:assembleBetaRelease :app:bundleBetaRelease
 
       - name: Verify APK
         run: |
@@ -64,7 +66,15 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.5.2-Beta-Fix-APK
+          name: Student-v1.5.3-Beta-Recovery-APK
           path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v1.5.3-Beta-Recovery-AAB
+          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/bundle/betaRelease/app-beta-release.aab
           if-no-files-found: error
           retention-days: 30
