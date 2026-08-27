@@ -1,78 +1,70 @@
-name: Build Student APK + AAB
+name: Build Student v1.5.2 Beta Fix
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    paths:
+      - 'Student-English-v1.5.2-BETA-FIX.zip'
+      - '.github/workflows/student-v1.5.2-beta-fix.yml'
 
 jobs:
-  build:
+  beta:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 50
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
-      - name: Locate or extract Android project
-        id: project
-        shell: bash
-        run: |
-          set -e
-
-          # 1) Project already exists somewhere in the repository
-          GRADLEW="$(find . -type f -name gradlew -not -path './.git/*' | head -n 1 || true)"
-
-          # 2) If only the ZIP was uploaded, extract it automatically
-          if [ -z "$GRADLEW" ]; then
-            ZIP_FILE="$(find . -maxdepth 2 -type f \( -name 'Student*.zip' -o -name '*.zip' \) | head -n 1 || true)"
-
-            if [ -z "$ZIP_FILE" ]; then
-              echo "ERROR: No Android Gradle project or ZIP file was found."
-              exit 1
-            fi
-
-            echo "Extracting: $ZIP_FILE"
-            mkdir -p extracted-student
-            unzip -q "$ZIP_FILE" -d extracted-student
-
-            GRADLEW="$(find extracted-student -type f -name gradlew | head -n 1 || true)"
-          fi
-
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew was not found after extraction."
-            exit 1
-          fi
-
-          PROJECT_DIR="$(dirname "$GRADLEW")"
-          echo "Android project: $PROJECT_DIR"
-
-          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      - name: Make Gradle executable
-        working-directory: ${{ steps.project.outputs.dir }}
-        run: chmod +x gradlew
+      - uses: android-actions/setup-android@v3
 
-      - name: Build Student APK + AAB
-        working-directory: ${{ steps.project.outputs.dir }}
-        run: ./gradlew assembleStableDebug bundleStableDebug --stacktrace
+      - name: Install Android SDK 36
+        run: yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract project
+        run: |
+          rm -rf beta-build
+          mkdir -p beta-build
+          unzip -q Student-English-v1.5.2-BETA-FIX.zip -d beta-build
+          test -f beta-build/Student-Native-Full-v1.0/gradlew
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+
+      - name: Restore signing key
+        env:
+          STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
+        run: |
+          echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
+            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+
+      - name: Build signed Beta APK
+        working-directory: beta-build/Student-Native-Full-v1.0
+        env:
+          STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
+          STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          STUDENT_KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleBetaRelease
+
+      - name: Verify APK
+        run: |
+          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-APK
-          path: ${{ steps.project.outputs.dir }}/app/build/outputs/apk/stable/debug/*.apk
+          name: Student-v1.5.2-Beta-Fix-APK
+          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-AAB
-          path: ${{ steps.project.outputs.dir }}/app/build/outputs/bundle/stableDebug/*.aab
-          if-no-files-found: error
+          retention-days: 30
