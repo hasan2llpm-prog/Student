@@ -11,45 +11,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Locate or extract Android project
+        id: project
+        shell: bash
+        run: |
+          set -e
+
+          # 1) Project already exists somewhere in the repository
+          GRADLEW="$(find . -type f -name gradlew -not -path './.git/*' | head -n 1 || true)"
+
+          # 2) If only the ZIP was uploaded, extract it automatically
+          if [ -z "$GRADLEW" ]; then
+            ZIP_FILE="$(find . -maxdepth 2 -type f \( -name 'Student*.zip' -o -name '*.zip' \) | head -n 1 || true)"
+
+            if [ -z "$ZIP_FILE" ]; then
+              echo "ERROR: No Android Gradle project or ZIP file was found."
+              exit 1
+            fi
+
+            echo "Extracting: $ZIP_FILE"
+            mkdir -p extracted-student
+            unzip -q "$ZIP_FILE" -d extracted-student
+
+            GRADLEW="$(find extracted-student -type f -name gradlew | head -n 1 || true)"
+          fi
+
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew was not found after extraction."
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$GRADLEW")"
+          echo "Android project: $PROJECT_DIR"
+
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Make Gradle executable
+        working-directory: ${{ steps.project.outputs.dir }}
         run: chmod +x gradlew
 
-      - name: Build Stable APK
-        run: ./gradlew assembleStableDebug --stacktrace
+      - name: Build Student APK + AAB
+        working-directory: ${{ steps.project.outputs.dir }}
+        run: ./gradlew assembleStableDebug bundleStableDebug --stacktrace
 
-      - name: Build Beta APK
-        run: ./gradlew assembleBetaDebug --stacktrace
-
-      - name: Build Stable AAB
-        run: ./gradlew bundleStableDebug --stacktrace
-
-      - name: Upload Stable APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Stable-APK
-          path: app/build/outputs/apk/stable/debug/*.apk
+          name: Student-APK
+          path: ${{ steps.project.outputs.dir }}/app/build/outputs/apk/stable/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload Beta APK
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-Beta-APK
-          path: app/build/outputs/apk/beta/debug/*.apk
-          if-no-files-found: error
-
-      - name: Upload Stable AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-Stable-AAB
-          path: app/build/outputs/bundle/stableDebug/*.aab
+          name: Student-AAB
+          path: ${{ steps.project.outputs.dir }}/app/build/outputs/bundle/stableDebug/*.aab
           if-no-files-found: error
