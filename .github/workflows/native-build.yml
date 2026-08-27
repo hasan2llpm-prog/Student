@@ -1,16 +1,16 @@
-name: Build Student English v1.3.1 Production
+name: Build Student v1.4 Beta
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.3.1-PRODUCTION.zip'
-      - '.github/workflows/student-english-production-v1.3.1-build.yml'
+      - 'Student-English-v1.4.0-BETA.zip'
+      - '.github/workflows/student-v1.4-beta-build.yml'
 
 jobs:
-  production:
+  beta:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
 
     steps:
       - name: Checkout repository
@@ -25,19 +25,22 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      - name: Install Android SDK 36
         run: yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract production project
+      - name: Extract Student v1.4 Beta
         run: |
-          rm -rf production-build
-          mkdir production-build
-          unzip -q Student-English-v1.3.1-PRODUCTION.zip -d production-build
-          test -f production-build/Student-Native-Full-v1.0/gradlew
-          test -f production-build/Student-Native-Full-v1.0/app/build.gradle
+          rm -rf beta-build
+          mkdir -p beta-build
+          unzip -q Student-English-v1.4.0-BETA.zip -d beta-build
+          test -f beta-build/Student-Native-Full-v1.0/gradlew
+          test -f beta-build/Student-Native-Full-v1.0/app/build.gradle
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/ProfileScreen.kt
+          test -f beta-build/Student-Native-Full-v1.0/supabase/migrations/20260826_student_v14_social_learning.sql
 
       - name: Restore signing key
         env:
@@ -45,10 +48,13 @@ jobs:
         run: |
           test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
-          keytool -list -keystore "$RUNNER_TEMP/student-release-upload.jks" -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+          keytool -list \
+            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
+            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed APK and AAB
-        working-directory: production-build/Student-Native-Full-v1.0
+      - name: Build signed Beta APK
+        working-directory: beta-build/Student-Native-Full-v1.0
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -56,20 +62,18 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleStableRelease :app:bundleStableRelease
+          ./gradlew --no-daemon :app:assembleBetaRelease
 
-      - name: Upload APK
+      - name: Verify Beta APK
+        run: |
+          APK="beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk"
+          test -f "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+
+      - name: Upload Student v1.4 Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-English-v1.3.1-APK-MediaFire
-          path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-English-v1.3.1-AAB-GooglePlay
-          path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
+          name: Student-v1.4.0-Beta-APK
+          path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
           retention-days: 30
