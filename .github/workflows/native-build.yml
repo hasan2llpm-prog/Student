@@ -1,11 +1,11 @@
-name: Build Student v1.4.1 Beta
+name: Build Student v1.5 Beta
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.4.1-BETA.zip'
-      - '.github/workflows/student-v1.4-beta-build.yml'
+      - 'Student-English-v1.5.0-BETA.zip'
+      - '.github/workflows/student-v1.5-beta-build.yml'
 
 jobs:
   beta:
@@ -31,16 +31,15 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student v1.4.1 Beta
+      - name: Extract Student v1.5 Beta
         run: |
           rm -rf beta-build
           mkdir -p beta-build
-          unzip -q Student-English-v1.4.1-BETA.zip -d beta-build
+          unzip -q Student-English-v1.5.0-BETA.zip -d beta-build
           test -f beta-build/Student-Native-Full-v1.0/gradlew
           test -f beta-build/Student-Native-Full-v1.0/app/build.gradle
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
-          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/ProfileScreen.kt
-          test -f beta-build/Student-Native-Full-v1.0/supabase/migrations/20260826_student_v14_social_learning.sql
+          test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/AskAiScreen.kt
+          test -f beta-build/Student-Native-Full-v1.0/supabase/migrations/20260827_student_v15_stability.sql
 
       - name: Restore signing key
         env:
@@ -70,10 +69,10 @@ jobs:
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload Student v1.4.1 Beta APK
+      - name: Upload Student v1.5 Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.4.1-Beta-APK
+          name: Student-v1.5.0-Beta-APK
           path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
           retention-days: 30
