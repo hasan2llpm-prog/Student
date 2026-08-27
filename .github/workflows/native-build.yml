@@ -1,10 +1,10 @@
-name: Build Student v1.4 Beta
+name: Build Student v1.4.1 Beta
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.4.0-BETA.zip'
+      - 'Student-English-v1.4.1-BETA.zip'
       - '.github/workflows/student-v1.4-beta-build.yml'
 
 jobs:
@@ -31,11 +31,11 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student v1.4 Beta
+      - name: Extract Student v1.4.1 Beta
         run: |
           rm -rf beta-build
           mkdir -p beta-build
-          unzip -q Student-English-v1.4.0-BETA.zip -d beta-build
+          unzip -q Student-English-v1.4.1-BETA.zip -d beta-build
           test -f beta-build/Student-Native-Full-v1.0/gradlew
           test -f beta-build/Student-Native-Full-v1.0/app/build.gradle
           test -f beta-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
@@ -70,10 +70,10 @@ jobs:
           test -f "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
 
-      - name: Upload Student v1.4 Beta APK
+      - name: Upload Student v1.4.1 Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.4.0-Beta-APK
+          name: Student-v1.4.1-Beta-APK
           path: beta-build/Student-Native-Full-v1.0/app/build/outputs/apk/beta/release/app-beta-release.apk
           if-no-files-found: error
           retention-days: 30
