@@ -1,11 +1,11 @@
-name: Build Student v1.7.0 Production
+name: Build Student v1.8.0 Production Final
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.7.0-PRODUCTION-INTERACTIONS.zip'
-      - '.github/workflows/student-v1.7.0-production.yml'
+      - 'Student-English-v1.8.0-PRODUCTION-FINAL.zip'
+      - '.github/workflows/student-v1.8.0-production.yml'
 
 jobs:
   production:
@@ -34,7 +34,7 @@ jobs:
         run: |
           rm -rf production-build
           mkdir -p production-build
-          unzip -q Student-English-v1.7.0-PRODUCTION-INTERACTIONS.zip -d production-build
+          unzip -q Student-English-v1.8.0-PRODUCTION-FINAL.zip -d production-build
           test -f production-build/Student-Native-Full-v1.0/gradlew
           test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/CommunityScreen.kt
           test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
@@ -72,7 +72,7 @@ jobs:
       - name: Upload Production APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.7.0-Production-APK
+          name: Student-v1.8.0-Production-APK
           path: production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk
           if-no-files-found: error
           retention-days: 30
@@ -80,7 +80,7 @@ jobs:
       - name: Upload Production AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.7.0-Production-AAB
+          name: Student-v1.8.0-Production-AAB
           path: production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab
           if-no-files-found: error
           retention-days: 30
