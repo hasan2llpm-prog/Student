@@ -5,12 +5,13 @@ on:
   push:
     paths:
       - 'Student-English-v1.8.0-PRODUCTION-FINAL.zip'
-      - '.github/workflows/student-v1.8.0-production.yml'
+      - '.github/workflows/native-build.yml'
 
 jobs:
   production:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -30,27 +31,34 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Student Production
+      - name: Extract and verify Student Production
         run: |
+          set -e
           rm -rf production-build
           mkdir -p production-build
           unzip -q Student-English-v1.8.0-PRODUCTION-FINAL.zip -d production-build
-          test -f production-build/Student-Native-Full-v1.0/gradlew
-          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/CommunityScreen.kt
-          test -f production-build/Student-Native-Full-v1.0/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
-          test -f production-build/Student-Native-Full-v1.0/supabase/migrations/20260828_student_v17_interactions.sql
-          grep -q "versionName '1.7.0'" production-build/Student-Native-Full-v1.0/app/build.gradle
+
+          PROJECT="production-build/Student-Native-Full-v1.0"
+
+          test -f "$PROJECT/gradlew"
+          test -f "$PROJECT/app/build.gradle"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/CommunityScreen.kt"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
+          test -f "$PROJECT/supabase/migrations/20260828_student_v17_interactions.sql"
+
+          grep -q "versionName '1.8.0'" "$PROJECT/app/build.gradle"
+          grep -q "versionCode 15" "$PROJECT/app/build.gradle"
+
+          echo "Student v1.8.0 source verified successfully."
 
       - name: Restore signing key
         env:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
+          set -e
           test -n "$STUDENT_KEYSTORE_B64" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
-          keytool -list \
-            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
-            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+          keytool -list             -keystore "$RUNNER_TEMP/student-release-upload.jks"             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}"             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
       - name: Build signed Production APK and AAB
         working-directory: production-build/Student-Native-Full-v1.0
@@ -60,14 +68,20 @@ jobs:
           STUDENT_KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
+          set -e
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleStableRelease :app:bundleStableRelease
+          ./gradlew --no-daemon             :app:assembleStableRelease             :app:bundleStableRelease             --stacktrace
 
       - name: Verify signed APK
         run: |
+          set -e
           APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
+          AAB="production-build/Student-Native-Full-v1.0/app/build/outputs/bundle/stableRelease/app-stable-release.aab"
+
           test -f "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          test -f "$AAB"
+
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify             --verbose             --print-certs             "$APK"
 
       - name: Upload Production APK
         uses: actions/upload-artifact@v4
