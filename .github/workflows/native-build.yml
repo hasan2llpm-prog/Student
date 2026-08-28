@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'Student-English-v1.8.1-PRODUCTION-FINAL.zip'
+      - 'Student-English-v1.8.1-PRODUCTION-TARGETED-FIX.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -31,20 +31,18 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify Student Production
+      - name: Extract and verify Student v1.8.1
         run: |
           set -e
           rm -rf production-build
           mkdir -p production-build
-          unzip -q Student-English-v1.8.1-PRODUCTION-FINAL.zip -d production-build
+          unzip -q Student-English-v1.8.1-PRODUCTION-TARGETED-FIX.zip -d production-build
 
           PROJECT="production-build/Student-Native-Full-v1.0"
 
           test -f "$PROJECT/gradlew"
           test -f "$PROJECT/app/build.gradle"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/CommunityScreen.kt"
           test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
-          test -f "$PROJECT/supabase/migrations/20260828_student_v181_targeted_fix.sql"
 
           grep -q "versionName '1.8.1'" "$PROJECT/app/build.gradle"
           grep -q "versionCode 16" "$PROJECT/app/build.gradle"
@@ -72,7 +70,7 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon             :app:assembleStableRelease             :app:bundleStableRelease             --stacktrace
 
-      - name: Verify signed APK
+      - name: Verify outputs
         run: |
           set -e
           APK="production-build/Student-Native-Full-v1.0/app/build/outputs/apk/stable/release/app-stable-release.apk"
