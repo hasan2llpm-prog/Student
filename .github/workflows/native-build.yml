@@ -1,11 +1,11 @@
-name: Build Student v1.9.1 Beta Update APK
+name: Build Student v1.9.3 Beta Update APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - 'Student-English-v1.9.1-BETA.zip'
+      - 'Student-English-v1.9.3-BETA.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -32,14 +32,14 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify Student v1.9.1 Beta
+      - name: Extract and verify Student v1.9.3 Beta
         shell: bash
         run: |
           set -euo pipefail
-          test -f Student-English-v1.9.1-BETA.zip
+          test -f Student-English-v1.9.3-BETA.zip
           rm -rf beta-build
           mkdir -p beta-build
-          unzip -q Student-English-v1.9.1-BETA.zip -d beta-build
+          unzip -q Student-English-v1.9.3-BETA.zip -d beta-build
 
           GRADLEW="$(find beta-build -type f -name gradlew | head -n 1 || true)"
           test -n "$GRADLEW"
@@ -48,16 +48,18 @@ jobs:
 
           test -f "$PROJECT/app/build.gradle"
           grep -q "applicationId 'com.studentiraq.app'" "$PROJECT/app/build.gradle"
-          grep -q "versionCode 18" "$PROJECT/app/build.gradle"
-          grep -q "versionName '1.9.1'" "$PROJECT/app/build.gradle"
+          grep -q "versionCode 20" "$PROJECT/app/build.gradle"
+          grep -q "versionName '1.9.3'" "$PROJECT/app/build.gradle"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
 
-          # Beta MUST NOT use a second package id. It must update installed Student.
           if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
             echo "ERROR: applicationIdSuffix found. This would install a second app."
             exit 1
           fi
 
-          echo "Verified same-package update build: com.studentiraq.app / code 18"
+          echo "Verified same-package update: com.studentiraq.app / versionCode 20"
 
       - name: Restore production signing key
         shell: bash
@@ -100,10 +102,10 @@ jobs:
           echo "path=$APK" >> "$GITHUB_OUTPUT"
           echo "APK ready: $APK"
 
-      - name: Upload Student v1.9.1 Beta Update APK
+      - name: Upload Student v1.9.3 Beta Update APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.9.1-Beta-Update-APK
+          name: Student-v1.9.3-Beta-Update-APK
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
