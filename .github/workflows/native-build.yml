@@ -1,11 +1,11 @@
-name: Build Student v1.9.3 Beta Update APK
+name: Build Student v1.9.3 Beta FIX1 APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - 'Student-English-v1.9.3-BETA.zip'
+      - 'Student-English-v1.9.3-BETA-FIX1.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
@@ -32,14 +32,15 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify Student v1.9.3 Beta
+      - name: Extract and verify FIX1 source
         shell: bash
         run: |
           set -euo pipefail
-          test -f Student-English-v1.9.3-BETA.zip
+          ZIP='Student-English-v1.9.3-BETA-FIX1.zip'
+          test -f "$ZIP"
           rm -rf beta-build
           mkdir -p beta-build
-          unzip -q Student-English-v1.9.3-BETA.zip -d beta-build
+          unzip -q "$ZIP" -d beta-build
 
           GRADLEW="$(find beta-build -type f -name gradlew | head -n 1 || true)"
           test -n "$GRADLEW"
@@ -50,16 +51,25 @@ jobs:
           grep -q "applicationId 'com.studentiraq.app'" "$PROJECT/app/build.gradle"
           grep -q "versionCode 20" "$PROJECT/app/build.gradle"
           grep -q "versionName '1.9.3'" "$PROJECT/app/build.gradle"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
+
+          MSG="$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
+          REELS="$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
+          test -f "$MSG"
+          test -f "$REELS"
+
+          grep -q 'val messageFileName = m.fileName' "$MSG"
+          if grep -q 'networkKbps' "$REELS"; then
+            echo 'ERROR: old ReelsScreen.kt detected (networkKbps still present). Wrong ZIP uploaded.'
+            exit 1
+          fi
+          grep -q 'measuredKbps' "$REELS"
 
           if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
-            echo "ERROR: applicationIdSuffix found. This would install a second app."
+            echo 'ERROR: applicationIdSuffix found. This would install a second app.'
             exit 1
           fi
 
-          echo "Verified same-package update: com.studentiraq.app / versionCode 20"
+          echo 'FIX1 source verified successfully.'
 
       - name: Restore production signing key
         shell: bash
@@ -67,10 +77,10 @@ jobs:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
-          test -n "${STUDENT_KEYSTORE_B64:-}" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
-          test -n "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" || (echo "Missing STUDENT_KEYSTORE_PASSWORD" && exit 1)
-          test -n "${{ secrets.STUDENT_KEY_ALIAS }}" || (echo "Missing STUDENT_KEY_ALIAS" && exit 1)
-          test -n "${{ secrets.STUDENT_KEY_PASSWORD }}" || (echo "Missing STUDENT_KEY_PASSWORD" && exit 1)
+          test -n "${STUDENT_KEYSTORE_B64:-}" || (echo 'Missing STUDENT_KEYSTORE_B64' && exit 1)
+          test -n "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" || (echo 'Missing STUDENT_KEYSTORE_PASSWORD' && exit 1)
+          test -n "${{ secrets.STUDENT_KEY_ALIAS }}" || (echo 'Missing STUDENT_KEY_ALIAS' && exit 1)
+          test -n "${{ secrets.STUDENT_KEY_PASSWORD }}" || (echo 'Missing STUDENT_KEY_PASSWORD' && exit 1)
 
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
           keytool -list \
@@ -100,12 +110,11 @@ jobs:
           test -n "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "APK ready: $APK"
 
-      - name: Upload Student v1.9.3 Beta Update APK
+      - name: Upload Student v1.9.3 Beta FIX1 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.9.3-Beta-Update-APK
+          name: Student-v1.9.3-Beta-FIX1-APK
           path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
