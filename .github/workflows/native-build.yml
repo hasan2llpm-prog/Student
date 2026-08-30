@@ -1,16 +1,17 @@
-name: Build Student v1.9.0 Beta QA APK
+name: Build Student v1.9.1 Beta Update APK
 
 on:
   workflow_dispatch:
   push:
+    branches: [ main ]
     paths:
-      - 'Student-English-v1.9.0-QA.zip'
+      - 'Student-English-v1.9.1-BETA.zip'
       - '.github/workflows/native-build.yml'
 
 jobs:
-  beta-qa:
+  beta-update:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -25,53 +26,84 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK
+      - name: Install Android SDK 36
         run: yes | sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Set up Gradle
+      - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify Student v1.9.0 QA
+      - name: Extract and verify Student v1.9.1 Beta
         shell: bash
         run: |
-          set -e
-          rm -rf qa-build
-          mkdir -p qa-build
-          unzip -q Student-English-v1.9.0-QA.zip -d qa-build
+          set -euo pipefail
+          test -f Student-English-v1.9.1-BETA.zip
+          rm -rf beta-build
+          mkdir -p beta-build
+          unzip -q Student-English-v1.9.1-BETA.zip -d beta-build
 
-          GRADLEW="$(find qa-build -type f -name gradlew | head -n 1 || true)"
+          GRADLEW="$(find beta-build -type f -name gradlew | head -n 1 || true)"
           test -n "$GRADLEW"
           PROJECT="$(dirname "$GRADLEW")"
           echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
           test -f "$PROJECT/app/build.gradle"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
-          test -f "$PROJECT/app/src/main/java/com/student/app/ForcedUpdateScreen.kt"
-          test -f "$PROJECT/supabase/migrations/20260830_student_v190_reels_update_control.sql"
-          grep -q "versionName '1.9.0'" "$PROJECT/app/build.gradle"
-          grep -q "versionCode 17" "$PROJECT/app/build.gradle"
+          grep -q "applicationId 'com.studentiraq.app'" "$PROJECT/app/build.gradle"
+          grep -q "versionCode 18" "$PROJECT/app/build.gradle"
+          grep -q "versionName '1.9.1'" "$PROJECT/app/build.gradle"
 
-      - name: Build ONE Beta QA APK
+          # Beta MUST NOT use a second package id. It must update installed Student.
+          if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
+            echo "ERROR: applicationIdSuffix found. This would install a second app."
+            exit 1
+          fi
+
+          echo "Verified same-package update build: com.studentiraq.app / code 18"
+
+      - name: Restore production signing key
         shell: bash
+        env:
+          STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
-          set -e
+          set -euo pipefail
+          test -n "${STUDENT_KEYSTORE_B64:-}" || (echo "Missing STUDENT_KEYSTORE_B64" && exit 1)
+          test -n "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" || (echo "Missing STUDENT_KEYSTORE_PASSWORD" && exit 1)
+          test -n "${{ secrets.STUDENT_KEY_ALIAS }}" || (echo "Missing STUDENT_KEY_ALIAS" && exit 1)
+          test -n "${{ secrets.STUDENT_KEY_PASSWORD }}" || (echo "Missing STUDENT_KEY_PASSWORD" && exit 1)
+
+          echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
+            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
+
+      - name: Build ONE signed Beta Update APK
+        shell: bash
+        env:
+          STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
+          STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          STUDENT_KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
           cd "$PROJECT"
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaDebug --stacktrace
+          ./gradlew --no-daemon :app:assembleBetaRelease --stacktrace
 
-      - name: Locate APK
+      - name: Verify signed update APK
         id: apk
         shell: bash
         run: |
-          set -e
-          APK="$(find "$PROJECT/app/build/outputs/apk/beta/debug" -type f -name '*.apk' | head -n 1 || true)"
+          set -euo pipefail
+          APK="$(find "$PROJECT/app/build/outputs/apk/beta/release" -type f -name '*.apk' | head -n 1 || true)"
           test -n "$APK"
-          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "APK ready: $APK"
 
-      - name: Upload Beta QA APK
+      - name: Upload Student v1.9.1 Beta Update APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.9.0-Beta-QA-APK
-          path: ${{ steps.apk.outputs.apk }}
+          name: Student-v1.9.1-Beta-Update-APK
+          path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
           retention-days: 14
