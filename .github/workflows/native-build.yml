@@ -1,15 +1,18 @@
-name: Build Student v1.9.3 Beta FIX1 APK
+name: Build Student v2.0.0 Production Final APK + AAB
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - 'Student-English-v1.9.3-BETA-FIX1.zip'
+      - 'Student-English-v2.0.0-PRODUCTION-FINAL.zip'
       - '.github/workflows/native-build.yml'
 
+permissions:
+  contents: write
+
 jobs:
-  beta-update:
+  production:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -32,44 +35,48 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify FIX1 source
+      - name: Extract and verify Student v2.0.0 source
         shell: bash
         run: |
           set -euo pipefail
-          ZIP='Student-English-v1.9.3-BETA-FIX1.zip'
+          ZIP='Student-English-v2.0.0-PRODUCTION-FINAL.zip'
           test -f "$ZIP"
-          rm -rf beta-build
-          mkdir -p beta-build
-          unzip -q "$ZIP" -d beta-build
+          rm -rf production-build
+          mkdir -p production-build
+          unzip -q "$ZIP" -d production-build
 
-          GRADLEW="$(find beta-build -type f -name gradlew | head -n 1 || true)"
+          GRADLEW="$(find production-build -type f -name gradlew | head -n 1 || true)"
           test -n "$GRADLEW"
           PROJECT="$(dirname "$GRADLEW")"
           echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
 
           test -f "$PROJECT/app/build.gradle"
+          test -f "$PROJECT/app/src/main/java/com/student/app/ForcedUpdateScreen.kt"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
+          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
+          test -f "$PROJECT/supabase/migrations/20260830_student_v200_final_daily_update.sql"
+
           grep -q "applicationId 'com.studentiraq.app'" "$PROJECT/app/build.gradle"
-          grep -q "versionCode 20" "$PROJECT/app/build.gradle"
-          grep -q "versionName '1.9.3'" "$PROJECT/app/build.gradle"
+          grep -q "versionCode 21" "$PROJECT/app/build.gradle"
+          grep -q "versionName '2.0.0'" "$PROJECT/app/build.gradle"
+
+          if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
+            echo 'ERROR: applicationIdSuffix found. Final release would install beside the old Student app.'
+            exit 1
+          fi
 
           MSG="$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
           REELS="$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
-          test -f "$MSG"
-          test -f "$REELS"
-
           grep -q 'val messageFileName = m.fileName' "$MSG"
           if grep -q 'networkKbps' "$REELS"; then
-            echo 'ERROR: old ReelsScreen.kt detected (networkKbps still present). Wrong ZIP uploaded.'
+            echo 'ERROR: old ReelsScreen.kt detected.'
             exit 1
           fi
           grep -q 'measuredKbps' "$REELS"
+          grep -q 'UpdateAvailableDialog' "$PROJECT/app/src/main/java/com/student/app/ForcedUpdateScreen.kt"
+          grep -q 'student_mark_active_v20' "$PROJECT/core/data/src/main/java/com/student/core/data/SupabaseApi.kt"
 
-          if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
-            echo 'ERROR: applicationIdSuffix found. This would install a second app.'
-            exit 1
-          fi
-
-          echo 'FIX1 source verified successfully.'
+          echo 'Student v2.0.0 final source verified.'
 
       - name: Restore production signing key
         shell: bash
@@ -88,7 +95,7 @@ jobs:
             -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
             -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build ONE signed Beta Update APK
+      - name: Build signed Stable APK and AAB
         shell: bash
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
@@ -99,22 +106,58 @@ jobs:
           set -euo pipefail
           cd "$PROJECT"
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleBetaRelease --stacktrace
+          ./gradlew --no-daemon :app:assembleStableRelease :app:bundleStableRelease --stacktrace
 
-      - name: Verify signed update APK
-        id: apk
+      - name: Prepare and verify release files
+        id: release_files
         shell: bash
         run: |
           set -euo pipefail
-          APK="$(find "$PROJECT/app/build/outputs/apk/beta/release" -type f -name '*.apk' | head -n 1 || true)"
+          APK="$(find "$PROJECT/app/build/outputs/apk/stable/release" -type f -name '*.apk' | head -n 1 || true)"
+          AAB="$(find "$PROJECT/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
           test -n "$APK"
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          test -n "$AAB"
 
-      - name: Upload Student v1.9.3 Beta FIX1 APK
+          mkdir -p dist
+          cp "$APK" dist/Student-v2.0.0.apk
+          cp "$AAB" dist/Student-v2.0.0.aab
+
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs dist/Student-v2.0.0.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Student-v2.0.0.apk | tee /tmp/badging.txt
+          grep -q "package: name='com.studentiraq.app'" /tmp/badging.txt
+          grep -q "versionCode='21'" /tmp/badging.txt
+          grep -q "versionName='2.0.0'" /tmp/badging.txt
+
+          echo "apk=dist/Student-v2.0.0.apk" >> "$GITHUB_OUTPUT"
+          echo "aab=dist/Student-v2.0.0.aab" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Production APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v1.9.3-Beta-FIX1-APK
-          path: ${{ steps.apk.outputs.path }}
+          name: Student-v2.0.0-Production-APK
+          path: ${{ steps.release_files.outputs.apk }}
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload Production AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v2.0.0-Production-AAB
+          path: ${{ steps.release_files.outputs.aab }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release v2.0.0
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOTES=$'Student v2.0.0\n\n- Reels\n- إصلاحات وتحسينات في القصص والمحادثات والتنقل\n- تحديثات Learn English اليومية\n- نظام تحديث داخل Student للإصدارات القادمة\n\nهذا الإصدار يستخدم نفس applicationId والتوقيع ليُثبَّت كتحديث فوق Student الحالي.'
+          if gh release view v2.0.0 >/dev/null 2>&1; then
+            gh release upload v2.0.0 dist/Student-v2.0.0.apk dist/Student-v2.0.0.aab --clobber
+          else
+            gh release create v2.0.0 dist/Student-v2.0.0.apk dist/Student-v2.0.0.aab \
+              --title 'Student v2.0.0' \
+              --notes "$NOTES"
+          fi
