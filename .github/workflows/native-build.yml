@@ -1,18 +1,18 @@
-name: Build Student v2.0.0 Production Final APK + AAB
+name: Build Student v2.1.0 Beta APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - 'Student-English-v2.0.0-PRODUCTION-FINAL.zip'
-      - '.github/workflows/native-build.yml'
+      - 'Student-v2.1.0-BETA-VOCAB5000.zip'
+      - '.github/workflows/student-v2.1.0-beta-build.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  production:
+  beta:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -35,68 +35,46 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and verify Student v2.0.0 source
+      - name: Extract Student Native Beta
         shell: bash
         run: |
           set -euo pipefail
-          ZIP='Student-English-v2.0.0-PRODUCTION-FINAL.zip'
-          test -f "$ZIP"
-          rm -rf production-build
-          mkdir -p production-build
-          unzip -q "$ZIP" -d production-build
+          test -f Student-v2.1.0-BETA-VOCAB5000.zip
+          rm -rf student-src
+          mkdir -p student-src
+          unzip -q Student-v2.1.0-BETA-VOCAB5000.zip -d student-src
 
-          GRADLEW="$(find production-build -type f -name gradlew | head -n 1 || true)"
-          test -n "$GRADLEW"
-          PROJECT="$(dirname "$GRADLEW")"
-          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+      - name: Verify Beta source
+        shell: bash
+        working-directory: student-src
+        run: |
+          set -euo pipefail
+          test -f app/build.gradle
+          test -f app/src/main/java/com/student/app/MainActivity.kt
+          test -f feature/home/src/main/java/com/student/feature/home/Oxford5000Vocabulary.kt
+          test -f feature/home/src/main/assets/oxford_5000_ar.json
+          grep -q "applicationId 'com.studentiraq.app'" app/build.gradle
+          grep -q "versionCode 22" app/build.gradle
+          grep -q "versionName '2.1.0'" app/build.gradle
+          test "$(python3 - <<'PY'
+import json
+with open('feature/home/src/main/assets/oxford_5000_ar.json', encoding='utf-8') as f:
+    print(len(json.load(f)))
+PY
+)" = "5000"
 
-          test -f "$PROJECT/app/build.gradle"
-          test -f "$PROJECT/app/src/main/java/com/student/app/ForcedUpdateScreen.kt"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
-          test -f "$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
-          test -f "$PROJECT/supabase/migrations/20260830_student_v200_final_daily_update.sql"
-
-          grep -q "applicationId 'com.studentiraq.app'" "$PROJECT/app/build.gradle"
-          grep -q "versionCode 21" "$PROJECT/app/build.gradle"
-          grep -q "versionName '2.0.0'" "$PROJECT/app/build.gradle"
-
-          if grep -q 'applicationIdSuffix' "$PROJECT/app/build.gradle"; then
-            echo 'ERROR: applicationIdSuffix found. Final release would install beside the old Student app.'
-            exit 1
-          fi
-
-          MSG="$PROJECT/feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt"
-          REELS="$PROJECT/feature/home/src/main/java/com/student/feature/home/ReelsScreen.kt"
-          grep -q 'val messageFileName = m.fileName' "$MSG"
-          if grep -q 'networkKbps' "$REELS"; then
-            echo 'ERROR: old ReelsScreen.kt detected.'
-            exit 1
-          fi
-          grep -q 'measuredKbps' "$REELS"
-          grep -q 'UpdateAvailableDialog' "$PROJECT/app/src/main/java/com/student/app/ForcedUpdateScreen.kt"
-          grep -q 'student_mark_active_v20' "$PROJECT/core/data/src/main/java/com/student/core/data/SupabaseApi.kt"
-
-          echo 'Student v2.0.0 final source verified.'
-
-      - name: Restore production signing key
+      - name: Restore release signing key
         shell: bash
         env:
           STUDENT_KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
           test -n "${STUDENT_KEYSTORE_B64:-}" || (echo 'Missing STUDENT_KEYSTORE_B64' && exit 1)
-          test -n "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" || (echo 'Missing STUDENT_KEYSTORE_PASSWORD' && exit 1)
-          test -n "${{ secrets.STUDENT_KEY_ALIAS }}" || (echo 'Missing STUDENT_KEY_ALIAS' && exit 1)
-          test -n "${{ secrets.STUDENT_KEY_PASSWORD }}" || (echo 'Missing STUDENT_KEY_PASSWORD' && exit 1)
-
           echo "$STUDENT_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/student-release-upload.jks"
-          keytool -list \
-            -keystore "$RUNNER_TEMP/student-release-upload.jks" \
-            -storepass "${{ secrets.STUDENT_KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.STUDENT_KEY_ALIAS }}" >/dev/null
 
-      - name: Build signed Stable APK and AAB
+      - name: Build signed Beta APK
         shell: bash
+        working-directory: student-src
         env:
           STUDENT_KEYSTORE_PATH: ${{ runner.temp }}/student-release-upload.jks
           STUDENT_KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
@@ -104,60 +82,21 @@ jobs:
           STUDENT_KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          cd "$PROJECT"
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleStableRelease :app:bundleStableRelease --stacktrace
+          ./gradlew --no-daemon :app:assembleBetaRelease --stacktrace
 
-      - name: Prepare and verify release files
-        id: release_files
+      - name: Collect Beta APK
         shell: bash
         run: |
           set -euo pipefail
-          APK="$(find "$PROJECT/app/build/outputs/apk/stable/release" -type f -name '*.apk' | head -n 1 || true)"
-          AAB="$(find "$PROJECT/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
-          test -n "$APK"
-          test -n "$AAB"
-
           mkdir -p dist
-          cp "$APK" dist/Student-v2.0.0.apk
-          cp "$AAB" dist/Student-v2.0.0.aab
+          APK="$(find student-src/app/build/outputs/apk/beta/release -type f -name '*.apk' | head -n 1)"
+          test -n "$APK"
+          cp "$APK" dist/Student-v2.1.0-BETA.apk
 
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs dist/Student-v2.0.0.apk
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging dist/Student-v2.0.0.apk | tee /tmp/badging.txt
-          grep -q "package: name='com.studentiraq.app'" /tmp/badging.txt
-          grep -q "versionCode='21'" /tmp/badging.txt
-          grep -q "versionName='2.0.0'" /tmp/badging.txt
-
-          echo "apk=dist/Student-v2.0.0.apk" >> "$GITHUB_OUTPUT"
-          echo "aab=dist/Student-v2.0.0.aab" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Production APK artifact
+      - name: Upload Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.0.0-Production-APK
-          path: ${{ steps.release_files.outputs.apk }}
+          name: Student-v2.1.0-BETA-APK
+          path: dist/Student-v2.1.0-BETA.apk
           if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload Production AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-v2.0.0-Production-AAB
-          path: ${{ steps.release_files.outputs.aab }}
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Publish GitHub Release v2.0.0
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          NOTES=$'Student v2.0.0\n\n- Reels\n- إصلاحات وتحسينات في القصص والمحادثات والتنقل\n- تحديثات Learn English اليومية\n- نظام تحديث داخل Student للإصدارات القادمة\n\nهذا الإصدار يستخدم نفس applicationId والتوقيع ليُثبَّت كتحديث فوق Student الحالي.'
-          if gh release view v2.0.0 >/dev/null 2>&1; then
-            gh release upload v2.0.0 dist/Student-v2.0.0.apk dist/Student-v2.0.0.aab --clobber
-          else
-            gh release create v2.0.0 dist/Student-v2.0.0.apk dist/Student-v2.0.0.aab \
-              --title 'Student v2.0.0' \
-              --notes "$NOTES"
-          fi
