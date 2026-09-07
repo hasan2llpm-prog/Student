@@ -1,4 +1,4 @@
-name: Build Student v2.1.0 Beta APK
+name: Build Student v2.2.0 Beta APK
 
 on:
   workflow_dispatch:
@@ -19,40 +19,25 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="Student-v2.1.0-BETA-VOCAB5000.zip"
-
-          test -f "$ZIP_FILE" || {
-            echo "ERROR: $ZIP_FILE not found"
-            exit 1
-          }
-
+          ZIP_FILE="Student-v2.2.0-BETA.zip"
+          test -f "$ZIP_FILE" || { echo "ERROR: $ZIP_FILE not found"; exit 1; }
           echo "Found $ZIP_FILE"
 
       - name: Extract project
         shell: bash
         run: |
           set -euo pipefail
-
           rm -rf extracted
           mkdir -p extracted
-          unzip -q Student-v2.1.0-BETA-VOCAB5000.zip -d extracted
+          unzip -q "Student-v2.2.0-BETA.zip" -d extracted
 
       - name: Detect project root
         shell: bash
         run: |
           set -euo pipefail
-
-          SETTINGS_FILE="$(find extracted \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -type f | head -n 1 || true)"
-
-          if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle not found"
-            exit 1
-          fi
-
+          SETTINGS_FILE="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
+          test -n "$SETTINGS_FILE" || { echo "ERROR: settings.gradle not found"; exit 1; }
           PROJECT_DIR="$GITHUB_WORKSPACE/$(dirname "$SETTINGS_FILE")"
-
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Project root: $PROJECT_DIR"
 
@@ -74,130 +59,63 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0"
-
-      - name: Verify project files
+      - name: Verify project and content
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
-          test -f gradlew || {
-            echo "ERROR: gradlew not found"
-            exit 1
-          }
-
-          test -d app || {
-            echo "ERROR: app module not found"
-            exit 1
-          }
-
-          chmod +x gradlew
-
-          echo "Project files verified"
-
-      - name: Verify Oxford 5000
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-
-          VOCAB_FILE="$(find . -type f -name "oxford_5000_ar.json" | head -n 1 || true)"
-
-          if [ -z "$VOCAB_FILE" ]; then
-            echo "ERROR: oxford_5000_ar.json not found"
-            exit 1
-          fi
-
-          python3 - "$VOCAB_FILE" <<'PY'
+          test -f gradlew
+          test -d app
+          test -f feature/home/src/main/assets/oxford_5000_ar.json
+          test -f feature/home/src/main/assets/grammar_300_bilingual.json
+          grep -q "versionCode 23" app/build.gradle
+          grep -q "versionName '2.2.0'" app/build.gradle
+          python3 - <<'PY'
           import json
-          import sys
-
-          path = sys.argv[1]
-
-          with open(path, "r", encoding="utf-8") as f:
-              data = json.load(f)
-
-          if not isinstance(data, list):
-              raise SystemExit("Vocabulary JSON must be a list")
-
-          if len(data) != 5000:
-              raise SystemExit(
-                  f"Expected 5000 vocabulary items, found {len(data)}"
-              )
-
-          print("Vocabulary verified:", len(data))
+          from pathlib import Path
+          vocab=json.loads(Path('feature/home/src/main/assets/oxford_5000_ar.json').read_text(encoding='utf-8'))
+          grammar=json.loads(Path('feature/home/src/main/assets/grammar_300_bilingual.json').read_text(encoding='utf-8'))
+          assert len(vocab)==5000, len(vocab)
+          assert len(grammar)==300, len(grammar)
+          print('Verified vocabulary:',len(vocab),'grammar:',len(grammar))
           PY
+          chmod +x gradlew
 
       - name: Configure Beta debug signing
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
           if [ -f app/build.gradle ]; then
-            sed -i \
-              's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/g' \
-              app/build.gradle
+            sed -i 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/g' app/build.gradle
           fi
-
           if [ -f app/build.gradle.kts ]; then
-            sed -i \
-              's/signingConfig = signingConfigs.getByName("release")/signingConfig = signingConfigs.getByName("debug")/g' \
-              app/build.gradle.kts
+            sed -i 's/signingConfig = signingConfigs.getByName("release")/signingConfig = signingConfigs.getByName("debug")/g' app/build.gradle.kts
           fi
-
-          echo "Beta signing configured"
-
-      - name: Show Gradle version
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-
-          ./gradlew --version
 
       - name: Build Beta APK
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-
-          ./gradlew \
-            --no-daemon \
-            --stacktrace \
-            :app:assembleBetaRelease
+          ./gradlew --no-daemon --stacktrace :app:assembleBetaRelease
 
       - name: Collect APK
         shell: bash
         run: |
           set -euo pipefail
-
           mkdir -p "$GITHUB_WORKSPACE/dist"
-
-          APK_FILE="$(find "$PROJECT_DIR/app/build/outputs/apk" \
-            -type f \
-            -name "*.apk" \
-            | head -n 1 || true)"
-
-          if [ -z "$APK_FILE" ]; then
-            echo "ERROR: APK not found"
-            exit 1
-          fi
-
-          cp "$APK_FILE" \
-            "$GITHUB_WORKSPACE/dist/Student-v2.1.0-BETA.apk"
-
-          ls -lh "$GITHUB_WORKSPACE/dist/Student-v2.1.0-BETA.apk"
+          APK_FILE="$(find "$PROJECT_DIR/app/build/outputs/apk" -type f -name '*.apk' | head -n 1 || true)"
+          test -n "$APK_FILE" || { echo "ERROR: APK not found"; exit 1; }
+          cp "$APK_FILE" "$GITHUB_WORKSPACE/dist/Student-v2.2.0-BETA.apk"
+          ls -lh "$GITHUB_WORKSPACE/dist/Student-v2.2.0-BETA.apk"
 
       - name: Upload Beta APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.1.0-BETA-APK
-          path: dist/Student-v2.1.0-BETA.apk
+          name: Student-v2.2.0-BETA-APK
+          path: dist/Student-v2.2.0-BETA.apk
           if-no-files-found: error
           retention-days: 14
