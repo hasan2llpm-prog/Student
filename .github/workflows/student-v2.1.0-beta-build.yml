@@ -1,4 +1,4 @@
-name: Build Student v2.2.0 Beta APK
+name: Build Student v2.2.0 Production APK + AAB
 
 on:
   workflow_dispatch:
@@ -7,39 +7,32 @@ permissions:
   contents: read
 
 jobs:
-  build-beta:
+  production:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Verify ZIP exists
+      - name: Verify production ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="Student-v2.2.0-BETA.zip"
-          test -f "$ZIP_FILE" || { echo "ERROR: $ZIP_FILE not found"; exit 1; }
-          echo "Found $ZIP_FILE"
+          ZIP="Student-v2.2.0-STABLE-PRODUCTION.zip"
+          test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
+          unzip -tq "$ZIP"
 
       - name: Extract project
         shell: bash
         run: |
           set -euo pipefail
           rm -rf extracted
-          mkdir -p extracted
-          unzip -q "Student-v2.2.0-BETA.zip" -d extracted
-
-      - name: Detect project root
-        shell: bash
-        run: |
-          set -euo pipefail
-          SETTINGS_FILE="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
-          test -n "$SETTINGS_FILE" || { echo "ERROR: settings.gradle not found"; exit 1; }
-          PROJECT_DIR="$GITHUB_WORKSPACE/$(dirname "$SETTINGS_FILE")"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Project root: $PROJECT_DIR"
+          mkdir extracted
+          unzip -q Student-v2.2.0-STABLE-PRODUCTION.zip -d extracted
+          SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
+          test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -61,61 +54,91 @@ jobs:
           set -euo pipefail
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Verify project and content
+      - name: Restore production signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            test -n "${!v:-}" || { echo "ERROR: missing GitHub secret $v"; exit 1; }
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/student-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "STUDENT_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "STUDENT_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Static release checks
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          test -f gradlew
-          test -d app
-          test -f feature/home/src/main/assets/oxford_5000_ar.json
-          test -f feature/home/src/main/assets/grammar_300_bilingual.json
-          grep -q "versionCode 23" app/build.gradle
+          chmod +x gradlew
+          grep -q "versionCode 24" app/build.gradle
           grep -q "versionName '2.2.0'" app/build.gradle
+          grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
+          ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
+            echo "ERROR: private server secret found in Android sources"; exit 1;
+          }
           python3 - <<'PY'
           import json
           from pathlib import Path
-          vocab=json.loads(Path('feature/home/src/main/assets/oxford_5000_ar.json').read_text(encoding='utf-8'))
-          grammar=json.loads(Path('feature/home/src/main/assets/grammar_300_bilingual.json').read_text(encoding='utf-8'))
-          assert len(vocab)==5000, len(vocab)
-          assert len(grammar)==300, len(grammar)
-          print('Verified vocabulary:',len(vocab),'grammar:',len(grammar))
+          vocab = next(Path('.').rglob('oxford_5000_ar.json'))
+          grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
+          assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
+          assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
+          print('Content checks passed: vocabulary=5000, grammar=300')
           PY
-          chmod +x gradlew
 
-      - name: Configure Beta debug signing
+      - name: Build signed Stable APK and AAB
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          if [ -f app/build.gradle ]; then
-            sed -i 's/signingConfig signingConfigs.release/signingConfig signingConfigs.debug/g' app/build.gradle
-          fi
-          if [ -f app/build.gradle.kts ]; then
-            sed -i 's/signingConfig = signingConfigs.getByName("release")/signingConfig = signingConfigs.getByName("debug")/g' app/build.gradle.kts
-          fi
+          ./gradlew --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
 
-      - name: Build Beta APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          ./gradlew --no-daemon --stacktrace :app:assembleBetaRelease
-
-      - name: Collect APK
+      - name: Verify and collect release artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/dist"
-          APK_FILE="$(find "$PROJECT_DIR/app/build/outputs/apk" -type f -name '*.apk' | head -n 1 || true)"
-          test -n "$APK_FILE" || { echo "ERROR: APK not found"; exit 1; }
-          cp "$APK_FILE" "$GITHUB_WORKSPACE/dist/Student-v2.2.0-BETA.apk"
-          ls -lh "$GITHUB_WORKSPACE/dist/Student-v2.2.0-BETA.apk"
+          APK="$(find "$PROJECT_DIR/app/build/outputs/apk/stable/release" -type f -name '*.apk' | head -n 1 || true)"
+          AAB="$(find "$PROJECT_DIR/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
+          test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
+          test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.2.0.apk"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.2.0.aab"
+          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.2.0.apk" "$GITHUB_WORKSPACE/dist/Student-v2.2.0.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          ls -lh "$GITHUB_WORKSPACE/dist"
 
-      - name: Upload Beta APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.2.0-BETA-APK
-          path: dist/Student-v2.2.0-BETA.apk
+          name: Student-v2.2.0-APK
+          path: dist/Student-v2.2.0.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v2.2.0-AAB
+          path: dist/Student-v2.2.0.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v2.2.0-SHA256
+          path: dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
