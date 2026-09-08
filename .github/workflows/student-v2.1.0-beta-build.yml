@@ -1,4 +1,4 @@
-name: Build Student v2.4.0 Production APK + AAB
+name: Build Student v2.5.0 Production APK + AAB
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.4.0-STABLE-PRODUCTION.zip"
+          ZIP="Student-v2.5.0-STABLE-PRODUCTION.zip"
           test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
           unzip -tq "$ZIP"
 
@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.4.0-STABLE-PRODUCTION.zip -d extracted
+          unzip -q Student-v2.5.0-STABLE-PRODUCTION.zip -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
@@ -80,8 +80,8 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           chmod +x gradlew
-          grep -q "versionCode 27" app/build.gradle
-          grep -q "versionName '2.4.0'" app/build.gradle
+          grep -q "versionCode 28" app/build.gradle
+          grep -q "versionName '2.5.0'" app/build.gradle
           grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
           ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
@@ -96,6 +96,17 @@ jobs:
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
           print('Content checks passed: vocabulary=5000, grammar=300')
           PY
+
+      - name: Verify Rooms v2.5 and Story publish flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          test -f supabase/migrations/20260908_student_v250_rooms_ux.sql
+          grep -q 'student_voice_room_request_mic_v25' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q '10 مايكات' feature/home/src/main/java/com/student/feature/home/AdminScreen.kt
+          grep -q 'initialCreatePickerConsumed' feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          grep -q 'خلفيات الغرف' feature/home/src/main/java/com/student/feature/home/StoreScreen.kt
 
       - name: Build signed Stable APK and AAB
         shell: bash
@@ -114,31 +125,31 @@ jobs:
           test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
           test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.4.0.apk"
-          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.4.0.aab"
-          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.4.0.apk" "$GITHUB_WORKSPACE/dist/Student-v2.4.0.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.5.0.apk"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.5.0.aab"
+          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.5.0.apk" "$GITHUB_WORKSPACE/dist/Student-v2.5.0.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
           ls -lh "$GITHUB_WORKSPACE/dist"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.4.0-APK
-          path: dist/Student-v2.4.0.apk
+          name: Student-v2.5.0-APK
+          path: dist/Student-v2.5.0.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.4.0-AAB
-          path: dist/Student-v2.4.0.aab
+          name: Student-v2.5.0-AAB
+          path: dist/Student-v2.5.0.aab
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.4.0-SHA256
+          name: Student-v2.5.0-SHA256
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
