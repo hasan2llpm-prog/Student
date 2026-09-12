@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   production:
@@ -155,3 +155,183 @@ jobs:
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish Student v2.6.0 Release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="v2.6.0"
+          APK="dist/Student-v2.6.0.apk"
+          AAB="dist/Student-v2.6.0.aab"
+          SUMS="dist/SHA256SUMS.txt"
+
+          test -s "$APK"
+          test -s "$AAB"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" "$AAB" "$SUMS" --clobber
+          else
+            gh release create "$TAG" "$APK" "$AAB" "$SUMS" \
+              --title "Student v2.6.0" \
+              --notes "Student v2.6.0 Production"
+          fi
+
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Student-v2.6.0.apk"
+
+          # Do not activate a forced update until the APK is really downloadable.
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fLsS --range 0-0 "$APK_URL" -o /dev/null; then
+              echo "APK is reachable."
+              break
+            fi
+            if [ "$attempt" = "6" ]; then
+              echo "ERROR: release APK is not reachable; update was NOT activated."
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "apk_url=$APK_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Activate internal update and notify all users
+        shell: bash
+        env:
+          # This is the only additional secret required for automatic publishing.
+          # Store it in GitHub > Settings > Secrets and variables > Actions.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APK_URL: ${{ steps.release.outputs.apk_url }}
+        run: |
+          set -euo pipefail
+
+          SUPABASE_URL="https://mlcbixsyizsuxxfjwrym.supabase.co"
+          API="${SUPABASE_URL}/rest/v1"
+
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "ERROR: missing GitHub Repository Secret SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          }
+
+          AUTH=(
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}"
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
+            -H "Content-Type: application/json"
+          )
+
+          # Preserve the most recent update notification id when possible.
+          # send-push uses the notification id as the Android FCM tag, so reusing
+          # it lets the new v2.6 notification replace the old update alert.
+          OLD_JSON="$(curl --fail-with-body --silent --show-error \
+            "${API}/notifications?kind=eq.app_update&select=id&order=created_at.desc&limit=1" \
+            "${AUTH[@]}")"
+          OLD_ID="$(printf '%s' "$OLD_JSON" | jq -r '.[0].id // empty')"
+
+          # Remove old update rows from Student's notification center.
+          curl --fail-with-body --silent --show-error \
+            -X DELETE "${API}/notifications?kind=eq.app_update" \
+            "${AUTH[@]}" \
+            -H "Prefer: return=minimal"
+
+          # Activate v2.6.0 as the only supported release.
+          SETTINGS="$(jq -nc --arg url "$APK_URL" '{
+            id:1,
+            force_update:true,
+            minimum_version_code:29,
+            latest_version_code:29,
+            apk_url:$url,
+            update_message:"يتوفر الآن Student 2.6.0. يجب تحديث التطبيق للاستمرار.",
+            updated_at:(now | todateiso8601)
+          }')"
+
+          curl --fail-with-body --silent --show-error \
+            -X POST "${API}/student_runtime_settings?on_conflict=id" \
+            "${AUTH[@]}" \
+            -H "Prefer: resolution=merge-duplicates,return=minimal" \
+            --data "$SETTINGS"
+
+          # Queue exactly one global app_update notification.
+          if [ -n "$OLD_ID" ]; then
+            NOTICE="$(jq -nc \
+              --arg id "$OLD_ID" \
+              --arg url "$APK_URL" \
+              '{
+                id:$id,
+                user_id:null,
+                actor_id:null,
+                title:"تحديث جديد لـ Student",
+                body:"الإصدار 2.6.0 جاهز الآن. اضغط للتحديث والاستمرار.",
+                kind:"app_update",
+                link:"notifications",
+                audience:"all",
+                is_broadcast:true,
+                is_read:false,
+                metadata:{
+                  target_type:"app_update",
+                  version_name:"2.6.0",
+                  version_code:29,
+                  minimum_version_code:29,
+                  force_update:true,
+                  apk_url:$url,
+                  notification_key:"app_update_v29"
+                }
+              }')"
+          else
+            NOTICE="$(jq -nc \
+              --arg url "$APK_URL" \
+              '{
+                user_id:null,
+                actor_id:null,
+                title:"تحديث جديد لـ Student",
+                body:"الإصدار 2.6.0 جاهز الآن. اضغط للتحديث والاستمرار.",
+                kind:"app_update",
+                link:"notifications",
+                audience:"all",
+                is_broadcast:true,
+                is_read:false,
+                metadata:{
+                  target_type:"app_update",
+                  version_name:"2.6.0",
+                  version_code:29,
+                  minimum_version_code:29,
+                  force_update:true,
+                  apk_url:$url,
+                  notification_key:"app_update_v29"
+                }
+              }')"
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            -X POST "${API}/notifications" \
+            "${AUTH[@]}" \
+            -H "Prefer: return=minimal" \
+            --data "$NOTICE"
+
+          echo "v2.6.0 update activated and broadcast queued."
+
+      - name: Verify v2.6.0 runtime update
+        shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          SUPABASE_URL="https://mlcbixsyizsuxxfjwrym.supabase.co"
+
+          RESULT="$(curl --fail-with-body --silent --show-error \
+            "${SUPABASE_URL}/rest/v1/student_runtime_settings?id=eq.1&select=force_update,minimum_version_code,latest_version_code,apk_url" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
+
+          printf '%s' "$RESULT" | jq -e '
+            length == 1 and
+            .[0].force_update == true and
+            .[0].minimum_version_code == 29 and
+            .[0].latest_version_code == 29 and
+            (.[0].apk_url | endswith("/releases/download/v2.6.0/Student-v2.6.0.apk"))
+          ' >/dev/null
+
+          echo "Student v2.6.0 forced-update configuration verified."
+
