@@ -1,4 +1,4 @@
-name: Build Student v2.6.0 Production APK + AAB
+name: Build Student v2.6.1 Production APK + AAB
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.6.0-STABLE-PRODUCTION.zip"
+          ZIP="Student-v2.6.1-STABLE-PRODUCTION.zip"
           test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
           unzip -tq "$ZIP"
 
@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.6.0-STABLE-PRODUCTION.zip -d extracted
+          unzip -q Student-v2.6.1-STABLE-PRODUCTION.zip -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
@@ -80,8 +80,8 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           chmod +x gradlew
-          grep -q "versionCode 29" app/build.gradle
-          grep -q "versionName '2.6.0'" app/build.gradle
+          grep -q "versionCode 30" app/build.gradle
+          grep -q "versionName '2.6.1'" app/build.gradle
           grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
           ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
@@ -127,36 +127,36 @@ jobs:
           test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
           test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.6.0.apk"
-          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.6.0.aab"
-          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.6.0.apk" "$GITHUB_WORKSPACE/dist/Student-v2.6.0.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.6.1.apk"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.6.1.aab"
+          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.6.1.apk" "$GITHUB_WORKSPACE/dist/Student-v2.6.1.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
           ls -lh "$GITHUB_WORKSPACE/dist"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.6.0-APK
-          path: dist/Student-v2.6.0.apk
+          name: Student-v2.6.1-APK
+          path: dist/Student-v2.6.1.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.6.0-AAB
-          path: dist/Student-v2.6.0.aab
+          name: Student-v2.6.1-AAB
+          path: dist/Student-v2.6.1.aab
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.6.0-SHA256
+          name: Student-v2.6.1-SHA256
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish Student v2.6.0 Release
+      - name: Publish Student v2.6.1 Release
         id: release
         shell: bash
         env:
@@ -164,9 +164,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          TAG="v2.6.0"
-          APK="dist/Student-v2.6.0.apk"
-          AAB="dist/Student-v2.6.0.aab"
+          TAG="v2.6.1"
+          APK="dist/Student-v2.6.1.apk"
+          AAB="dist/Student-v2.6.1.aab"
           SUMS="dist/SHA256SUMS.txt"
 
           test -s "$APK"
@@ -176,11 +176,11 @@ jobs:
             gh release upload "$TAG" "$APK" "$AAB" "$SUMS" --clobber
           else
             gh release create "$TAG" "$APK" "$AAB" "$SUMS" \
-              --title "Student v2.6.0" \
-              --notes "Student v2.6.0 Production"
+              --title "Student v2.6.1" \
+              --notes "Student v2.6.1 Production"
           fi
 
-          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Student-v2.6.0.apk"
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Student-v2.6.1.apk"
 
           # Do not activate a forced update until the APK is really downloadable.
           for attempt in 1 2 3 4 5 6; do
@@ -235,14 +235,14 @@ jobs:
             "${AUTH[@]}" \
             -H "Prefer: return=minimal"
 
-          # Activate v2.6.0 as the only supported release.
+          # Activate v2.6.1 as the only supported release.
           SETTINGS="$(jq -nc --arg url "$APK_URL" '{
             id:1,
             force_update:true,
-            minimum_version_code:29,
-            latest_version_code:29,
+            minimum_version_code:30,
+            latest_version_code:30,
             apk_url:$url,
-            update_message:"يتوفر الآن Student 2.6.0. يجب تحديث التطبيق للاستمرار.",
+            update_message:"يتوفر الآن Student 2.6.1. يجب تحديث التطبيق للاستمرار.",
             updated_at:(now | todateiso8601)
           }')"
 
@@ -262,20 +262,20 @@ jobs:
                 user_id:null,
                 actor_id:null,
                 title:"تحديث جديد لـ Student",
-                body:"الإصدار 2.6.0 جاهز الآن. اضغط للتحديث والاستمرار.",
+                body:"الإصدار 2.6.1 جاهز الآن. اضغط للتحديث والاستمرار.",
                 kind:"app_update",
-                link:"notifications",
+                link:$url,
                 audience:"all",
                 is_broadcast:true,
                 is_read:false,
                 metadata:{
                   target_type:"app_update",
-                  version_name:"2.6.0",
-                  version_code:29,
-                  minimum_version_code:29,
+                  version_name:"2.6.1",
+                  version_code:30,
+                  minimum_version_code:30,
                   force_update:true,
                   apk_url:$url,
-                  notification_key:"app_update_v29"
+                  notification_key:"app_update_v30"
                 }
               }')"
           else
@@ -285,20 +285,20 @@ jobs:
                 user_id:null,
                 actor_id:null,
                 title:"تحديث جديد لـ Student",
-                body:"الإصدار 2.6.0 جاهز الآن. اضغط للتحديث والاستمرار.",
+                body:"الإصدار 2.6.1 جاهز الآن. اضغط للتحديث والاستمرار.",
                 kind:"app_update",
-                link:"notifications",
+                link:$url,
                 audience:"all",
                 is_broadcast:true,
                 is_read:false,
                 metadata:{
                   target_type:"app_update",
-                  version_name:"2.6.0",
-                  version_code:29,
-                  minimum_version_code:29,
+                  version_name:"2.6.1",
+                  version_code:30,
+                  minimum_version_code:30,
                   force_update:true,
                   apk_url:$url,
-                  notification_key:"app_update_v29"
+                  notification_key:"app_update_v30"
                 }
               }')"
           fi
@@ -309,9 +309,15 @@ jobs:
             -H "Prefer: return=minimal" \
             --data "$NOTICE"
 
-          echo "v2.6.0 update activated and broadcast queued."
+          # If the v2.6.1 retention migration is already installed, clean stale ordinary notifications now too.
+          curl --silent --show-error \
+            -X POST "${API}/rpc/student_cleanup_notifications_v261" \
+            "${AUTH[@]}" \
+            --data '{}' >/dev/null || true
 
-      - name: Verify v2.6.0 runtime update
+          echo "v2.6.1 update activated and broadcast queued."
+
+      - name: Verify v2.6.1 runtime update
         shell: bash
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -328,10 +334,10 @@ jobs:
           printf '%s' "$RESULT" | jq -e '
             length == 1 and
             .[0].force_update == true and
-            .[0].minimum_version_code == 29 and
-            .[0].latest_version_code == 29 and
-            (.[0].apk_url | endswith("/releases/download/v2.6.0/Student-v2.6.0.apk"))
+            .[0].minimum_version_code == 30 and
+            .[0].latest_version_code == 30 and
+            (.[0].apk_url | endswith("/releases/download/v2.6.1/Student-v2.6.1.apk"))
           ' >/dev/null
 
-          echo "Student v2.6.0 forced-update configuration verified."
+          echo "Student v2.6.1 forced-update configuration verified."
 
