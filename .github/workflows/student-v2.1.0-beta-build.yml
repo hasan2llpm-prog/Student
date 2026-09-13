@@ -1,4 +1,4 @@
-name: Build Student v2.7.0 Production APK + AAB
+name: Build Student v2.7.0 FIX1 APK + AAB
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.7.0-STABLE-PRODUCTION.zip"
+          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX1.zip"
           test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
           unzip -tq "$ZIP"
 
@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.7.0-STABLE-PRODUCTION.zip -d extracted
+          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX1.zip -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
