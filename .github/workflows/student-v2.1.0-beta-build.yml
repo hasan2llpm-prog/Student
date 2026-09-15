@@ -1,25 +1,25 @@
-name: Build Student v2.7.0 FIX1 APK + AAB
+name: Build Student v2.7.0 FIX3 APK + AAB
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   production:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Verify production ZIP
+      - name: Verify FIX3 ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX1.zip"
+          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX3.zip"
           test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
           unzip -tq "$ZIP"
 
@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX1.zip -d extracted
+          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX3.zip -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
@@ -54,6 +54,59 @@ jobs:
           set -euo pipefail
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Set up trusted Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.13"
+          cache-provider: basic
+
+      - name: Static production checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          test ! -e gradle/wrapper/gradle-wrapper.jar
+          grep -q "versionCode 32" app/build.gradle
+          grep -q "versionName '2.7.0'" app/build.gradle
+          grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
+          ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
+            echo "ERROR: private server secret found in Android sources"; exit 1;
+          }
+          ! grep -R -n 'readBytes(' app core feature || {
+            echo "ERROR: whole-file readBytes() found in app sources"; exit 1;
+          }
+          ! grep -R -n 'VideoView' app core feature || {
+            echo "ERROR: legacy VideoView found; Media3 preview expected"; exit 1;
+          }
+          grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_vocabulary_assignment_v272' supabase/migrations/20260913_student_v270_release.sql
+          grep -q "set search_path=''" supabase/migrations/20260913_student_v270_release.sql
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          vocab = next(Path('.').rglob('oxford_5000_ar.json'))
+          grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
+          assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
+          assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
+          print('Content checks passed: vocabulary=5000, grammar=300')
+          PY
+
+      - name: Compile Kotlin before signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --version
+          gradle --no-daemon --stacktrace :app:compileStableReleaseKotlin
+
+      - name: Run unit tests and Android lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --no-daemon --stacktrace :app:testStableReleaseUnitTest :app:lintStableRelease
+
       - name: Restore production signing key
         shell: bash
         env:
@@ -74,48 +127,12 @@ jobs:
           echo "STUDENT_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
           echo "STUDENT_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Static release checks
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          chmod +x gradlew
-          grep -q "versionCode 31" app/build.gradle
-          grep -q "versionName '2.7.0'" app/build.gradle
-          grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
-          grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
-          ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
-            echo "ERROR: private server secret found in Android sources"; exit 1;
-          }
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          vocab = next(Path('.').rglob('oxford_5000_ar.json'))
-          grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
-          assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
-          assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          print('Content checks passed: vocabulary=5000, grammar=300')
-          PY
-
-      - name: Verify Rooms v2.6 and Story publish flow
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          test -f supabase/migrations/20260908_student_v250_rooms_ux.sql
-          grep -q 'student_voice_room_feed_v26' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'student_voice_room_send_gift_v26' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          test -f supabase/migrations/20260908_student_v260_rooms_final.sql
-          grep -q '10 مايكات' feature/home/src/main/java/com/student/feature/home/AdminScreen.kt
-          grep -q 'openPublishedStory' feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
-          grep -q 'خلفيات الغرف' feature/home/src/main/java/com/student/feature/home/StoreScreen.kt
-
       - name: Build signed Stable APK and AAB
         shell: bash
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          ./gradlew --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
+          gradle --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
 
       - name: Verify and collect release artifacts
         shell: bash
@@ -126,32 +143,32 @@ jobs:
           AAB="$(find "$PROJECT_DIR/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
           test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
           test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$APK"
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.7.0.apk"
-          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.7.0.aab"
-          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.7.0.apk" "$GITHUB_WORKSPACE/dist/Student-v2.7.0.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.apk"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.aab"
+          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.apk" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
           ls -lh "$GITHUB_WORKSPACE/dist"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-APK
-          path: dist/Student-v2.7.0.apk
+          name: Student-v2.7.0-FIX3-APK
+          path: dist/Student-v2.7.0-FIX3.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-AAB
-          path: dist/Student-v2.7.0.aab
+          name: Student-v2.7.0-FIX3-AAB
+          path: dist/Student-v2.7.0-FIX3.aab
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-SHA256
+          name: Student-v2.7.0-FIX3-SHA256
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
