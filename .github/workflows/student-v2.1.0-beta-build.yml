@@ -1,4 +1,4 @@
-name: Build Student v2.7.0 FIX3 APK + AAB
+name: Build Student v2.7.0 FIX5 Community APK + AAB
 
 on:
   workflow_dispatch:
@@ -9,17 +9,17 @@ permissions:
 jobs:
   production:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Verify FIX3 ZIP
+      - name: Verify FIX5 ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX3.zip"
+          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX5.zip"
           test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
           unzip -tq "$ZIP"
 
@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX3.zip -d extracted
+          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX5.zip -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
@@ -65,7 +65,7 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           test ! -e gradle/wrapper/gradle-wrapper.jar
-          grep -q "versionCode 32" app/build.gradle
+          grep -q "versionCode 34" app/build.gradle
           grep -q "versionName '2.7.0'" app/build.gradle
           grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
@@ -76,8 +76,21 @@ jobs:
             echo "ERROR: whole-file readBytes() found in app sources"; exit 1;
           }
           ! grep -R -n 'VideoView' app core feature || {
-            echo "ERROR: legacy VideoView found; Media3 preview expected"; exit 1;
+            echo "ERROR: legacy VideoView found"; exit 1;
           }
+          test ! -f feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          ! grep -R -n -E 'StoriesScreen|StoryItem|StoryReplyItem|createStory|story_replies|story_reactions|story_views|student://story|hasActiveStory' app core feature --include='*.kt' --include='*.xml' || {
+            echo "ERROR: legacy Stories runtime symbols remain"; exit 1;
+          }
+          grep -q 'post_type=in.(text,image,video)' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'uploadObjectFileResumable' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'TUS_CHUNK_BYTES' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'optimizeCommunityImage' feature/home/src/main/java/com/student/feature/home/StudentMediaIo.kt
+          grep -q 'transcodeCommunityVideo' feature/home/src/main/java/com/student/feature/home/StudentMediaIo.kt
+          grep -q 'CommunityVideoPlayer' feature/home/src/main/java/com/student/feature/home/CommunityMedia.kt
+          grep -q 'persistCommunityDraftFile' feature/home/src/main/java/com/student/feature/home/CreateScreen.kt
+          grep -q 'student_community_media_insert_own_v275' supabase/migrations/20260916_student_v275_community_no_stories.sql
+          grep -q 'drop table if exists public.stories cascade' supabase/migrations/20260916_student_v275_community_no_stories.sql
           grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_vocabulary_assignment_v272' supabase/migrations/20260913_student_v270_release.sql
           grep -q "set search_path=''" supabase/migrations/20260913_student_v270_release.sql
@@ -88,7 +101,11 @@ jobs:
           grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
           assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          print('Content checks passed: vocabulary=5000, grammar=300')
+          config = json.loads(Path('REMOTE-CONFIG-TEMPLATE.json').read_text(encoding='utf-8'))
+          native = config.get('native_ui', {})
+          assert 'stories' not in native
+          assert native.get('community', {}).get('page_size') == 20
+          print('Static checks passed: no Stories runtime; Community + weak-network media enabled')
           PY
 
       - name: Compile Kotlin before signing
@@ -143,31 +160,31 @@ jobs:
           test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
           test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.apk"
-          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.aab"
-          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.apk" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX3.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.apk"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.aab"
+          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.apk" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
           ls -lh "$GITHUB_WORKSPACE/dist"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-FIX3-APK
-          path: dist/Student-v2.7.0-FIX3.apk
+          name: Student-v2.7.0-FIX5-APK
+          path: dist/Student-v2.7.0-FIX5.apk
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-FIX3-AAB
-          path: dist/Student-v2.7.0-FIX3.aab
+          name: Student-v2.7.0-FIX5-AAB
+          path: dist/Student-v2.7.0-FIX5.aab
           if-no-files-found: error
           retention-days: 30
 
       - name: Upload checksums
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-FIX3-SHA256
+          name: Student-v2.7.0-FIX5-SHA256
           path: dist/SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
