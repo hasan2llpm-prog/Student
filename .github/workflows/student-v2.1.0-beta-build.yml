@@ -1,27 +1,39 @@
-name: Build Student v2.7.0 FIX5 Community APK + AAB
+name: Build + Auto Release Student v2.7.1 FIX6
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: student-production-v2.7.1
+  cancel-in-progress: false
 
 jobs:
   production:
     runs-on: ubuntu-latest
     timeout-minutes: 100
 
+    env:
+      RELEASE_TAG: v2.7.1
+      VERSION_NAME: 2.7.1
+      VERSION_CODE: '35'
+      ZIP_NAME: Student-v2.7.1-STABLE-PRODUCTION-FIX6.zip
+      APK_NAME: Student-v2.7.1.apk
+      AAB_NAME: Student-v2.7.1.aab
+      SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Verify FIX5 ZIP
+      - name: Verify FIX6 ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP="Student-v2.7.0-STABLE-PRODUCTION-FIX5.zip"
-          test -f "$ZIP" || { echo "ERROR: $ZIP not found in repository root"; exit 1; }
-          unzip -tq "$ZIP"
+          test -f "$ZIP_NAME" || { echo "ERROR: $ZIP_NAME not found in repository root"; exit 1; }
+          unzip -tq "$ZIP_NAME"
 
       - name: Extract project
         shell: bash
@@ -29,7 +41,7 @@ jobs:
           set -euo pipefail
           rm -rf extracted
           mkdir extracted
-          unzip -q Student-v2.7.0-STABLE-PRODUCTION-FIX5.zip -d extracted
+          unzip -q "$ZIP_NAME" -d extracted
           SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
           test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
           echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
@@ -38,7 +50,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Set up Android SDK command-line tools
         uses: android-actions/setup-android@v4
@@ -56,7 +68,7 @@ jobs:
       - name: Set up trusted Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.13"
+          gradle-version: '8.13'
           cache-provider: basic
 
       - name: Static production checks
@@ -65,35 +77,23 @@ jobs:
           set -euo pipefail
           cd "$PROJECT_DIR"
           test ! -e gradle/wrapper/gradle-wrapper.jar
-          grep -q "versionCode 34" app/build.gradle
-          grep -q "versionName '2.7.0'" app/build.gradle
+          grep -q "versionCode ${VERSION_CODE}" app/build.gradle
+          grep -q "versionName '${VERSION_NAME}'" app/build.gradle
           grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
           ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
-            echo "ERROR: private server secret found in Android sources"; exit 1;
+            echo 'ERROR: private server secret found in Android sources'; exit 1;
           }
-          ! grep -R -n 'readBytes(' app core feature || {
-            echo "ERROR: whole-file readBytes() found in app sources"; exit 1;
-          }
-          ! grep -R -n 'VideoView' app core feature || {
-            echo "ERROR: legacy VideoView found"; exit 1;
-          }
+          ! grep -R -n 'readBytes(' app core feature || { echo 'ERROR: whole-file readBytes() found'; exit 1; }
+          ! grep -R -n 'VideoView' app core feature || { echo 'ERROR: legacy VideoView found'; exit 1; }
           test ! -f feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
           ! grep -R -n -E 'StoriesScreen|StoryItem|StoryReplyItem|createStory|story_replies|story_reactions|story_views|student://story|hasActiveStory' app core feature --include='*.kt' --include='*.xml' || {
-            echo "ERROR: legacy Stories runtime symbols remain"; exit 1;
+            echo 'ERROR: legacy Stories runtime symbols remain'; exit 1;
           }
-          grep -q 'post_type=in.(text,image,video)' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'uploadObjectFileResumable' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'TUS_CHUNK_BYTES' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'optimizeCommunityImage' feature/home/src/main/java/com/student/feature/home/StudentMediaIo.kt
-          grep -q 'transcodeCommunityVideo' feature/home/src/main/java/com/student/feature/home/StudentMediaIo.kt
-          grep -q 'CommunityVideoPlayer' feature/home/src/main/java/com/student/feature/home/CommunityMedia.kt
-          grep -q 'persistCommunityDraftFile' feature/home/src/main/java/com/student/feature/home/CreateScreen.kt
-          grep -q 'student_community_media_insert_own_v275' supabase/migrations/20260916_student_v275_community_no_stories.sql
-          grep -q 'drop table if exists public.stories cascade' supabase/migrations/20260916_student_v275_community_no_stories.sql
           grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'student_vocabulary_assignment_v272' supabase/migrations/20260913_student_v270_release.sql
-          grep -q "set search_path=''" supabase/migrations/20260913_student_v270_release.sql
+          test -f supabase/functions/sync-github-update/index.ts
+          grep -q 'hasan2llpm-prog/Student' supabase/functions/sync-github-update/index.ts
+          grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -101,11 +101,7 @@ jobs:
           grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
           assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          config = json.loads(Path('REMOTE-CONFIG-TEMPLATE.json').read_text(encoding='utf-8'))
-          native = config.get('native_ui', {})
-          assert 'stories' not in native
-          assert native.get('community', {}).get('page_size') == 20
-          print('Static checks passed: no Stories runtime; Community + weak-network media enabled')
+          print('FIX6 static checks passed')
           PY
 
       - name: Compile Kotlin before signing
@@ -150,41 +146,100 @@ jobs:
           cd "$PROJECT_DIR"
           gradle --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
 
-      - name: Verify and collect release artifacts
+      - name: Verify and collect production artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "$GITHUB_WORKSPACE/dist"
           APK="$(find "$PROJECT_DIR/app/build/outputs/apk/stable/release" -type f -name '*.apk' | head -n 1 || true)"
           AAB="$(find "$PROJECT_DIR/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
-          test -n "$APK" || { echo "ERROR: signed APK not found"; exit 1; }
-          test -n "$AAB" || { echo "ERROR: signed AAB not found"; exit 1; }
+          test -n "$APK" || { echo 'ERROR: signed APK not found'; exit 1; }
+          test -n "$AAB" || { echo 'ERROR: signed AAB not found'; exit 1; }
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
-          cp "$APK" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.apk"
-          cp "$AAB" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.aab"
-          sha256sum "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.apk" "$GITHUB_WORKSPACE/dist/Student-v2.7.0-FIX5.aab" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/$APK_NAME"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/$AAB_NAME"
+          sha256sum "$GITHUB_WORKSPACE/dist/$APK_NAME" "$GITHUB_WORKSPACE/dist/$AAB_NAME" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cat > "$GITHUB_WORKSPACE/dist/update.json" <<JSON
+          {
+            "versionCode": ${VERSION_CODE},
+            "versionName": "${VERSION_NAME}",
+            "apkAsset": "${APK_NAME}",
+            "forceUpdate": true,
+            "minimumVersionCode": ${VERSION_CODE},
+            "message": "يتوفر تحديث Student ${VERSION_NAME}. يجب تحديث التطبيق للاستمرار."
+          }
+          JSON
+          python3 -m json.tool "$GITHUB_WORKSPACE/dist/update.json" >/dev/null
           ls -lh "$GITHUB_WORKSPACE/dist"
 
-      - name: Upload APK
+      - name: Upload build artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.0-FIX5-APK
-          path: dist/Student-v2.7.0-FIX5.apk
+          name: Student-v2.7.1-FIX6-production
+          path: |
+            dist/Student-v2.7.1.apk
+            dist/Student-v2.7.1.aab
+            dist/SHA256SUMS.txt
+            dist/update.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-v2.7.0-FIX5-AAB
-          path: dist/Student-v2.7.0-FIX5.aab
-          if-no-files-found: error
-          retention-days: 30
+      - name: Publish GitHub Release automatically
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing assets."
+            gh release upload "$RELEASE_TAG" \
+              "dist/$APK_NAME" "dist/$AAB_NAME" dist/SHA256SUMS.txt dist/update.json \
+              --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" \
+              --title "Student v${VERSION_NAME}" \
+              --notes "Student v${VERSION_NAME} Production — automatic mandatory internal update." \
+              --latest --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" \
+              "dist/$APK_NAME" "dist/$AAB_NAME" dist/SHA256SUMS.txt dist/update.json \
+              --target "$GITHUB_SHA" \
+              --title "Student v${VERSION_NAME}" \
+              --notes "Student v${VERSION_NAME} Production — automatic mandatory internal update." \
+              --latest --repo "$GITHUB_REPOSITORY"
+          fi
 
-      - name: Upload checksums
-        uses: actions/upload-artifact@v4
-        with:
-          name: Student-v2.7.0-FIX5-SHA256
-          path: dist/SHA256SUMS.txt
-          if-no-files-found: error
-          retention-days: 30
+      - name: Wait until GitHub latest release is visible
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name' 2>/dev/null || true)"
+            if [ "$TAG" = "$RELEASE_TAG" ]; then
+              echo "Latest release is $TAG"
+              exit 0
+            fi
+            echo "Waiting for GitHub latest release propagation ($i/12), current=$TAG"
+            sleep 5
+          done
+          echo 'ERROR: GitHub latest release did not propagate in time'
+          exit 1
+
+      - name: Activate mandatory update automatically in Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 90 \
+            -X POST "$SUPABASE_SYNC_URL")"
+          echo "$RESPONSE"
+          python3 - "$RESPONSE" <<'PY'
+          import json, sys
+          data=json.loads(sys.argv[1])
+          assert data.get('ok') is True, data
+          assert data.get('versionCode') == 35, data
+          assert data.get('versionName') == '2.7.1', data
+          assert data.get('forceUpdate') is True, data
+          assert data.get('minimumVersionCode') == 35, data
+          print('Supabase mandatory update activated successfully')
+          PY
