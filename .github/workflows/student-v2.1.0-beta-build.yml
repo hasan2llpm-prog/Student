@@ -1,4 +1,4 @@
-name: Build + Auto Release Student v2.7.1 FIX6
+name: Build + Auto Release Student v2.7.4 FIX9
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: student-production-v2.7.1
+  group: student-production-v2.7.4
   cancel-in-progress: false
 
 jobs:
@@ -16,19 +16,19 @@ jobs:
     timeout-minutes: 100
 
     env:
-      RELEASE_TAG: v2.7.1
-      VERSION_NAME: 2.7.1
-      VERSION_CODE: '35'
-      ZIP_NAME: Student-v2.7.1-STABLE-PRODUCTION-FIX6.zip
-      APK_NAME: Student-v2.7.1.apk
-      AAB_NAME: Student-v2.7.1.aab
+      RELEASE_TAG: v2.7.4
+      VERSION_NAME: 2.7.4
+      VERSION_CODE: '38'
+      ZIP_NAME: Student-v2.7.4-STABLE-PRODUCTION-FIX9.zip
+      APK_NAME: Student-v2.7.4.apk
+      AAB_NAME: Student-v2.7.4.aab
       SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Verify FIX6 ZIP
+      - name: Verify FIX9 ZIP
         shell: bash
         run: |
           set -euo pipefail
@@ -90,10 +90,17 @@ jobs:
           ! grep -R -n -E 'StoriesScreen|StoryItem|StoryReplyItem|createStory|story_replies|story_reactions|story_views|student://story|hasActiveStory' app core feature --include='*.kt' --include='*.xml' || {
             echo 'ERROR: legacy Stories runtime symbols remain'; exit 1;
           }
+          grep -q 'messages.room_bubble_mine_color' feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
+          grep -q 'messages.room_bubble_other_color' feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
+          grep -q 'student_native_runtime_config' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun NativeRemoteConfig.color' feature/home/src/main/java/com/student/feature/home/RemoteConfigUi.kt
           grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           test -f supabase/functions/sync-github-update/index.ts
           grep -q 'hasan2llpm-prog/Student' supabase/functions/sync-github-update/index.ts
           grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
+          grep -q 'student_remote_modules' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          test -f supabase/migrations/20260921_student_v274_remote_modules.sql
+          grep -q 'manifest.forceUpdate === true' supabase/functions/sync-github-update/index.ts
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -101,7 +108,7 @@ jobs:
           grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
           assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          print('FIX6 static checks passed')
+          print('FIX9 static checks passed')
           PY
 
       - name: Compile Kotlin before signing
@@ -164,9 +171,9 @@ jobs:
             "versionCode": ${VERSION_CODE},
             "versionName": "${VERSION_NAME}",
             "apkAsset": "${APK_NAME}",
-            "forceUpdate": true,
-            "minimumVersionCode": ${VERSION_CODE},
-            "message": "يتوفر تحديث Student ${VERSION_NAME}. يجب تحديث التطبيق للاستمرار."
+            "forceUpdate": false,
+            "minimumVersionCode": 0,
+            "message": "يتوفر تحديث Student ${VERSION_NAME} مع تحسينات جديدة."
           }
           JSON
           python3 -m json.tool "$GITHUB_WORKSPACE/dist/update.json" >/dev/null
@@ -175,10 +182,10 @@ jobs:
       - name: Upload build artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.7.1-FIX6-production
+          name: Student-v2.7.4-FIX9-production
           path: |
-            dist/Student-v2.7.1.apk
-            dist/Student-v2.7.1.aab
+            dist/Student-v2.7.4.apk
+            dist/Student-v2.7.4.aab
             dist/SHA256SUMS.txt
             dist/update.json
           if-no-files-found: error
@@ -197,14 +204,14 @@ jobs:
               --clobber --repo "$GITHUB_REPOSITORY"
             gh release edit "$RELEASE_TAG" \
               --title "Student v${VERSION_NAME}" \
-              --notes "Student v${VERSION_NAME} Production — automatic mandatory internal update." \
+              --notes "Student v${VERSION_NAME} Production — automatic internal update." \
               --latest --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" \
               "dist/$APK_NAME" "dist/$AAB_NAME" dist/SHA256SUMS.txt dist/update.json \
               --target "$GITHUB_SHA" \
               --title "Student v${VERSION_NAME}" \
-              --notes "Student v${VERSION_NAME} Production — automatic mandatory internal update." \
+              --notes "Student v${VERSION_NAME} Production — automatic internal update." \
               --latest --repo "$GITHUB_REPOSITORY"
           fi
 
@@ -226,7 +233,7 @@ jobs:
           echo 'ERROR: GitHub latest release did not propagate in time'
           exit 1
 
-      - name: Activate mandatory update automatically in Supabase
+      - name: Sync update automatically to Supabase
         shell: bash
         run: |
           set -euo pipefail
@@ -237,9 +244,9 @@ jobs:
           import json, sys
           data=json.loads(sys.argv[1])
           assert data.get('ok') is True, data
-          assert data.get('versionCode') == 35, data
-          assert data.get('versionName') == '2.7.1', data
-          assert data.get('forceUpdate') is True, data
-          assert data.get('minimumVersionCode') == 35, data
-          print('Supabase mandatory update activated successfully')
+          assert data.get('versionCode') == 38, data
+          assert data.get('versionName') == '2.7.4', data
+          assert data.get('forceUpdate') is False, data
+          assert data.get('minimumVersionCode') == 0, data
+          print('Supabase quiet update synced successfully')
           PY
