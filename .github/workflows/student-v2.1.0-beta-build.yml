@@ -1,4 +1,4 @@
-name: Build + Auto Release Student v2.8.0 DOCUMENT-STUDIO
+name: Build + Auto Release Student v2.9.2 UNIFIED-SAVED-CLEANUP
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: student-production-v2.8.0
+  group: student-production-v2.9.2
   cancel-in-progress: false
 
 jobs:
@@ -16,19 +16,19 @@ jobs:
     timeout-minutes: 100
 
     env:
-      RELEASE_TAG: v2.8.0
-      VERSION_NAME: 2.8.0
-      VERSION_CODE: '39'
-      ZIP_NAME: Student-v2.8.0-STABLE-PRODUCTION.zip
-      APK_NAME: Student-v2.8.0.apk
-      AAB_NAME: Student-v2.8.0.aab
+      RELEASE_TAG: v2.9.2
+      VERSION_NAME: 2.9.2
+      VERSION_CODE: '42'
+      ZIP_NAME: Student-v2.9.2-STABLE-PRODUCTION.zip
+      APK_NAME: Student-v2.9.2.apk
+      AAB_NAME: Student-v2.9.2.aab
       SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Verify V280 ZIP
+      - name: Verify V292 ZIP
         shell: bash
         run: |
           set -euo pipefail
@@ -99,13 +99,33 @@ jobs:
           grep -q 'hasan2llpm-prog/Student' supabase/functions/sync-github-update/index.ts
           grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
           grep -q 'student_remote_modules' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          test -f supabase/migrations/20260921_student_v280_document_remote_actions.sql
-          test -f feature/home/src/main/java/com/student/feature/home/DocumentStudioScreen.kt
+          test -f supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          test -f supabase/migrations/20260922_student_v292_unified_saved_cleanup.sql
           test -f feature/home/src/main/java/com/student/feature/home/RemoteActionScreen.kt
-          grep -q 'DOCUMENT_STUDIO' feature/home/src/main/java/com/student/feature/home/HomeScreen.kt
+          test -f feature/home/src/main/java/com/student/feature/home/RemoteScreenScreen.kt
+          test -f feature/home/src/main/java/com/student/feature/home/SavedScreen.kt
           grep -q 'student_purchase_username3' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_voice_room_manage_member_v28' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_upsert_v292' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_items' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_upsert_v292' supabase/migrations/20260922_student_v292_unified_saved_cleanup.sql
+          grep -q 'rememberEnglishWord' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          grep -q 'api.saveItem(session, "grammar"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          grep -q 'api.saveItem(session, "listening"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           grep -q 'manifest.forceUpdate === true' supabase/functions/sync-github-update/index.ts
+          grep -q 'fun remoteScreen' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun remoteRule' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun remoteAssets' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'REMOTE_SCREEN' feature/home/src/main/java/com/student/feature/home/HomeScreen.kt
+          grep -q 'student_remote_screens' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          grep -q 'student_remote_assets' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          grep -q 'student_remote_rules' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          test ! -f feature/home/src/main/java/com/student/feature/home/DocumentStudioScreen.kt
+          test ! -f feature/home/src/main/java/com/student/feature/home/PdfStudioOperations.kt
+          test ! -f feature/home/src/main/java/com/student/feature/home/PdfToolsSheet.kt
+          ! grep -R -n -E 'DOCUMENT_STUDIO|DocumentStudio|PdfStudio|pdfbox-android' app core feature --include='*.kt' --include='*.gradle' || {
+            echo 'ERROR: Document/PDF Studio runtime remnants found'; exit 1;
+          }
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -113,7 +133,7 @@ jobs:
           grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
           assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          print('V280 static checks passed')
+          print('V292 static checks passed')
           PY
 
       - name: Compile Kotlin before signing
@@ -187,10 +207,10 @@ jobs:
       - name: Upload build artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.8.0-production
+          name: Student-v2.9.2-production
           path: |
-            dist/Student-v2.8.0.apk
-            dist/Student-v2.8.0.aab
+            dist/Student-v2.9.2.apk
+            dist/Student-v2.9.2.aab
             dist/SHA256SUMS.txt
             dist/update.json
           if-no-files-found: error
@@ -249,8 +269,8 @@ jobs:
           import json, sys
           data=json.loads(sys.argv[1])
           assert data.get('ok') is True, data
-          assert data.get('versionCode') == 39, data
-          assert data.get('versionName') == '2.8.0', data
+          assert data.get('versionCode') == 42, data
+          assert data.get('versionName') == '2.9.2', data
           assert data.get('forceUpdate') is False, data
           assert data.get('minimumVersionCode') == 0, data
           print('Supabase quiet update synced successfully')
