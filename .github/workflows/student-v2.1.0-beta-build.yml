@@ -100,15 +100,15 @@ jobs:
           grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
           grep -q 'student_remote_modules' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           test -f supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
-          test -f supabase/migrations/20260922_student_v293_unified_saved_cleanup.sql
+          test -f supabase/migrations/20260922_student_v292_unified_saved_cleanup.sql
           test -f feature/home/src/main/java/com/student/feature/home/RemoteActionScreen.kt
           test -f feature/home/src/main/java/com/student/feature/home/RemoteScreenScreen.kt
           test -f feature/home/src/main/java/com/student/feature/home/SavedScreen.kt
           grep -q 'student_purchase_username3' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_voice_room_manage_member_v28' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'student_saved_upsert_v293' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_upsert_v292' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_saved_items' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
-          grep -q 'student_saved_upsert_v293' supabase/migrations/20260922_student_v293_unified_saved_cleanup.sql
+          grep -q 'student_saved_upsert_v292' supabase/migrations/20260922_student_v292_unified_saved_cleanup.sql
           grep -q 'rememberEnglishWord' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           grep -q 'api.saveItem(session, "grammar"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           grep -q 'api.saveItem(session, "listening"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
