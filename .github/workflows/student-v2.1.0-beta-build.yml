@@ -1,4 +1,4 @@
-name: Build + Auto Release Student v2.10.0 UI-PROGRESS-TRANSLATION
+name: Build + Auto Release Student v2.10.1 UI-PROGRESS-TRANSLATION
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: student-production-v2.10.0
+  group: student-production-v2.10.1
   cancel-in-progress: false
 
 jobs:
@@ -16,12 +16,12 @@ jobs:
     timeout-minutes: 100
 
     env:
-      RELEASE_TAG: v2.10.0
-      VERSION_NAME: 2.10.0
-      VERSION_CODE: '44'
-      ZIP_NAME: Student-v2.10.0-STABLE-PRODUCTION.zip
-      APK_NAME: Student-v2.10.0.apk
-      AAB_NAME: Student-v2.10.0.aab
+      RELEASE_TAG: v2.10.1
+      VERSION_NAME: 2.10.1
+      VERSION_CODE: '45'
+      ZIP_NAME: Student-v2.10.1-STABLE-PRODUCTION.zip
+      APK_NAME: Student-v2.10.1.apk
+      AAB_NAME: Student-v2.10.1.aab
       SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
 
     steps:
@@ -81,6 +81,8 @@ jobs:
           grep -q "versionName '${VERSION_NAME}'" app/build.gradle
           grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
+          grep -q '@drawable/ic_stat_student' app/src/main/AndroidManifest.xml
+          grep -q 'Monochrome Student S' app/src/main/res/drawable/ic_stat_student.xml
           ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
             echo 'ERROR: private server secret found in Android sources'; exit 1;
           }
@@ -224,10 +226,10 @@ jobs:
       - name: Upload build artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.10.0-production
+          name: Student-v2.10.1-production
           path: |
-            dist/Student-v2.10.0.apk
-            dist/Student-v2.10.0.aab
+            dist/Student-v2.10.1.apk
+            dist/Student-v2.10.1.aab
             dist/SHA256SUMS.txt
             dist/update.json
           if-no-files-found: error
@@ -286,8 +288,8 @@ jobs:
           import json, sys
           data=json.loads(sys.argv[1])
           assert data.get('ok') is True, data
-          assert data.get('versionCode') == 43, data
-          assert data.get('versionName') == '2.9.3', data
+          assert data.get('versionCode') == 45, data
+          assert data.get('versionName') == '2.10.1', data
           assert data.get('forceUpdate') is False, data
           assert data.get('minimumVersionCode') == 0, data
           print('Supabase quiet update synced successfully')
