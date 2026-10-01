@@ -1,4 +1,4 @@
-name: Build + Auto Release Student v2.9.3 SAVED-BACKGROUND-UPDATE
+name: Build + Auto Release Student v2.10.0 UI-PROGRESS-TRANSLATION
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: student-production-v2.9.3
+  group: student-production-v2.10.0
   cancel-in-progress: false
 
 jobs:
@@ -16,19 +16,19 @@ jobs:
     timeout-minutes: 100
 
     env:
-      RELEASE_TAG: v2.9.3
-      VERSION_NAME: 2.9.3
-      VERSION_CODE: '43'
-      ZIP_NAME: Student-v2.9.3-STABLE-PRODUCTION.zip
-      APK_NAME: Student-v2.9.3.apk
-      AAB_NAME: Student-v2.9.3.aab
+      RELEASE_TAG: v2.10.0
+      VERSION_NAME: 2.10.0
+      VERSION_CODE: '44'
+      ZIP_NAME: Student-v2.10.0-STABLE-PRODUCTION.zip
+      APK_NAME: Student-v2.10.0.apk
+      AAB_NAME: Student-v2.10.0.aab
       SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Verify V293 ZIP
+      - name: Verify V2100 ZIP
         shell: bash
         run: |
           set -euo pipefail
@@ -94,7 +94,7 @@ jobs:
           grep -q 'messages.room_bubble_other_color' feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
           grep -q 'student_native_runtime_config' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'fun NativeRemoteConfig.color' feature/home/src/main/java/com/student/feature/home/RemoteConfigUi.kt
-          grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_vocabulary_batch_v210' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           test -f supabase/functions/sync-github-update/index.ts
           grep -q 'hasan2llpm-prog/Student' supabase/functions/sync-github-update/index.ts
           grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
@@ -109,6 +109,15 @@ jobs:
           grep -q 'student_saved_upsert_v292' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_saved_items' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
           grep -q 'student_saved_upsert_v292' supabase/migrations/20260922_student_v292_unified_saved_cleanup.sql
+          test -f supabase/migrations/20261001_student_v2100_progress_vocab_translation.sql
+          grep -q 'student_vocabulary_batch_v210' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_learning_progress_get_v210' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_learning_progress_complete_v210' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q '20 كلمة' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          grep -q 'StudentPageSurfaces' feature/home/src/main/java/com/student/feature/home/StudentPageSurfaces.kt || true
+          grep -q 'ACCESS_NETWORK_STATE' app/src/main/AndroidManifest.xml
+          grep -q 'supportsRtl="true"' app/src/main/AndroidManifest.xml
+          grep -q 'mode==="translate"' supabase/functions/student-ai/index.ts
           grep -q 'rememberEnglishWord' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           grep -q 'api.saveItem(session, "grammar"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
           grep -q 'api.saveItem(session, "listening"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
@@ -141,7 +150,7 @@ jobs:
           grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
           assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
           assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
-          print('V293 static checks passed')
+          print('V2100 static checks passed')
           PY
 
       - name: Compile Kotlin before signing
@@ -215,10 +224,10 @@ jobs:
       - name: Upload build artifacts to Actions
         uses: actions/upload-artifact@v4
         with:
-          name: Student-v2.9.3-production
+          name: Student-v2.10.0-production
           path: |
-            dist/Student-v2.9.3.apk
-            dist/Student-v2.9.3.aab
+            dist/Student-v2.10.0.apk
+            dist/Student-v2.10.0.aab
             dist/SHA256SUMS.txt
             dist/update.json
           if-no-files-found: error
