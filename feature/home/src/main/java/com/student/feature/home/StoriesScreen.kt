@@ -3,21 +3,27 @@ package com.student.feature.home
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.student.core.data.*
 import kotlinx.coroutines.Dispatchers
@@ -26,14 +32,30 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 @Composable
-fun StoriesScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfile?, initialStoryId: String? = null, onBack: () -> Unit) {
+fun StoriesScreen(
+    api: SupabaseApi,
+    session: StudentSession,
+    profile: StudentProfile?,
+    initialStoryId: String? = null,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var stories by remember { mutableStateOf<List<StoryItem>>(emptyList()) }
-    var selected by remember { mutableStateOf<StoryItem?>(null) }
-    var busy by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
+    var showComposer by remember { mutableStateOf(false) }
     var caption by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    fun reload() {
+        scope.launch {
+            loading = true
+            stories = withContext(Dispatchers.IO) { api.stories(session).getOrDefault(emptyList()) }
+            loading = false
+        }
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -41,54 +63,178 @@ fun StoriesScreen(api: SupabaseApi, session: StudentSession, profile: StudentPro
             val mime = context.contentResolver.getType(uri).orEmpty()
             val type = if (mime.startsWith("video/")) "video" else "image"
             runCatching {
-                val file = withContext(Dispatchers.IO) { materializeUriToCacheFile(context, uri, if (type == "video") ".mp4" else ".jpg", 80L * 1024L * 1024L) }
-                val path = "${session.userId}/${UUID.randomUUID()}${if (type == "video") ".mp4" else ".jpg"}"
-                val url = withContext(Dispatchers.IO) { api.uploadObjectFile(session, "stories", path, file, mime.ifBlank { if (type == "video") "video/mp4" else "image/jpeg" }) }.getOrThrow()
+                val suffix = if (type == "video") ".mp4" else ".jpg"
+                val file = withContext(Dispatchers.IO) { materializeUriToCacheFile(context, uri, suffix, 80L * 1024L * 1024L) }
+                val path = "${session.userId}/${UUID.randomUUID()}$suffix"
+                val url = withContext(Dispatchers.IO) {
+                    api.uploadObjectFile(session, "stories", path, file, mime.ifBlank { if (type == "video") "video/mp4" else "image/jpeg" }).getOrThrow()
+                }
                 withContext(Dispatchers.IO) { api.createStory(session, url, type, caption).getOrThrow() }
                 caption = ""
-                stories = withContext(Dispatchers.IO) { api.stories(session).getOrThrow() }
-                message = "تم نشر قصتك لمدة 24 ساعة."
-            }.onFailure { message = it.message ?: "تعذر نشر القصة." }
+                showComposer = false
+                message = "تم نشر قصتك"
+                reload()
+            }.onFailure { message = it.message ?: "تعذر نشر القصة" }
             busy = false
         }
     }
-    LaunchedEffect(Unit) {
-        stories = withContext(Dispatchers.IO) { api.stories(session).getOrDefault(emptyList()) }
-        selected = initialStoryId?.let { id -> stories.firstOrNull { it.id == id } }
+
+    LaunchedEffect(session.userId) { reload() }
+
+    if (loading) {
+        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = Color.White)
+        }
+        return
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFF111111))) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, "رجوع", tint = Color.White) }
-            Text("Stories", color = Color.White, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            IconButton(onClick = { picker.launch("*/*") }) { Icon(Icons.Rounded.AddCircle, "إضافة قصة", tint = Color.White) }
+    if (stories.isEmpty()) {
+        EmptyStories(profile, message, onBack) { showComposer = true }
+    } else {
+        val initialPage = stories.indexOfFirst { it.id == initialStoryId }.coerceAtLeast(0)
+        val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { stories.size })
+        LaunchedEffect(pagerState.currentPage, stories.size) {
+            stories.getOrNull(pagerState.currentPage)?.let { story ->
+                withContext(Dispatchers.IO) { api.markStoryViewed(session, story.id) }
+            }
         }
-        OutlinedTextField(value = caption, onValueChange = { caption = it.take(1000) }, label = { Text("نص قصير اختياري") }, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp), colors = OutlinedTextFieldDefaults.colors(unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedLabelColor = Color.LightGray, focusedLabelColor = Color.White))
-        message?.let { Text(it, color = Color(0xFFB9F6CA), modifier = Modifier.padding(14.dp)) }
-        if (stories.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("لا توجد قصص نشطة. أضف أول قصة من زر +", color = Color.White) }
-        } else {
-            LazyRow(contentPadding = PaddingValues(14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(stories, key = { it.id }) { story ->
-                    Column(Modifier.width(90.dp).clickable { selected = story }, horizontalAlignment = Alignment.CenterHorizontally) {
-                        StudentAvatar(story.authorName, story.authorAvatarUrl, story.authorFrameUrl, 72.dp)
-                        Text(story.authorName, color = Color.White, maxLines = 1)
-                        if (story.viewed) Text("شوهدت", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
-                    }
+        StoryViewer(
+            stories = stories,
+            pagerState = pagerState,
+            onClose = onBack,
+            onCreate = { showComposer = true },
+            onNext = {
+                scope.launch {
+                    if (pagerState.currentPage < stories.lastIndex) pagerState.animateScrollToPage(pagerState.currentPage + 1) else onBack()
                 }
+            },
+            onPrevious = {
+                scope.launch { if (pagerState.currentPage > 0) pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+            }
+        )
+    }
+
+    if (showComposer) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) showComposer = false },
+            title = { Text("إضافة إلى قصتك", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = caption,
+                        onValueChange = { caption = it.take(1000) },
+                        label = { Text("نص اختياري") },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text("اختر صورة أو فيديو من جهازك، وسيبقى 24 ساعة.", fontSize = 12.sp, color = Color.Gray)
+                }
+            },
+            confirmButton = {
+                Button(enabled = !busy, onClick = { picker.launch("image/*") }) { Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(6.dp)); Text("صورة") }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { picker.launch("video/*") }) { Text("فيديو") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun StoryViewer(
+    stories: List<StoryItem>,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    onClose: () -> Unit,
+    onCreate: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit
+) {
+    var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
+            StoryPage(stories[page], onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
+        }
+        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                stories.forEachIndexed { index, _ ->
+                    val fraction = when {
+                        index < pagerState.currentPage -> 1f
+                        index > pagerState.currentPage -> 0f
+                        else -> currentProgress
+                    }
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier.weight(1f).height(3.dp),
+                        color = Color.White,
+                        trackColor = Color.White.copy(alpha = 0.35f)
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                val current = stories.getOrNull(pagerState.currentPage)
+                current?.let {
+                    StudentAvatar(it.authorName, it.authorAvatarUrl, it.authorFrameUrl, 38.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(it.authorName, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
+                }
+                IconButton(onClick = onCreate) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
+                IconButton(onClick = {}) { Icon(Icons.Rounded.MoreVert, "المزيد", tint = Color.White) }
             }
         }
     }
-    selected?.let { story ->
-        AlertDialog(onDismissRequest = { selected = null }, confirmButton = { TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { api.markStoryViewed(session, story.id) }; selected = null } }) { Text("إغلاق") } }, title = { Text(story.authorName) }, text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val mediaUrl = story.mediaUrl
-                if (story.mediaType == "image" && mediaUrl != null) AsyncImage(mediaUrl, "Story", Modifier.fillMaxWidth().height(360.dp), contentScale = ContentScale.Crop)
-                else if (story.mediaType == "video" && mediaUrl != null) RemoteStoryVideo(mediaUrl, Modifier.fillMaxWidth().height(360.dp))
-                else Box(Modifier.fillMaxWidth().height(240.dp).background(Color(android.graphics.Color.parseColor(story.backgroundColor))), contentAlignment = Alignment.Center) { Text(story.caption, color = Color.White) }
-                if (story.caption.isNotBlank() && story.mediaType != "text") Text(story.caption, modifier = Modifier.padding(10.dp))
+}
+
+@Composable
+private fun StoryPage(story: StoryItem, onNext: () -> Unit, onPrevious: () -> Unit, onProgress: (Float) -> Unit) {
+    var progress by remember(story.id) { mutableFloatStateOf(0f) }
+    val animatedProgress by animateFloatAsState(progress, label = "story-progress")
+    LaunchedEffect(story.id) {
+        progress = 0f
+        val steps = (story.durationSeconds.coerceIn(3, 15) * 20)
+        repeat(steps) {
+            kotlinx.coroutines.delay(50)
+            progress = ((it + 1).toFloat() / steps).coerceIn(0f, 1f)
+            onProgress(progress)
+        }
+        onNext()
+    }
+    Box(
+        Modifier.fillMaxSize().pointerInput(story.id) {
+            detectTapGestures(
+                onTap = { position -> if (position.x < size.width * 0.35f) onPrevious() else onNext() }
+            )
+        }
+    ) {
+        val mediaUrl = story.mediaUrl
+        when {
+            story.mediaType == "image" && mediaUrl != null -> AsyncImage(mediaUrl, "Story", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, Modifier.fillMaxSize())
+            else -> Box(Modifier.fillMaxSize().background(storyColor(story.backgroundColor)), contentAlignment = Alignment.Center) {
+                Text(story.caption, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(30.dp))
             }
-        })
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.08f)))
+        if (story.caption.isNotBlank() && story.mediaType != "text") {
+            Text(story.caption, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 70.dp))
+        }
+    }
+}
+
+private fun storyColor(value: String): Color = runCatching { Color(android.graphics.Color.parseColor(value)) }.getOrDefault(Color(0xFF6D28D9))
+
+@Composable
+private fun EmptyStories(profile: StudentProfile?, message: String?, onBack: () -> Unit, onCreate: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            StudentAvatar(profile?.fullName ?: "أنت", profile?.avatarUrl, profile?.profileFrameUrl, 90.dp)
+            Text("لا توجد قصص بعد", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("كن أول من يشارك قصة اليوم", color = Color.LightGray)
+            Button(onClick = onCreate) { Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(6.dp)); Text("إضافة قصة") }
+            message?.let { Text(it, color = Color(0xFFB9F6CA)) }
+        }
+        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp)) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
     }
 }
 
