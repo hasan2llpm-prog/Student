@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -281,7 +282,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     }
 
     LazyColumn(
-        Modifier.fillMaxSize().imePadding().navigationBarsPadding(),
+        Modifier.fillMaxSize().background(Color(0xFFF5F7FA)).imePadding().navigationBarsPadding(),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -289,7 +290,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             StudentOutlinedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Rounded.Translate, null, tint = StudentBlue, modifier = Modifier.size(28.dp))
+                        Icon(Icons.Rounded.Translate, null, tint = StudentTeal, modifier = Modifier.size(28.dp))
                         Text("الترجمة المتقدمة", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
                     }
                     Text("ترجمة • صورة إلى نص • نسخ • نطق", color = StudentMuted)

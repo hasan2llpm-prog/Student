@@ -1,6 +1,7 @@
 package com.student.feature.home
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,7 +39,7 @@ fun MenuScreen(
     onLogout: () -> Unit
 ) {
     LazyColumn(
-        Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().background(Color(0xFFF5F7FA)),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(9.dp)
     ) {
@@ -47,7 +48,7 @@ fun MenuScreen(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onProfile),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(1.dp, Color(0xFFE9E2F3))
+                border = BorderStroke(1.dp, StudentBorder)
             ) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     StudentAvatar(profile?.fullName ?: "Student", profile?.avatarUrl, profile?.profileFrameUrl, 58.dp)
@@ -92,13 +93,15 @@ private fun MenuEntry(icon: ImageVector, title: String, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFE9E2F3))
+                border = BorderStroke(1.dp, StudentBorder)
     ) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 62.dp).padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = StudentBlue)
+            Surface(shape = RoundedCornerShape(10.dp), color = Color(0xFFE1F3F0)) {
+                Icon(icon, null, tint = StudentTeal, modifier = Modifier.padding(8.dp))
+            }
             Text(title, style = MaterialTheme.typography.titleMedium, color = StudentText, modifier = Modifier.weight(1f))
             Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF9AA3AF))
         }
