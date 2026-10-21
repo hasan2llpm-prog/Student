@@ -201,17 +201,24 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
     LaunchedEffect(allowedTabs) { if (tabKey !in allowedTabs) tabKey = allowedTabs.first() }
 
     Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("المتجر", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = StudentText)
+                Text("خصّص حسابك وامتلك مزايا جديدة", color = StudentMuted, fontSize = 12.sp)
+            }
+            Icon(Icons.Rounded.ShoppingBag, "المتجر", tint = StudentGold, modifier = Modifier.size(28.dp))
+        }
         if (cfg.bool("store.show_wallet", true)) Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE9F6FF)),
-            border = BorderStroke(1.dp, Color(0xFFCFEAFF))
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7E4)),
+            border = BorderStroke(1.dp, Color(0xFFF0D48A))
         ) {
             Column(Modifier.padding(14.dp)) {
                 Text(cfg.string("store.wallet_title", "المحفظة"), fontWeight = FontWeight.Bold, fontSize = cfg.int("store.wallet_title_sp", 16, 12, 24).sp)
                 Spacer(Modifier.height(4.dp))
                 Text("المتاح: ${wallet.availableBalance.toLong()} ${if (wallet.availableBalance > 0) "IQD" else ""}", fontSize = 13.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Diamond, null, Modifier.size(16.dp), tint = StudentBlue); Spacer(Modifier.width(4.dp)); Text("الألماس: ${wallet.diamonds}", fontSize = 13.sp) }
+                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Diamond, null, Modifier.size(16.dp), tint = StudentGold); Spacer(Modifier.width(4.dp)); Text("الألماس: ${wallet.diamonds}", fontSize = 13.sp) }
             }
         }
 

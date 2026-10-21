@@ -184,7 +184,7 @@ fun ProfileScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF5F7FA)),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -229,12 +229,12 @@ fun ProfileScreen(
             }
             if (!profile.isVerified) {
                 item {
-                    Button(onClick = onOpenVerificationPurchase, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B2CE2))) {
+                    Button(onClick = onOpenVerificationPurchase, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = StudentGold, contentColor = StudentBlueDark)) {
                         Icon(Icons.Rounded.Verified, null); Spacer(Modifier.width(7.dp)); Text("الحصول على شارة تحقق")
                     }
                 }
             } else {
-                item { Surface(color = Color(0xFFEAF8EF), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Text("حسابك موثق — مزايا التوثيق مفعّلة.", Modifier.padding(14.dp), color = Color(0xFF187341), fontWeight = FontWeight.Bold) } }
+                item { Surface(color = Color(0xFFE1F3F0), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Text("حسابك موثق — مزايا التوثيق مفعّلة.", Modifier.padding(14.dp), color = StudentTeal, fontWeight = FontWeight.Bold) } }
                 item { Button(onClick = onOpenSupport, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F7A55))) { Icon(Icons.Rounded.SupportAgent, null); Spacer(Modifier.width(7.dp)); Text("الدعم داخل التطبيق") } }
             }
             item { OutlinedButton(onClick = onRefreshProfile, modifier = Modifier.fillMaxWidth()) { Text("تحديث بيانات الملف") } }

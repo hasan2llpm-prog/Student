@@ -582,7 +582,16 @@ private fun MessagesHomeList(
     onRefresh:()->Unit,onCreateRoom:()->Unit,onOpenConversation:(ConversationItem)->Unit,onDeleteConversation:(ConversationItem)->Unit,onOpenRoom:(SocialRoomItem)->Unit,onOpenProfile:(String)->Unit
 ) {
     var query by remember { mutableStateOf("") }
-    Column(Modifier.fillMaxSize().background(Color.White)) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("الرسائل", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = StudentText)
+                Text("تواصل مع زملائك ومجتمعاتك", color = StudentMuted, fontSize = 12.sp)
+            }
+            Surface(shape = CircleShape, color = MsgOrangeSoft) {
+                Icon(Icons.Rounded.MarkUnreadChatAlt, null, tint = MsgOrange, modifier = Modifier.padding(10.dp).size(22.dp))
+            }
+        }
         Surface(color=Color.White,shadowElevation=1.dp) {
             Column(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=10.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
                 OutlinedTextField(

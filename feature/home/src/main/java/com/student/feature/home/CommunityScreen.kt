@@ -90,12 +90,12 @@ fun CommunityScreen(
         return
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF0F2F5))) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+    Column(Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
+        Surface(color = Color(0xFFF5F7FA), shadowElevation = 0.dp) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("المجتمع", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF1C1E21))
-                    Text("آخر منشورات الطلاب", color = Color(0xFF65676B), style = MaterialTheme.typography.bodySmall)
+                    Text("المجتمع", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = StudentText)
+                    Text("آخر منشورات الطلاب", color = StudentMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 FilledTonalButton(onClick = onCreatePost) {
                     Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(4.dp)); Text("إنشاء منشور")
@@ -108,9 +108,9 @@ fun CommunityScreen(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Edit, null, tint = Color(0xFF1877F2))
+                Icon(Icons.Rounded.Edit, null, tint = StudentTeal)
                 Spacer(Modifier.width(10.dp))
-                Text("بم تفكر؟ شارك شيئًا مع المجتمع", color = Color(0xFF65676B))
+                Text("بم تفكر؟ شارك شيئًا مع المجتمع", color = StudentMuted)
             }
         }
         if (loading && posts.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
