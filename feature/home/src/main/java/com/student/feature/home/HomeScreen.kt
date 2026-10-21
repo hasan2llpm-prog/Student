@@ -208,6 +208,7 @@ fun HomeScreen(
         StudentRoute.STORE -> "المتجر"
         StudentRoute.ADMIN -> "لوحة الأدمن"
         StudentRoute.SETTINGS -> "الإعدادات"
+        StudentRoute.STORIES -> "Stories"
         StudentRoute.STUDENT_AI -> "الترجمة"
         StudentRoute.ASK_AI -> "Ask AI"
         StudentRoute.LEARN_ENGLISH -> "Learn English"

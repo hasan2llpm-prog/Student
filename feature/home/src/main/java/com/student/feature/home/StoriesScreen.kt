@@ -82,8 +82,9 @@ fun StoriesScreen(api: SupabaseApi, session: StudentSession, profile: StudentPro
     selected?.let { story ->
         AlertDialog(onDismissRequest = { selected = null }, confirmButton = { TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { api.markStoryViewed(session, story.id) }; selected = null } }) { Text("إغلاق") } }, title = { Text(story.authorName) }, text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (story.mediaType == "image" && story.mediaUrl != null) AsyncImage(story.mediaUrl, "Story", Modifier.fillMaxWidth().height(360.dp), contentScale = ContentScale.Crop)
-                else if (story.mediaType == "video" && story.mediaUrl != null) RemoteStoryVideo(story.mediaUrl, Modifier.fillMaxWidth().height(360.dp))
+                val mediaUrl = story.mediaUrl
+                if (story.mediaType == "image" && mediaUrl != null) AsyncImage(mediaUrl, "Story", Modifier.fillMaxWidth().height(360.dp), contentScale = ContentScale.Crop)
+                else if (story.mediaType == "video" && mediaUrl != null) RemoteStoryVideo(mediaUrl, Modifier.fillMaxWidth().height(360.dp))
                 else Box(Modifier.fillMaxWidth().height(240.dp).background(Color(android.graphics.Color.parseColor(story.backgroundColor))), contentAlignment = Alignment.Center) { Text(story.caption, color = Color.White) }
                 if (story.caption.isNotBlank() && story.mediaType != "text") Text(story.caption, modifier = Modifier.padding(10.dp))
             }
