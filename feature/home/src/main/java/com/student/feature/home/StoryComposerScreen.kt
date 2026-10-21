@@ -39,9 +39,9 @@ data class StoryEditDraft(
     val rotation: Float,
     val scale: Float,
     val strokes: List<List<Offset>> = emptyList(),
-    val canvasSize: Size = Size.Zero
-    val textScale: Float = 1f
-    val textOffset: Offset = Offset.Zero
+    val canvasSize: Size = Size.Zero,
+    val textScale: Float = 1f,
+    val textOffset: Offset = Offset.Zero,
     val sticker: String? = null,
     val cropRatio: Float = 9f / 16f
 )
