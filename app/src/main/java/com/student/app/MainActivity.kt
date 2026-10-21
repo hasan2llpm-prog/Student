@@ -408,11 +408,6 @@ class MainActivity : ComponentActivity() {
                         }.onFailure { message = it.message ?: "تعذر إرسال رسالة الاستعادة." }
                         busy = false
                     }
-                },
-                onGoogleLogin = {
-                    runCatching {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(api.googleOAuthUrl())))
-                    }.onFailure { message = "تعذر فتح تسجيل Google." }
                 }
             )
         } else {
