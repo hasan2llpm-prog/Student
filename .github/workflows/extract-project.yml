@@ -1,0 +1,39 @@
+name: Extract Project ZIP to Repository
+
+# يعمل هذا الملف يدوياً من تبويب Actions أو تلقائياً عند تعديله
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/extract-project.yml'
+
+permissions:
+  contents: write # صلاحية الكتابة لحفظ الملفات المستخرجة في المستودع
+
+jobs:
+  extract_and_commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. سحب محتويات المستودع الحالية
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. فك ضغط أحدث إصدار مستقر في المجلد الرئيسي للمستودع
+      - name: Extract Student-v2.10.1-STABLE-PRODUCTION.zip
+        run: |
+          if [ -f "Student-v2.10.1-STABLE-PRODUCTION.zip" ]; then
+            unzip -o "Student-v2.10.1-STABLE-PRODUCTION.zip" -d .
+            echo "تم فك الضغط بنجاح"
+          else
+            echo "الملف المضغوط غير موجود!"
+            exit 1
+          fi
+
+      # 3. حفظ ورفع الملفات المستخرجة إلى المستودع تلقائياً
+      - name: Commit and Push Extracted Files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Extract project source files from v2.10.1 ZIP" && git push)
