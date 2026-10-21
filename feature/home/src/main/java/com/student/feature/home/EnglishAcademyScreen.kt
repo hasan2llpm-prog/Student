@@ -8,6 +8,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -133,6 +134,7 @@ private fun sectionTitle(key: String) = when(key) {
 
 @Composable
 private fun EnglishLearningHub(featureControls: Map<String,Boolean>, onOpen: (String) -> Unit) {
+    var query by remember { mutableStateOf("") }
     val cards = listOf(
         Triple("cefr","CEFR & Placement Test","حدد مستواك من A1 إلى C2 وتابع تقدمك"),
         Triple("vocabulary","تعلم المفردات","تتجدد يومياً الساعة 8:00 صباحاً"),
@@ -150,7 +152,8 @@ private fun EnglishLearningHub(featureControls: Map<String,Boolean>, onOpen: (St
         Triple("progress","تقدمي","راجع إنجازك والكلمات المحفوظة"),
         Triple("daily","Daily Challenge","اختبار يومي مختلط")
     ).filter { (key,_,_) -> featureControls[key] != false }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val visibleCards = cards.filter { query.isBlank() || it.second.contains(query, true) || it.third.contains(query, true) }
+    LazyColumn(Modifier.fillMaxSize().background(Color(0xFFF5F7FA)), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = Color(0xFF111827), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -159,7 +162,10 @@ private fun EnglishLearningHub(featureControls: Map<String,Boolean>, onOpen: (St
                 }
             }
         }
-        items(cards) { (key,title,sub) ->
+        item {
+            OutlinedTextField(query, { query = it.take(60) }, modifier = Modifier.fillMaxWidth(), singleLine = true, shape = RoundedCornerShape(18.dp), leadingIcon = { Icon(Icons.Rounded.Search, "بحث") }, placeholder = { Text("ابحث عن درس أو مهارة") })
+        }
+        items(visibleCards) { (key,title,sub) ->
             StudentOutlinedCard(Modifier.fillMaxWidth().clickable { onOpen(key) }) {
                 Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                     Surface(shape = RoundedCornerShape(15.dp), color = StudentSoft, modifier = Modifier.size(48.dp)) {

@@ -224,7 +224,7 @@ private fun CommunityPostCard(
     LaunchedEffect(postId){refresh()}
     LaunchedEffect(focusCommentId,comments){val id=focusCommentId?:return@LaunchedEffect;val flat=comments.filter{it.parentId==null}.flatMap{c->listOf(c)+comments.filter{it.parentId==c.id}};val idx=flat.indexOfFirst{it.id==id};if(idx>=0)state.scrollToItem(idx)}
     deleting?.let{c->AlertDialog(onDismissRequest={deleting=null},title={Text("حذف التعليق؟")},text={Text("سيتم حذف التعليق من المنشور.")},confirmButton={Button(onClick={scope.launch{busy=true;withContext(Dispatchers.IO){api.deleteComment(session,c.id)}.onSuccess{deleting=null;refresh()};busy=false}}){Text("حذف")}},dismissButton={TextButton(onClick={deleting=null}){Text("إلغاء")}})}
-    Column(Modifier.fillMaxSize().imePadding()){
+    Column(Modifier.fillMaxSize().background(Color(0xFFF5F7FA)).imePadding()){
         Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onClose){Icon(Icons.Rounded.ArrowBack,"رجوع")};Text("التعليقات والردود",fontWeight=FontWeight.Black,style=MaterialTheme.typography.titleLarge)};HorizontalDivider()
         LazyColumn(state=state,modifier=Modifier.weight(1f),contentPadding=PaddingValues(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
             items(comments.filter{it.parentId==null},key={it.id}){c->CommentLine(api,session,c,{replyTo=c;editing=null},{editing=c;replyTo=null;text=c.content},{deleting=c});comments.filter{it.parentId==c.id}.forEach{r->Box(Modifier.padding(start=28.dp)){CommentLine(api,session,r,{replyTo=c;editing=null},{editing=r;replyTo=null;text=r.content},{deleting=r})}}}
