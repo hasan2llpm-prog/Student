@@ -89,19 +89,32 @@ fun CommunityScreen(
         return
     }
 
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("المجتمع", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
-                Text("نصوص، صور وفيديو — محسّن للإنترنت الضعيف", color = StudentMuted, style = MaterialTheme.typography.bodySmall)
+    Column(Modifier.fillMaxSize().background(Color(0xFFF0F2F5))) {
+        Surface(color = Color.White, shadowElevation = 1.dp) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("المجتمع", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color(0xFF1C1E21))
+                    Text("آخر منشورات الطلاب", color = Color(0xFF65676B), style = MaterialTheme.typography.bodySmall)
+                }
+                FilledTonalButton(onClick = onCreatePost) {
+                    Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(4.dp)); Text("إنشاء منشور")
+                }
             }
-            FilledTonalButton(onClick = onCreatePost) {
-                Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(4.dp)); Text("نشر")
+        }
+        Card(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp).clickable(onClick = onCreatePost),
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Edit, null, tint = Color(0xFF1877F2))
+                Spacer(Modifier.width(10.dp))
+                Text("بم تفكر؟ شارك شيئًا مع المجتمع", color = Color(0xFF65676B))
             }
         }
         if (loading && posts.isEmpty()) LinearProgressIndicator(Modifier.fillMaxWidth())
         message?.let { Text(it, Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.error) }
-        LazyColumn(state = listState, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(state = listState, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(posts, key = { it.id }) { post ->
                 CommunityPostCard(api, session, post, onOpenProfile, { openedComments = post.id }, ::refresh)
             }

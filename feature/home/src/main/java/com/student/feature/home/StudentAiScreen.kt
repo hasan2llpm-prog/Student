@@ -120,6 +120,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var translationMode by remember { mutableStateOf("auto") }
     var lastTranslationEngine by remember { mutableStateOf<String?>(null) }
+    val translationCache = remember { mutableStateMapOf<String, String>() }
 
     val arToEn = remember { createTranslator(TranslateLanguage.ARABIC, TranslateLanguage.ENGLISH) }
     val enToAr = remember { createTranslator(TranslateLanguage.ENGLISH, TranslateLanguage.ARABIC) }
@@ -208,6 +209,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                 translator.translate(text)
                     .addOnSuccessListener { translated ->
                         output = translated.trim()
+                        translationCache[text] = output
                         lastTranslationEngine = "Offline • ML Kit"
                         onDone(true)
                     }
@@ -221,6 +223,12 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         if (text.isBlank() || busy) return
         error = null
         status = null
+        translationCache[text]?.let { cached ->
+            output = cached
+            lastTranslationEngine = "ذاكرة الجهاز"
+            status = "تم عرض ترجمة محفوظة فورًا."
+            return
+        }
         busy = true
 
         fun finishOffline() {
@@ -234,7 +242,13 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             }
         }
 
-        val canUseOnline = translationMode != "offline" && isStudentOnline(context)
+        // Use the on-device model first when it is ready: this avoids a network round-trip.
+        if (translationMode == "offline" || (translationMode == "auto" && modelsReady)) {
+            finishOffline()
+            return
+        }
+
+        val canUseOnline = translationMode == "online" && isStudentOnline(context)
         if (!canUseOnline) {
             finishOffline()
             return
@@ -244,6 +258,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             val online = withContext(Dispatchers.IO) { api.callStudentAi(session, "translate", text) }
             online.onSuccess { translated ->
                 output = translated.trim()
+                translationCache[text] = output
                 lastTranslationEngine = "Online • Context AI"
                 busy = false
                 status = "تمت ترجمة النص أونلاين مع مراعاة السياق."

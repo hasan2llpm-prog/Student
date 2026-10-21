@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
     private val api = SupabaseApi()
     private var pendingDestination by mutableStateOf<String?>(null)
     private var pendingRecoveryToken by mutableStateOf<String?>(null)
+    private var pendingOAuthTokens by mutableStateOf<Pair<String, String>?>(null)
     private lateinit var store: SessionStore
     private lateinit var offline: OfflineStore
 
@@ -75,6 +76,25 @@ class MainActivity : ComponentActivity() {
         recoveryTokenFromIntent(intent)?.let { pendingRecoveryToken = it }
     }
 
+    private fun oauthTokensFromIntent(intent: Intent?): Pair<String, String>? {
+        val data = intent?.data ?: return null
+        if (data.scheme != "student" || data.host != "oauth-callback") return null
+        fun read(uri: Uri): Pair<String, String>? {
+            val access = uri.getQueryParameter("access_token").orEmpty()
+            val refresh = uri.getQueryParameter("refresh_token").orEmpty()
+            return access.takeIf { it.isNotBlank() }?.let { a ->
+                refresh.takeIf { it.isNotBlank() }?.let { a to it }
+            }
+        }
+        read(data)?.let { return it }
+        val fragment = data.fragment.orEmpty()
+        return if (fragment.isBlank()) null else read(Uri.parse("student://oauth?$fragment"))
+    }
+
+    private fun captureOAuthIntent(intent: Intent?) {
+        oauthTokensFromIntent(intent)?.let { pendingOAuthTokens = it }
+    }
+
     /** The ready notification opens the verified, already downloaded APK installer. */
     private fun installReadyUpdateFromIntent(incoming: Intent?) {
         if (incoming?.getStringExtra("student_destination") != "update_ready") return
@@ -93,6 +113,7 @@ class MainActivity : ComponentActivity() {
         offline = OfflineStore(this)
         pendingDestination = destinationFromIntent(intent)
         captureRecoveryIntent(intent)
+        captureOAuthIntent(intent)
         installReadyUpdateFromIntent(intent)
         FirebaseMessaging.getInstance().isAutoInitEnabled = true
         if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -108,6 +129,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         pendingDestination = destinationFromIntent(intent)
         captureRecoveryIntent(intent)
+        captureOAuthIntent(intent)
         installReadyUpdateFromIntent(intent)
     }
 
@@ -241,6 +263,21 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        LaunchedEffect(pendingOAuthTokens) {
+            val tokens = pendingOAuthTokens ?: return@LaunchedEffect
+            pendingOAuthTokens = null
+            busy = true
+            message = null
+            withContext(Dispatchers.IO) { api.sessionFromOAuthTokens(tokens.first, tokens.second) }
+                .onSuccess {
+                    store.save(it)
+                    session = it
+                    message = "تم تسجيل الدخول بحساب Google."
+                }
+                .onFailure { message = it.message ?: "تعذر إكمال تسجيل الدخول بحساب Google." }
+            busy = false
+        }
+
         LaunchedEffect(message) { if (message != null && !offlineMode) { kotlinx.coroutines.delay(3000); message = null } }
 
         fun loadProfile(current: StudentSession) {
@@ -371,6 +408,11 @@ class MainActivity : ComponentActivity() {
                         }.onFailure { message = it.message ?: "تعذر إرسال رسالة الاستعادة." }
                         busy = false
                     }
+                },
+                onGoogleLogin = {
+                    runCatching {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(api.googleOAuthUrl())))
+                    }.onFailure { message = "تعذر فتح تسجيل Google." }
                 }
             )
         } else {

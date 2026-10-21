@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -98,49 +99,93 @@ fun FeedScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Color.White)) {
-        if (cfg.bool("home.show_community", true) && (featureFlags["community"] ?: true)) {
-            HomeCommunityStrip(
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FB)),
+        contentPadding = PaddingValues(bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            HomeStoriesRow(
                 posts = communityPosts,
                 profile = profile,
-                onOpenCommunity = onOpenCommunity,
-                onCreatePost = onCreatePost
+                onOpenStory = { onOpenCommunity(it) },
+                onCreateStory = onCreatePost
             )
-            HorizontalDivider(color = Color(0xFFE8E8E8))
         }
-
         if (cfg.bool("home.show_features", true)) {
-            Spacer(Modifier.height(cfg.int("home.features_top_space_dp", 4, 0, 24).dp))
-            EnglishHomeFeatureGrid(
-                featureFlags = featureFlags,
-                onTranslation = onOpenStudentAi,
-                onOpenSection = onOpenEnglishSection,
-                onOpenReports = onOpenAcademicReports,
-                onOpenAskAi = onOpenAskAi,
-                onOpenRooms = onOpenRooms
-            )
+            item {
+                Spacer(Modifier.height(cfg.int("home.features_top_space_dp", 4, 0, 24).dp))
+                EnglishHomeFeatureGrid(
+                    featureFlags = featureFlags,
+                    onTranslation = onOpenStudentAi,
+                    onOpenSection = onOpenEnglishSection,
+                    onOpenReports = onOpenAcademicReports,
+                    onOpenAskAi = onOpenAskAi,
+                    onOpenRooms = onOpenRooms
+                )
+            }
         }
-
         if (cfg.bool("home.show_remote_modules", true) && remoteModules.isNotEmpty()) {
-            Spacer(Modifier.height(cfg.int("home.remote_modules_top_space_dp", 10, 0, 40).dp))
-            RemoteModulesRow(remoteModules, onOpenRemoteTarget)
+            item {
+                Spacer(Modifier.height(cfg.int("home.remote_modules_top_space_dp", 10, 0, 40).dp))
+                RemoteModulesRow(remoteModules, onOpenRemoteTarget)
+            }
         }
-
-        val showAds = cfg.bool("home.show_ads", true) && ads.isNotEmpty()
-        val adsPosition = cfg.string("home.ads_position", "center").lowercase()
-        when {
-            showAds && adsPosition == "after_features" -> {
+        if (cfg.bool("home.show_ads", true) && ads.isNotEmpty()) {
+            item {
                 Spacer(Modifier.height(cfg.int("home.ads_top_space_dp", 10, 0, 50).dp))
                 HomeAdsCarousel(ads)
-                Spacer(Modifier.weight(1f))
             }
-            showAds && adsPosition == "center" -> {
-                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { HomeAdsCarousel(ads) }
+        }
+    }
+}
+
+@Composable
+private fun HomeStoriesRow(
+    posts: List<PostItem>,
+    profile: StudentProfile?,
+    onOpenStory: (String) -> Unit,
+    onCreateStory: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxWidth().background(Color.White).padding(vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("القصص", fontWeight = FontWeight.Black, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            Text("شاهد الأحدث", color = StudentBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Column(Modifier.width(68.dp).clickable(onClick = onCreateStory), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(contentAlignment = Alignment.BottomEnd) {
+                        Surface(shape = CircleShape, color = Color(0xFFF0EAFB), border = BorderStroke(2.dp, StudentBlue)) {
+                            StudentAvatar(profile?.fullName ?: "أنت", profile?.avatarUrl, profile?.profileFrameUrl, 58.dp)
+                        }
+                        Surface(shape = CircleShape, color = StudentBlue, border = BorderStroke(2.dp, Color.White)) {
+                            Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White, modifier = Modifier.size(22.dp).padding(3.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("قصتك", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
             }
-            showAds -> {
-                Spacer(Modifier.weight(1f)); HomeAdsCarousel(ads); Spacer(Modifier.height(cfg.int("home.ads_bottom_space_dp", 10, 0, 50).dp))
+            items(posts.take(12), key = { it.id }) { post ->
+                Column(Modifier.width(68.dp).clickable { onOpenStory(post.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Surface(
+                        shape = CircleShape,
+                        border = BorderStroke(3.dp, Color(0xFFE1306C)),
+                        color = Color.White
+                    ) {
+                        StudentAvatar(post.authorName, post.authorAvatarUrl, post.authorFrameUrl, 58.dp)
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text(post.authorName, fontSize = 11.sp, maxLines = 1, fontWeight = FontWeight.SemiBold)
+                }
             }
-            else -> Spacer(Modifier.weight(1f))
         }
     }
 }

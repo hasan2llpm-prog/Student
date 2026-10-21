@@ -24,7 +24,8 @@ fun AuthScreen(
     message: String?,
     onLogin: (String, String) -> Unit,
     onRegister: (String, String, String, String) -> Unit,
-    onForgotPassword: (String) -> Unit
+    onForgotPassword: (String) -> Unit,
+    onGoogleLogin: () -> Unit
 ) {
     var register by remember { mutableStateOf(false) }
     var fullName by remember { mutableStateOf("") }
@@ -65,6 +66,24 @@ fun AuthScreen(
                 Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(if (register) "إنشاء حساب جديد" else "تسجيل الدخول", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
+                    if (!register) {
+                        OutlinedButton(
+                            onClick = onGoogleLogin,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(13.dp),
+                            border = BorderStroke(1.dp, Color(0xFFD6D9E0))
+                        ) {
+                            Text("G", color = Color(0xFF4285F4), fontSize = 20.sp, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.width(10.dp))
+                            Text("المتابعة باستخدام Google", fontWeight = FontWeight.Bold, color = Color(0xFF30343B))
+                        }
+                        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            HorizontalDivider(Modifier.weight(1f), color = Color(0xFFE5E7EB))
+                            Text("أو", color = Color(0xFF8A919B), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp))
+                            HorizontalDivider(Modifier.weight(1f), color = Color(0xFFE5E7EB))
+                        }
+                    }
                     if (register) {
                         OutlinedTextField(
                             value = fullName,

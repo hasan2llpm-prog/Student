@@ -178,6 +178,32 @@ class SupabaseApi {
         executeAuth(request)
     }
 
+    fun googleOAuthUrl(): String {
+        val redirect = java.net.URLEncoder.encode(StudentConfig.GOOGLE_AUTH_REDIRECT, "UTF-8")
+        return "${StudentConfig.SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=$redirect"
+    }
+
+    fun sessionFromOAuthTokens(accessToken: String, refreshToken: String): Result<StudentSession> = runCatching {
+        require(accessToken.isNotBlank() && refreshToken.isNotBlank()) { "جلسة Google غير مكتملة." }
+        val request = Request.Builder()
+            .url("${StudentConfig.SUPABASE_URL}/auth/v1/user")
+            .header("apikey", StudentConfig.SUPABASE_KEY)
+            .header("Authorization", "Bearer $accessToken")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException(errorMessage(raw, response.code))
+            val user = JSONObject(raw)
+            StudentSession(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                userId = user.getString("id"),
+                email = user.optString("email", "")
+            )
+        }
+    }
+
     fun register(fullName: String, email: String, password: String, requestedRole: String = "student"): Result<StudentSession?> = runCatching {
         val body = JSONObject()
             .put("email", email)

@@ -19,11 +19,13 @@ Student Native FIX5
 - Reels غير موجودة حسب القرار السابق.
 - Stable applicationId: com.studentiraq.app
 - Beta: com.studentiraq.app.beta
+- نسخة Beta مخصصة للاختبار وتثبت بجانب Stable، ولا تشاركها بيانات التطبيق المحلية.
 
 قبل الاختبار الحقيقي:
 1) نفّذ migrations الموجودة في supabase/migrations بالترتيب، وخصوصًا 20260822_student_native_fix5.sql.
 2) Student AI لا يمكن أن يعمل من APK بشكل آمن بدون Backend. انشر supabase/functions/student-ai كـ Edge Function واضبط Secret باسم OPENAI_API_KEY (ويمكن OPENAI_MODEL اختياريًا). لا تضع مفتاح OpenAI داخل APK.
 3) تأكد من إعداد Firebase Android النهائي حتى تعمل FCM عند إغلاق التطبيق.
 4) ابنِ Stable Debug عبر GitHub Actions ثم اختبر الوظائف ضد Supabase الحالي/RLS/RPC.
+5) لتسجيل Google: فعّل Google Provider في Supabase Authentication، وأضف `student://oauth-callback` إلى Redirect URLs المسموحة.
 
 مهم: نجاح Gradle وحده لا يعني أن كل RPC/RLS في قاعدة الإنتاج متوافق؛ الاختبار على الجهاز هو الحكم النهائي.
