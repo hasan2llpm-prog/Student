@@ -44,7 +44,8 @@ fun StoriesScreen(
     var stories by remember { mutableStateOf<List<StoryItem>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var message by remember { mutableStateOf<String?>(null) }
-    var showComposer by remember { mutableStateOf(false) }
+    var editorUri by remember { mutableStateOf<Uri?>(null) }
+    var editorType by remember { mutableStateOf("image") }
     var caption by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
@@ -57,11 +58,16 @@ fun StoriesScreen(
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri == null) return@rememberLauncherForActivityResult
+        uri ?: return@rememberLauncherForActivityResult
+        val mime = context.contentResolver.getType(uri).orEmpty()
+        editorType = if (mime.startsWith("video/")) "video" else "image"
+        editorUri = uri
+    }
+
+    fun publishStory(uri: Uri, type: String, editedCaption: String) {
         scope.launch {
             busy = true
             val mime = context.contentResolver.getType(uri).orEmpty()
-            val type = if (mime.startsWith("video/")) "video" else "image"
             runCatching {
                 val suffix = if (type == "video") ".mp4" else ".jpg"
                 val file = withContext(Dispatchers.IO) { materializeUriToCacheFile(context, uri, suffix, 80L * 1024L * 1024L) }
@@ -69,9 +75,9 @@ fun StoriesScreen(
                 val url = withContext(Dispatchers.IO) {
                     api.uploadObjectFile(session, "stories", path, file, mime.ifBlank { if (type == "video") "video/mp4" else "image/jpeg" }).getOrThrow()
                 }
-                withContext(Dispatchers.IO) { api.createStory(session, url, type, caption).getOrThrow() }
+                withContext(Dispatchers.IO) { api.createStory(session, url, type, editedCaption).getOrThrow() }
                 caption = ""
-                showComposer = false
+                editorUri = null
                 message = "تم نشر قصتك"
                 reload()
             }.onFailure { message = it.message ?: "تعذر نشر القصة" }
@@ -89,7 +95,7 @@ fun StoriesScreen(
     }
 
     if (stories.isEmpty()) {
-        EmptyStories(profile, message, onBack) { showComposer = true }
+        EmptyStories(profile, message, onBack) { picker.launch("*/*") }
     } else {
         val initialPage = stories.indexOfFirst { it.id == initialStoryId }.coerceAtLeast(0)
         val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { stories.size })
@@ -102,7 +108,7 @@ fun StoriesScreen(
             stories = stories,
             pagerState = pagerState,
             onClose = onBack,
-            onCreate = { showComposer = true },
+            onCreate = { picker.launch("*/*") },
             onNext = {
                 scope.launch {
                     if (pagerState.currentPage < stories.lastIndex) pagerState.animateScrollToPage(pagerState.currentPage + 1) else onBack()
@@ -114,28 +120,14 @@ fun StoriesScreen(
         )
     }
 
-    if (showComposer) {
-        AlertDialog(
-            onDismissRequest = { if (!busy) showComposer = false },
-            title = { Text("إضافة إلى قصتك", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = caption,
-                        onValueChange = { caption = it.take(1000) },
-                        label = { Text("نص اختياري") },
-                        minLines = 2,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text("اختر صورة أو فيديو من جهازك، وسيبقى 24 ساعة.", fontSize = 12.sp, color = Color.Gray)
-                }
-            },
-            confirmButton = {
-                Button(enabled = !busy, onClick = { picker.launch("image/*") }) { Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(6.dp)); Text("صورة") }
-            },
-            dismissButton = {
-                TextButton(enabled = !busy, onClick = { picker.launch("video/*") }) { Text("فيديو") }
-            }
+    editorUri?.let { uri ->
+        StoryComposerScreen(
+            uri = uri,
+            mediaType = editorType,
+            busy = busy,
+            onClose = { if (!busy) editorUri = null },
+            onPickAnother = { if (!busy) picker.launch("*/*") },
+            onPublish = { editedCaption -> publishStory(uri, editorType, editedCaption) }
         )
     }
 }
