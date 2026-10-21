@@ -148,8 +148,9 @@ fun StoriesScreen(
 }
 
 private fun materializeEditedStoryFile(context: android.content.Context, uri: Uri, draft: StoryEditDraft): File {
-    val source = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+    val original = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
         ?: error("تعذر قراءة الصورة.")
+    val source = cropStoryBitmap(original, draft.cropRatio)
     val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(output)
     val matrix = Matrix().apply {
@@ -209,8 +210,27 @@ private fun materializeEditedStoryFile(context: android.content.Context, uri: Ur
     val file = File(context.cacheDir, "story_edited_${System.currentTimeMillis()}.jpg")
     FileOutputStream(file).use { outputStream -> output.compress(Bitmap.CompressFormat.JPEG, 92, outputStream) }
     source.recycle()
+    if (source !== original) original.recycle()
     output.recycle()
     return file
+}
+
+private fun cropStoryBitmap(bitmap: Bitmap, ratio: Float): Bitmap {
+    if (ratio <= 0f) return bitmap
+    val current = bitmap.width.toFloat() / bitmap.height.toFloat()
+    if (kotlin.math.abs(current - ratio) < .01f) return bitmap
+    val cropWidth: Int
+    val cropHeight: Int
+    if (current > ratio) {
+        cropHeight = bitmap.height
+        cropWidth = (cropHeight * ratio).toInt().coerceAtLeast(1)
+    } else {
+        cropWidth = bitmap.width
+        cropHeight = (cropWidth / ratio).toInt().coerceAtLeast(1)
+    }
+    val left = ((bitmap.width - cropWidth) / 2).coerceAtLeast(0)
+    val top = ((bitmap.height - cropHeight) / 2).coerceAtLeast(0)
+    return Bitmap.createBitmap(bitmap, left, top, cropWidth.coerceAtMost(bitmap.width - left), cropHeight.coerceAtMost(bitmap.height - top))
 }
 
 @Composable

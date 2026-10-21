@@ -42,7 +42,8 @@ data class StoryEditDraft(
     val canvasSize: Size = Size.Zero
     val textScale: Float = 1f
     val textOffset: Offset = Offset.Zero
-    val sticker: String? = null
+    val sticker: String? = null,
+    val cropRatio: Float = 9f / 16f
 )
 
 @Composable
@@ -64,6 +65,7 @@ fun StoryComposerScreen(
     var textScale by remember(uri) { mutableFloatStateOf(1f) }
     var textOffset by remember(uri) { mutableStateOf(Offset.Zero) }
     var sticker by remember(uri) { mutableStateOf<String?>(null) }
+    var cropRatio by remember(uri) { mutableFloatStateOf(9f / 16f) }
     var canvasSize by remember(uri) { mutableStateOf(Size.Zero) }
     val strokes = remember(uri) { mutableStateListOf<List<Offset>>() }
     var currentStroke by remember(uri) { mutableStateOf<List<Offset>>(emptyList()) }
@@ -110,7 +112,7 @@ fun StoryComposerScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose, enabled = !busy) { Icon(Icons.Rounded.Close, "إلغاء", tint = Color.White) }
                 Text(if (mediaType == "video") "تحرير الفيديو" else "تحرير الصورة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale, strokes.toList(), canvasSize, textScale, textOffset, sticker)) }, enabled = !busy) {
+                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale, strokes.toList(), canvasSize, textScale, textOffset, sticker, cropRatio)) }, enabled = !busy) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                     else { Text("مشاركة", color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.width(4.dp)); Icon(Icons.Rounded.Check, null, tint = Color.White) }
                 }
@@ -133,6 +135,12 @@ fun StoryComposerScreen(
                     EditorTool(Icons.Rounded.RotateRight, "تدوير") { rotation = (rotation + 90f) % 360f }
                     Text("تكبير", color = Color.White, fontSize = 11.sp)
                     Slider(value = scale, onValueChange = { scale = it }, valueRange = 1f..2.5f, modifier = Modifier.weight(1f))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Text("قص", color = Color.White, fontSize = 11.sp)
+                    listOf(9f / 16f to "9:16", 1f to "1:1", 4f / 5f to "4:5").forEach { (ratio, label) ->
+                        FilterChip(selected = cropRatio == ratio, onClick = { cropRatio = ratio }, label = { Text(label, fontSize = 10.sp) }, modifier = Modifier.padding(horizontal = 2.dp))
+                    }
                 }
                 }
             if (textMode && caption.isNotBlank()) {
