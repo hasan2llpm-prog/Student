@@ -3,6 +3,11 @@
 package com.student.feature.home
 
 import android.net.Uri
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Matrix
+import android.graphics.Paint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -32,6 +37,8 @@ import com.student.core.data.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 
 @Composable
@@ -67,18 +74,21 @@ fun StoriesScreen(
         editorUri = uri
     }
 
-    fun publishStory(uri: Uri, type: String, editedCaption: String) {
+    fun publishStory(uri: Uri, type: String, draft: StoryEditDraft) {
         scope.launch {
             busy = true
             val mime = context.contentResolver.getType(uri).orEmpty()
             runCatching {
                 val suffix = if (type == "video") ".mp4" else ".jpg"
-                val file = withContext(Dispatchers.IO) { materializeUriToCacheFile(context, uri, suffix, 80L * 1024L * 1024L) }
+                val file = withContext(Dispatchers.IO) {
+                    if (type == "image") materializeEditedStoryFile(context, uri, draft)
+                    else materializeUriToCacheFile(context, uri, suffix, 80L * 1024L * 1024L)
+                }
                 val path = "${session.userId}/${UUID.randomUUID()}$suffix"
                 val url = withContext(Dispatchers.IO) {
                     api.uploadObjectFile(session, "stories", path, file, mime.ifBlank { if (type == "video") "video/mp4" else "image/jpeg" }).getOrThrow()
                 }
-                withContext(Dispatchers.IO) { api.createStory(session, url, type, editedCaption).getOrThrow() }
+                withContext(Dispatchers.IO) { api.createStory(session, url, type, draft.caption).getOrThrow() }
                 caption = ""
                 editorUri = null
                 message = "تم نشر قصتك"
@@ -132,9 +142,48 @@ fun StoriesScreen(
             busy = busy,
             onClose = { if (!busy) editorUri = null },
             onPickAnother = { if (!busy) picker.launch("*/*") },
-            onPublish = { editedCaption -> publishStory(uri, editorType, editedCaption) }
+            onPublish = { draft -> publishStory(uri, editorType, draft) }
         )
     }
+}
+
+private fun materializeEditedStoryFile(context: android.content.Context, uri: Uri, draft: StoryEditDraft): File {
+    val source = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+        ?: error("تعذر قراءة الصورة.")
+    val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(output)
+    val matrix = Matrix().apply {
+        postTranslate(-source.width / 2f, -source.height / 2f)
+        postScale(draft.scale, draft.scale)
+        postRotate(draft.rotation)
+        postTranslate(source.width / 2f, source.height / 2f)
+    }
+    canvas.drawBitmap(source, matrix, Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG))
+    if (draft.caption.isNotBlank()) {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            textSize = (source.width * .065f).coerceIn(28f, 92f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setShadowLayer(8f, 2f, 2f, android.graphics.Color.BLACK)
+            textAlign = Paint.Align.CENTER
+        }
+        val maxWidth = source.width * .86f
+        val words = draft.caption.split(" ")
+        val lines = mutableListOf<String>()
+        var line = ""
+        words.forEach { word ->
+            val candidate = if (line.isBlank()) word else "$line $word"
+            if (paint.measureText(candidate) > maxWidth && line.isNotBlank()) { lines += line; line = word } else line = candidate
+        }
+        if (line.isNotBlank()) lines += line
+        val startY = source.height - (lines.size * paint.textSize * 1.2f) - source.height * .08f
+        lines.forEachIndexed { index, text -> canvas.drawText(text, source.width / 2f, startY + index * paint.textSize * 1.2f, paint) }
+    }
+    val file = File(context.cacheDir, "story_edited_${System.currentTimeMillis()}.jpg")
+    FileOutputStream(file).use { outputStream -> output.compress(Bitmap.CompressFormat.JPEG, 92, outputStream) }
+    source.recycle()
+    output.recycle()
+    return file
 }
 
 @Composable

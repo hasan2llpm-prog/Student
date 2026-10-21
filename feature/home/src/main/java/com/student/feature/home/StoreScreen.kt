@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
@@ -256,6 +257,21 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = StudentBlueDark)
+                    ) {
+                        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("اختيارات مناسبة لك", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                                Text("${filteredProducts.size} منتج متاح الآن", color = Color.White.copy(alpha = .76f), fontSize = 12.sp)
+                            }
+                            Icon(Icons.Rounded.AutoAwesome, null, tint = StudentGold, modifier = Modifier.size(28.dp))
+                        }
+                    }
+                }
                 gridItems(filteredProducts, key = { it.id }) { p ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { selected = p },

@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
+data class StoryEditDraft(val caption: String, val rotation: Float, val scale: Float)
+
 @Composable
 fun StoryComposerScreen(
     uri: Uri,
@@ -39,7 +41,7 @@ fun StoryComposerScreen(
     busy: Boolean = false,
     onClose: () -> Unit,
     onPickAnother: () -> Unit,
-    onPublish: (String) -> Unit
+    onPublish: (StoryEditDraft) -> Unit
 ) {
     var caption by remember(uri) { mutableStateOf(initialCaption) }
     var textMode by remember(uri) { mutableStateOf(false) }
@@ -89,7 +91,7 @@ fun StoryComposerScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose, enabled = !busy) { Icon(Icons.Rounded.Close, "إلغاء", tint = Color.White) }
                 Text(if (mediaType == "video") "تحرير الفيديو" else "تحرير الصورة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onPublish(caption.trim()) }, enabled = !busy) {
+                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale)) }, enabled = !busy) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                     else { Text("مشاركة", color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.width(4.dp)); Icon(Icons.Rounded.Check, null, tint = Color.White) }
                 }
