@@ -222,7 +222,7 @@ private fun StoryPage(story: StoryItem, onNext: () -> Unit, onPrevious: () -> Un
     }
 }
 
-private fun storyColor(value: String): Color = runCatching { Color(android.graphics.Color.parseColor(value)) }.getOrDefault(Color(0xFF6D28D9))
+private fun storyColor(value: String): Color = runCatching { Color(android.graphics.Color.parseColor(value)) }.getOrDefault(Color(0xFF152238))
 
 @Composable
 private fun EmptyStories(profile: StudentProfile?, message: String?, onBack: () -> Unit, onCreate: () -> Unit) {

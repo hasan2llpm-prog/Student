@@ -401,7 +401,7 @@ private fun StudentNativeTopBar(
     val menuSize = cfg.int("navigation.menu_icon_size_dp", 34, 18, 44).dp
     val badgeMax = cfg.int("notifications.badge_max", 99, 9, 999)
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-        Surface(color = Color.White, shadowElevation = 0.dp) {
+        Surface(color = Color(0xFFF5F7FA), shadowElevation = 0.dp) {
             Column {
                 Box(Modifier.fillMaxWidth().height(if (home) homeHeight else normalHeight).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
                     BadgedBox(

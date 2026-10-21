@@ -40,7 +40,7 @@ fun ResetPasswordScreen(
         ) {
             Text(
                 "Student",
-                color = Color(0xFF6D28D9),
+                color = Color(0xFF152238),
                 fontSize = 34.sp,
                 fontWeight = FontWeight.Black
             )

@@ -27,13 +27,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
-val StudentBlue = Color(0xFF6D28D9)
-val StudentBlueDark = Color(0xFF5B21B6)
-val StudentText = Color(0xFF262626)
-val StudentMuted = Color(0xFF77818C)
-val StudentBorder = Color(0xFFDBDBDB)
-val StudentSoft = Color(0xFFFAF7FF)
-val StudentMessageBg = Color(0xFFF8F5FF)
+val StudentBlue = Color(0xFF152238)
+val StudentBlueDark = Color(0xFF0C1728)
+val StudentTeal = Color(0xFF0F766E)
+val StudentGold = Color(0xFFD69E2E)
+val StudentCoral = Color(0xFFE76F51)
+val StudentText = Color(0xFF172033)
+val StudentMuted = Color(0xFF718096)
+val StudentBorder = Color(0xFFD8E0E8)
+val StudentSoft = Color(0xFFF5F7FA)
+val StudentMessageBg = Color(0xFFEAF5F3)
 
 @Composable
 fun VerificationBadge(
@@ -102,18 +105,18 @@ fun StudentAvatar(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(Color(0xFFEAF2FF))
+                    .background(Color(0xFFE3F0EF))
             )
         } else {
             Surface(
                 modifier = Modifier.size(size),
                 shape = CircleShape,
-                color = Color(0xFFEAF2FF)
+                color = Color(0xFFE3F0EF)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         name.trim().firstOrNull()?.toString()?.uppercase() ?: "S",
-                        color = Color(0xFF47709F),
+                        color = StudentTeal,
                         fontSize = (size.value * 0.36f).sp,
                         fontWeight = FontWeight.Black
                     )
@@ -153,7 +156,7 @@ fun StudentName(
 @Composable
 fun CustomProfileBadge(label: String?, colorValue: String?, modifier: Modifier = Modifier) {
     if (label.isNullOrBlank()) return
-    val bg = runCatching { Color(android.graphics.Color.parseColor(colorValue ?: "#7c3aed")) }.getOrDefault(Color(0xFF7C3AED))
+    val bg = runCatching { Color(android.graphics.Color.parseColor(colorValue ?: "#0F766E")) }.getOrDefault(StudentTeal)
     Surface(modifier = modifier, shape = RoundedCornerShape(999.dp), color = bg.copy(alpha = 0.12f), border = androidx.compose.foundation.BorderStroke(1.dp, bg.copy(alpha = 0.28f))) {
         Text(label, color = bg, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
     }
@@ -208,7 +211,7 @@ private fun NativeProfileFrame(frameKey: String, modifier: Modifier = Modifier) 
         "lightning" -> listOf(Color(0xFFFFEA00), Color(0xFFFFFFFF), Color(0xFF2979FF), Color(0xFFFFEA00))
         "royal" -> listOf(Color(0xFFFFF3B0), Color(0xFFFFC107), Color(0xFFB8860B), Color(0xFFFFF3B0))
         "ember" -> listOf(Color(0xFFFF8A65), Color(0xFFBF360C), Color(0xFFFFCA28), Color(0xFFFF8A65))
-        else -> listOf(StudentBlue, Color(0xFF7C3AED), StudentBlue)
+        else -> listOf(StudentBlue, StudentTeal, StudentGold, StudentBlue)
     }
     Canvas(modifier = modifier.rotate(rotation)) {
         drawCircle(

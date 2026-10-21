@@ -15,25 +15,25 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalLayoutDirection
 
 private val StudentLightColors = lightColorScheme(
-    primary = Color(0xFF6D28D9),
+    primary = Color(0xFF152238),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFF1EAFE),
-    onPrimaryContainer = Color(0xFF2E1065),
-    secondary = Color(0xFF7C3AED),
+    primaryContainer = Color(0xFFDCEFEB),
+    onPrimaryContainer = Color(0xFF063D3A),
+    secondary = Color(0xFF0F766E),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFF5F0FF),
-    onSecondaryContainer = Color(0xFF3B1678),
-    tertiary = Color(0xFF0EA5E9),
-    background = Color(0xFFF7F7FA),
-    onBackground = Color(0xFF17151C),
+    secondaryContainer = Color(0xFFE1F3F0),
+    onSecondaryContainer = Color(0xFF064E4A),
+    tertiary = Color(0xFFD69E2E),
+    background = Color(0xFFF5F7FA),
+    onBackground = Color(0xFF172033),
     surface = Color.White,
-    onSurface = Color(0xFF17151C),
-    surfaceVariant = Color(0xFFF4F3F7),
-    onSurfaceVariant = Color(0xFF6B6572),
-    outline = Color(0xFFE2DDE8),
-    outlineVariant = Color(0xFFF0ECF4),
-    error = Color(0xFFB42318),
-    errorContainer = Color(0xFFFFEDEA)
+    onSurface = Color(0xFF172033),
+    surfaceVariant = Color(0xFFEEF2F6),
+    onSurfaceVariant = Color(0xFF64748B),
+    outline = Color(0xFFD8E0E8),
+    outlineVariant = Color(0xFFE7EDF2),
+    error = Color(0xFFD64545),
+    errorContainer = Color(0xFFFFE9E7)
 )
 
 private val BaseTypography = Typography()

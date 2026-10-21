@@ -166,10 +166,10 @@ private fun HomeStoriesRow(
             item {
                 Column(Modifier.width(68.dp).clickable(onClick = onCreateStory), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(contentAlignment = Alignment.BottomEnd) {
-                        Surface(shape = CircleShape, color = Color(0xFFF0EAFB), border = BorderStroke(2.dp, StudentBlue)) {
+                        Surface(shape = CircleShape, color = Color(0xFFE1F3F0), border = BorderStroke(2.dp, StudentTeal)) {
                             StudentAvatar(profile?.fullName ?: "أنت", profile?.avatarUrl, profile?.profileFrameUrl, 58.dp)
                         }
-                        Surface(shape = CircleShape, color = StudentBlue, border = BorderStroke(2.dp, Color.White)) {
+                        Surface(shape = CircleShape, color = StudentTeal, border = BorderStroke(2.dp, Color.White)) {
                             Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White, modifier = Modifier.size(22.dp).padding(3.dp))
                         }
                     }
@@ -181,7 +181,7 @@ private fun HomeStoriesRow(
                 Column(Modifier.width(68.dp).clickable { onOpenStory(story.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Surface(
                         shape = CircleShape,
-                        border = BorderStroke(3.dp, Color(0xFFE1306C)),
+                        border = BorderStroke(3.dp, StudentCoral),
                         color = Color.White
                     ) {
                         StudentAvatar(story.authorName, story.authorAvatarUrl, story.authorFrameUrl, 58.dp)

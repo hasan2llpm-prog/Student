@@ -53,9 +53,9 @@ import java.io.File
 import java.time.Duration
 import java.time.Instant
 
-private val MsgOrange = Color(0xFF6D28D9)
-private val MsgOrangeSoft = Color(0xFFF1EAFE)
-private val MsgBg = Color(0xFFFBFAFD)
+private val MsgOrange = Color(0xFF0F766E)
+private val MsgOrangeSoft = Color(0xFFE1F3F0)
+private val MsgBg = Color(0xFFF5F7FA)
 
 private data class PendingAttachmentUi(
     val uri: android.net.Uri? = null,
