@@ -179,6 +179,27 @@ private fun materializeEditedStoryFile(context: android.content.Context, uri: Ur
         val startY = source.height - (lines.size * paint.textSize * 1.2f) - source.height * .08f
         lines.forEachIndexed { index, text -> canvas.drawText(text, source.width / 2f, startY + index * paint.textSize * 1.2f, paint) }
     }
+    if (draft.strokes.isNotEmpty() && draft.canvasSize.width > 0f && draft.canvasSize.height > 0f) {
+        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = (source.width / draft.canvasSize.width * 8f).coerceIn(4f, 30f)
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            setShadowLayer(4f, 1f, 1f, android.graphics.Color.BLACK)
+        }
+        draft.strokes.forEach { points ->
+            if (points.size >= 2) {
+                val path = android.graphics.Path()
+                points.forEachIndexed { index, point ->
+                    val x = point.x / draft.canvasSize.width * source.width
+                    val y = point.y / draft.canvasSize.height * source.height
+                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                }
+                canvas.drawPath(path, strokePaint)
+            }
+        }
+    }
     val file = File(context.cacheDir, "story_edited_${System.currentTimeMillis()}.jpg")
     FileOutputStream(file).use { outputStream -> output.compress(Bitmap.CompressFormat.JPEG, 92, outputStream) }
     source.recycle()

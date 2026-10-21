@@ -20,18 +20,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
-data class StoryEditDraft(val caption: String, val rotation: Float, val scale: Float)
+data class StoryEditDraft(
+    val caption: String,
+    val rotation: Float,
+    val scale: Float,
+    val strokes: List<List<Offset>> = emptyList(),
+    val canvasSize: Size = Size.Zero
+)
 
 @Composable
 fun StoryComposerScreen(
@@ -49,6 +57,7 @@ fun StoryComposerScreen(
     var textColor by remember(uri) { mutableStateOf(Color.White) }
     var rotation by remember(uri) { mutableFloatStateOf(0f) }
     var scale by remember(uri) { mutableFloatStateOf(1f) }
+    var canvasSize by remember(uri) { mutableStateOf(Size.Zero) }
     val strokes = remember(uri) { mutableStateListOf<List<Offset>>() }
     var currentStroke by remember(uri) { mutableStateOf<List<Offset>>(emptyList()) }
     val colors = listOf(Color.White, Color.Black, Color(0xFFE76F51), Color(0xFFD69E2E), Color(0xFF0F766E), Color(0xFF4F46E5))
@@ -59,7 +68,7 @@ fun StoryComposerScreen(
 
         if (drawMode) {
             Canvas(
-                Modifier.fillMaxSize().pointerInput(uri, drawMode) {
+                Modifier.fillMaxSize().onSizeChanged { canvasSize = Size(it.width.toFloat(), it.height.toFloat()) }.pointerInput(uri, drawMode) {
                     detectDragGestures(
                         onDragStart = { currentStroke = listOf(it) },
                         onDrag = { change, _ -> currentStroke = currentStroke + change.position },
@@ -91,7 +100,7 @@ fun StoryComposerScreen(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose, enabled = !busy) { Icon(Icons.Rounded.Close, "إلغاء", tint = Color.White) }
                 Text(if (mediaType == "video") "تحرير الفيديو" else "تحرير الصورة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale)) }, enabled = !busy) {
+                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale, strokes.toList(), canvasSize)) }, enabled = !busy) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                     else { Text("مشاركة", color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.width(4.dp)); Icon(Icons.Rounded.Check, null, tint = Color.White) }
                 }

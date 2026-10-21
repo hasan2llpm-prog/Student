@@ -189,7 +189,8 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, StudentBorder)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.clickable(enabled = !profile.avatarUrl.isNullOrBlank()) { profile.avatarUrl?.let { avatarPreview = it } }) {
                         StudentAvatar(profile.fullName, profile.avatarUrl, profile.profileFrameUrl, 88.dp)
@@ -212,6 +213,7 @@ fun ProfileScreen(
                         OutlinedButton(onClick = { avatarPicker.launch("image/*") }, enabled = !busy, modifier = Modifier.weight(1f)) { Icon(Icons.Rounded.Person, null); Spacer(Modifier.width(4.dp)); Text("الصورة") }
                     }
                 }
+            }
             }
         }
 
