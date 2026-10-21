@@ -54,6 +54,24 @@ data class PostItem(
     val authorVerificationColor: String? = null
 )
 
+data class StoryItem(
+    val id: String,
+    val userId: String,
+    val mediaUrl: String?,
+    val mediaType: String,
+    val caption: String,
+    val backgroundColor: String,
+    val durationSeconds: Int,
+    val createdAt: String,
+    val expiresAt: String,
+    val authorName: String = "مستخدم",
+    val authorAvatarUrl: String? = null,
+    val authorFrameUrl: String? = null,
+    val authorVerified: Boolean = false,
+    val authorVerificationColor: String? = null,
+    val viewed: Boolean = false
+)
+
 
 data class ReelItem(
     val id: String,

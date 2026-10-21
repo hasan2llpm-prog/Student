@@ -312,6 +312,39 @@ class SupabaseApi {
         }
     }
 
+    fun stories(session: StudentSession, limit: Int = 80): Result<List<StoryItem>> = runCatching {
+        val safeLimit = limit.coerceIn(1, 100)
+        val arr = getArray(session, "student_stories_v281?select=*&expires_at=gt.now()&moderation_status=eq.approved&order=created_at.asc&limit=$safeLimit")
+        val ids = buildSet { for (i in 0 until arr.length()) add(arr.getJSONObject(i).optString("user_id")) }
+        val profiles = profileMap(session, ids.filter { it.isNotBlank() })
+        val viewed = getArray(session, "student_story_views_v281?select=story_id&user_id=eq.${session.userId}&limit=500")
+            .let { a -> buildSet { for (i in 0 until a.length()) add(a.getJSONObject(i).optString("story_id")) } }
+        buildList {
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val uid = o.optString("user_id")
+                val p = profiles[uid]
+                add(StoryItem(o.optString("id"), uid, nullable(o,"media_url"), o.optString("media_type","text"), o.optString("caption",""), o.optString("background_color","#6D28D9"), o.optInt("duration_seconds",5), first(o,"created_at"), first(o,"expires_at"), p?.fullName ?: "مستخدم", p?.avatarUrl, p?.profileFrameUrl, p?.isVerified ?: false, p?.verificationColor, viewed.contains(o.optString("id"))))
+            }
+        }
+    }
+
+    fun createStory(session: StudentSession, mediaUrl: String?, mediaType: String, caption: String, backgroundColor: String = "#6D28D9", durationSeconds: Int = 5): Result<Unit> = runCatching {
+        val safeType = mediaType.lowercase().takeIf { it in setOf("text","image","video") } ?: "text"
+        requestJson(session, "student_stories_v281", "POST", JSONObject().put("user_id",session.userId).put("media_url",mediaUrl ?: JSONObject.NULL).put("media_type",safeType).put("caption",caption.take(1000)).put("background_color",backgroundColor).put("duration_seconds",durationSeconds.coerceIn(3,15)), "return=minimal")
+        Unit
+    }
+
+    fun markStoryViewed(session: StudentSession, storyId: String): Result<Unit> = runCatching {
+        requestJson(session, "student_story_views_v281", "POST", JSONObject().put("story_id",storyId).put("user_id",session.userId), "resolution=merge-duplicates,return=minimal")
+        Unit
+    }
+
+    fun deleteStory(session: StudentSession, storyId: String): Result<Unit> = runCatching {
+        requestJson(session, "student_stories_v281?id=eq.$storyId&user_id=eq.${session.userId}", "DELETE", null, "return=minimal")
+        Unit
+    }
+
     fun createPost(
         session: StudentSession,
         content: String,

@@ -43,8 +43,10 @@ fun FeedScreen(
     api: SupabaseApi,
     session: StudentSession,
     profile: StudentProfile?,
-    onOpenCommunity: (String?) -> Unit,
+    onOpenCommunity: (String) -> Unit,
     onCreatePost: () -> Unit,
+    onCreateStory: () -> Unit,
+    onOpenStories: (String?) -> Unit,
     onOpenProfile: () -> Unit,
     onOpenEducation: (String) -> Unit,
     onOpenStudentAi: () -> Unit,
@@ -59,6 +61,7 @@ fun FeedScreen(
     val scope = rememberCoroutineScope()
     val cfg = LocalNativeRemoteConfig.current
     var communityPosts by remember { mutableStateOf<List<PostItem>>(emptyList()) }
+    var stories by remember { mutableStateOf<List<StoryItem>>(emptyList()) }
     var ads by remember { mutableStateOf<List<HomeAd>>(emptyList()) }
     var featureFlags by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     var remoteModules by remember { mutableStateOf<List<RemoteModuleItem>>(emptyList()) }
@@ -88,6 +91,7 @@ fun FeedScreen(
                 featureFlags = featureFlags + controls.mapKeys { (key, _) -> "english_${key.lowercase()}" }
             }
             loaded.third.onSuccess { remoteModules = it }
+            withContext(Dispatchers.IO) { api.stories(session) }.onSuccess { stories = it }
             loading = false
         }
     }
@@ -106,10 +110,10 @@ fun FeedScreen(
     ) {
         item {
             HomeStoriesRow(
-                posts = communityPosts,
+                stories = stories,
                 profile = profile,
-                onOpenStory = { onOpenCommunity(it) },
-                onCreateStory = onCreatePost
+                onOpenStory = { onOpenStories(it) },
+                onCreateStory = onCreateStory
             )
         }
         if (cfg.bool("home.show_features", true)) {
@@ -142,7 +146,7 @@ fun FeedScreen(
 
 @Composable
 private fun HomeStoriesRow(
-    posts: List<PostItem>,
+    stories: List<StoryItem>,
     profile: StudentProfile?,
     onOpenStory: (String) -> Unit,
     onCreateStory: () -> Unit
@@ -173,17 +177,17 @@ private fun HomeStoriesRow(
                     Text("قصتك", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
-            items(posts.take(12), key = { it.id }) { post ->
-                Column(Modifier.width(68.dp).clickable { onOpenStory(post.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
+            items(stories.take(12), key = { it.id }) { story ->
+                Column(Modifier.width(68.dp).clickable { onOpenStory(story.id) }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Surface(
                         shape = CircleShape,
                         border = BorderStroke(3.dp, Color(0xFFE1306C)),
                         color = Color.White
                     ) {
-                        StudentAvatar(post.authorName, post.authorAvatarUrl, post.authorFrameUrl, 58.dp)
+                        StudentAvatar(story.authorName, story.authorAvatarUrl, story.authorFrameUrl, 58.dp)
                     }
                     Spacer(Modifier.height(5.dp))
-                    Text(post.authorName, fontSize = 11.sp, maxLines = 1, fontWeight = FontWeight.SemiBold)
+                    Text(story.authorName, fontSize = 11.sp, maxLines = 1, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
