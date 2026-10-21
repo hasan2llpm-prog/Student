@@ -23,11 +23,10 @@ android {
         }
         beta {
             dimension "channel"
-            // IMPORTANT: beta intentionally keeps the SAME applicationId as production
-            // so a signed BetaRelease updates the installed Student app instead of
-            // installing a second app beside it.
+            // Beta must be installable beside Stable for safe testing.
+            applicationIdSuffix ".beta"
             versionNameSuffix "-beta"
-            manifestPlaceholders = [appLabel: "Student"]
+            manifestPlaceholders = [appLabel: "Student Beta"]
         }
     }
 
