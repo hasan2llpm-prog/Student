@@ -340,6 +340,22 @@ class SupabaseApi {
         Unit
     }
 
+    fun setStoryReaction(session: StudentSession, storyId: String, reaction: String?): Result<Unit> = runCatching {
+        if (reaction.isNullOrBlank()) {
+            requestJson(session, "student_story_reactions_v282?story_id=eq.$storyId&user_id=eq.${session.userId}", "DELETE", null, "return=minimal")
+        } else {
+            requestJson(session, "student_story_reactions_v282", "POST", JSONObject().put("story_id", storyId).put("user_id", session.userId).put("reaction", reaction), "resolution=merge-duplicates,return=minimal")
+        }
+        Unit
+    }
+
+    fun replyToStory(session: StudentSession, storyId: String, body: String): Result<Unit> = runCatching {
+        val clean = body.trim().take(1000)
+        require(clean.isNotBlank()) { "اكتب ردًا قبل الإرسال." }
+        requestJson(session, "student_story_replies_v282", "POST", JSONObject().put("story_id", storyId).put("user_id", session.userId).put("body", clean), "return=minimal")
+        Unit
+    }
+
     fun deleteStory(session: StudentSession, storyId: String): Result<Unit> = runCatching {
         requestJson(session, "student_stories_v281?id=eq.$storyId&user_id=eq.${session.userId}", "DELETE", null, "return=minimal")
         Unit

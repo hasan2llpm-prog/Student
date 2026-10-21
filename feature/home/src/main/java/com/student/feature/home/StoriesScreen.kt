@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -105,6 +106,8 @@ fun StoriesScreen(
             }
         }
         StoryViewer(
+            api = api,
+            session = session,
             stories = stories,
             pagerState = pagerState,
             onClose = onBack,
@@ -134,6 +137,8 @@ fun StoriesScreen(
 
 @Composable
 private fun StoryViewer(
+    api: SupabaseApi,
+    session: StudentSession,
     stories: List<StoryItem>,
     pagerState: androidx.compose.foundation.pager.PagerState,
     onClose: () -> Unit,
@@ -141,6 +146,10 @@ private fun StoryViewer(
     onNext: () -> Unit,
     onPrevious: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var reply by remember { mutableStateOf("") }
+    var selectedReaction by remember { mutableStateOf<String?>(null) }
+    var interactionMessage by remember { mutableStateOf<String?>(null) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
@@ -173,6 +182,37 @@ private fun StoryViewer(
                 IconButton(onClick = onCreate) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
                 IconButton(onClick = {}) { Icon(Icons.Rounded.MoreVert, "المزيد", tint = Color.White) }
+            }
+            current?.let { story ->
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf("like" to "👍", "love" to "❤️", "fire" to "🔥", "wow" to "😮").forEach { (key, emoji) ->
+                        TextButton(onClick = {
+                            val nextReaction = if (selectedReaction == key) null else key
+                            selectedReaction = nextReaction
+                            scope.launch {
+                                val result = withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, nextReaction) }
+                                if (result.isFailure) interactionMessage = "تعذر حفظ التفاعل"
+                            }
+                        }, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(emoji, fontSize = 22.sp) }
+                    }
+                    OutlinedTextField(
+                        value = reply,
+                        onValueChange = { reply = it.take(1000) },
+                        placeholder = { Text("أرسل ردًا...") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Black.copy(alpha = .45f), focusedContainerColor = Color.Black.copy(alpha = .55f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedPlaceholderColor = Color.White.copy(alpha = .8f), focusedPlaceholderColor = Color.White)
+                    )
+                    IconButton(enabled = reply.isNotBlank(), onClick = {
+                        val body = reply.trim()
+                        reply = ""
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) { api.replyToStory(session, story.id, body) }
+                            if (result.isFailure) { reply = body; interactionMessage = "تعذر إرسال الرد" }
+                        }
+                    }) { Icon(Icons.Rounded.Send, "إرسال رد", tint = Color.White) }
+                }
+                interactionMessage?.let { Text(it, color = Color(0xFFFFC7B8), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp)) }
             }
         }
     }
