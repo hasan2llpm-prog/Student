@@ -636,7 +636,7 @@ private fun MessagesHomeList(
                 }
             LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 items(conversations.filter { query.isBlank() || it.title.contains(query,true) || it.lastMessage.contains(query,true) },key={it.id}) { conv ->
-                    Row(Modifier.fillMaxWidth().combinedClickable(onClick={onOpenConversation(conv)},onLongClick={onDeleteConversation(conv)}).padding(horizontal=8.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).border(1.dp, StudentBorder, RoundedCornerShape(18.dp)).combinedClickable(onClick={onOpenConversation(conv)},onLongClick={onDeleteConversation(conv)}).padding(horizontal=12.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
                         Box {
                             Box(Modifier.clickable { conv.otherUserId?.let(onOpenProfile) }) { StudentAvatar(conv.title,conv.avatarUrl,conv.profileFrameUrl,54.dp) }
                             if (isUserActive(conv.lastActiveAt)) Box(Modifier.align(Alignment.BottomEnd).size(14.dp).background(Color(0xFF22C55E),CircleShape).border(2.dp,Color.White,CircleShape))

@@ -42,6 +42,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
     var roomBackgrounds by remember { mutableStateOf<List<VoiceRoomBackground>>(emptyList()) }
     var selectedBackground by remember { mutableStateOf<VoiceRoomBackground?>(null) }
     var tabKey by remember { mutableStateOf("products") }
+    var productQuery by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<StoreProduct?>(null) }
     var deleteFrame by remember { mutableStateOf<OwnedProfileFrame?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -198,6 +199,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
         }
     }
     val allowedTabs = (configuredTabs + "backgrounds").distinct().ifEmpty { listOf("products", "backgrounds") }
+    val filteredProducts = products.filter { productQuery.isBlank() || it.name.contains(productQuery.trim(), true) || it.description.contains(productQuery.trim(), true) }
     LaunchedEffect(allowedTabs) { if (tabKey !in allowedTabs) tabKey = allowedTabs.first() }
 
     Column(Modifier.fillMaxSize()) {
@@ -207,6 +209,17 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                 Text("خصّص حسابك وامتلك مزايا جديدة", color = StudentMuted, fontSize = 12.sp)
             }
             Icon(Icons.Rounded.ShoppingBag, "المتجر", tint = StudentGold, modifier = Modifier.size(28.dp))
+        }
+        if (tabKey == "products") {
+            OutlinedTextField(
+                value = productQuery,
+                onValueChange = { productQuery = it.take(60) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+                singleLine = true,
+                shape = RoundedCornerShape(18.dp),
+                leadingIcon = { Icon(Icons.Rounded.Search, "بحث") },
+                placeholder = { Text("ابحث عن منتج أو ميزة") }
+            )
         }
         if (cfg.bool("store.show_wallet", true)) Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -243,7 +256,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                gridItems(products, key = { it.id }) { p ->
+                gridItems(filteredProducts, key = { it.id }) { p ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { selected = p },
                         shape = RoundedCornerShape(15.dp),

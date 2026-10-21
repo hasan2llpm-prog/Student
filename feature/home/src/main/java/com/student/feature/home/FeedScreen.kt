@@ -109,6 +109,14 @@ fun FeedScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
+            HomeWelcomePanel(
+                name = profile?.fullName?.substringBefore(" ").orEmpty().ifBlank { "طالب" },
+                onTranslate = onOpenStudentAi,
+                onEducation = { onOpenEducation("home") },
+                onCreatePost = onCreatePost
+            )
+        }
+        item {
             HomeStoriesRow(
                 stories = stories,
                 profile = profile,
@@ -140,6 +148,36 @@ fun FeedScreen(
                 Spacer(Modifier.height(cfg.int("home.ads_top_space_dp", 10, 0, 50).dp))
                 HomeAdsCarousel(ads)
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeWelcomePanel(name: String, onTranslate: () -> Unit, onEducation: () -> Unit, onCreatePost: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = StudentBlueDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("صباح الخير، $name", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.Black)
+            Text("مساحتك اليومية للتعلم والتواصل والإنجاز", color = Color.White.copy(alpha = .78f), fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HomeQuickAction(Icons.Rounded.Translate, "ترجم", onTranslate)
+                HomeQuickAction(Icons.Rounded.School, "تعلّم", onEducation)
+                HomeQuickAction(Icons.Rounded.Edit, "انشر", onCreatePost)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.HomeQuickAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Surface(Modifier.weight(1f).clickable(onClick = onClick), shape = RoundedCornerShape(15.dp), color = Color.White.copy(alpha = .12f)) {
+        Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null, tint = StudentGold, modifier = Modifier.size(20.dp))
+            Text(label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

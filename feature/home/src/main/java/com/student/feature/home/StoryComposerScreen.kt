@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FormatColorText
 import androidx.compose.material.icons.rounded.Gesture
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.RotateRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -43,12 +45,14 @@ fun StoryComposerScreen(
     var textMode by remember(uri) { mutableStateOf(false) }
     var drawMode by remember(uri) { mutableStateOf(false) }
     var textColor by remember(uri) { mutableStateOf(Color.White) }
+    var rotation by remember(uri) { mutableFloatStateOf(0f) }
+    var scale by remember(uri) { mutableFloatStateOf(1f) }
     val strokes = remember(uri) { mutableStateListOf<List<Offset>>() }
     var currentStroke by remember(uri) { mutableStateOf<List<Offset>>(emptyList()) }
     val colors = listOf(Color.White, Color.Black, Color(0xFFE76F51), Color(0xFFD69E2E), Color(0xFF0F766E), Color(0xFF4F46E5))
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        AsyncImage(uri, "معاينة القصة", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        AsyncImage(uri, "معاينة القصة", Modifier.fillMaxSize().graphicsLayer { rotationZ = rotation; scaleX = scale; scaleY = scale }, contentScale = ContentScale.Crop)
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.08f)))
 
         if (drawMode) {
@@ -102,6 +106,13 @@ fun StoryComposerScreen(
                     singleLine = false,
                     colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Black.copy(alpha = .5f), focusedContainerColor = Color.Black.copy(alpha = .5f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedLabelColor = Color.White, focusedLabelColor = Color.White)
                 )
+            }
+            if (mediaType == "image") {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EditorTool(Icons.Rounded.RotateRight, "تدوير") { rotation = (rotation + 90f) % 360f }
+                    Text("تكبير", color = Color.White, fontSize = 11.sp)
+                    Slider(value = scale, onValueChange = { scale = it }, valueRange = 1f..2.5f, modifier = Modifier.weight(1f))
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 EditorTool(Icons.Rounded.Refresh, "استبدال") { onPickAnother() }
