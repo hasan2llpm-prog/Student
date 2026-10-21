@@ -1,0 +1,83 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.student.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.studentiraq.app'
+        minSdk 24
+        targetSdk 36
+        versionCode 45
+        versionName '2.10.1'
+    }
+
+    flavorDimensions "channel"
+    productFlavors {
+        stable {
+            dimension "channel"
+            manifestPlaceholders = [appLabel: "Student"]
+        }
+        beta {
+            dimension "channel"
+            // IMPORTANT: beta intentionally keeps the SAME applicationId as production
+            // so a signed BetaRelease updates the installed Student app instead of
+            // installing a second app beside it.
+            versionNameSuffix "-beta"
+            manifestPlaceholders = [appLabel: "Student"]
+        }
+    }
+
+    buildFeatures { compose true }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.14'
+    }
+    signingConfigs {
+        release {
+            def ksPath = System.getenv('STUDENT_KEYSTORE_PATH')
+            if (ksPath != null && !ksPath.isBlank()) {
+                storeFile file(ksPath)
+                storePassword System.getenv('STUDENT_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('STUDENT_KEY_ALIAS')
+                keyPassword System.getenv('STUDENT_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':core:data')
+    implementation project(':feature:auth')
+    implementation project(':feature:home')
+
+    implementation platform('androidx.compose:compose-bom:2024.06.00')
+    implementation 'androidx.activity:activity-compose:1.9.0'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.4'
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'io.coil-kt:coil:2.6.0'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    implementation 'com.google.firebase:firebase-messaging'
+}

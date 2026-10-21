@@ -1,0 +1,45 @@
+Student v2.9.3 — versionCode 43
+
+CHANGES
+- Saved is now reachable by a native menu entry and by remote targets:
+  saved / bookmarks / favorites. Remote module icon_key=saved is supported.
+- Existing saved-items screen, search, filters and saved-item RPCs are preserved.
+- Supabase migration repairs the missing student_remote_modules table with RLS.
+  The saved home shortcut is created disabled while v2.9.2 users are still active.
+  The native Saved menu entry on v2.9.3 does not depend on the remote shortcut.
+- Internal updater: WorkManager checks the canonical student_runtime_settings
+  periodically (15-minute minimum; Android may defer checks). A high-priority
+  data-only FCM app_update can start an immediate check if the updated send-push
+  Edge Function is deployed. The local worker verifies update availability
+  against Supabase, rather than trusting notification payload fields.
+- Update downloads use DownloadManager and run when Student is closed where
+  Android allows background work; install always requires Android user consent.
+  One local available notice and one ready-to-install notice per version.
+- Ready-to-install notification opens the verified local APK installer.
+- Optional updates no longer take over the entire Student UI. Force-update
+  remains controlled by server policy for emergency cases.
+- Stale/removed DownloadManager records are retried instead of permanently
+  being treated as active downloads.
+- No PDF Studio or pdfbox-android reintroduced.
+
+BUILD / DEPLOY
+1) GitHub Actions: upload this ZIP and student-v2.9.3-AUTO-RELEASE.yml to
+   repository root and run the workflow (after signing Secrets are configured).
+   Workflow compiles, runs tests and lint, builds signed APK/AAB, checks APK,
+   publishes GitHub Release and syncs student_runtime_settings versionCode 43.
+2) Supabase: apply the included migration after the source is staged. The
+   script can be run ahead of APK release: shortcut is disabled by default.
+3) Deploy supabase/functions/send-push/index.ts to the EXISTING send-push
+   function for prompt FCM-triggered background checks. If not deployed,
+   periodic WorkManager checks still run when OS schedules them on v2.9.3.
+4) After most users have versionCode >=43, enable the saved_shortcut remote
+   module (SQL command is commented at end of migration).
+
+IMPORTANT LIMITATIONS
+- No real Gradle/Android compile or on-device instrumentation test was possible
+  in the generation environment. Only static checks and ZIP/YAML validation
+  are available locally. GitHub Actions must complete before claiming a
+  tested APK. WorkManager and high-priority FCM are subject to Android battery
+  policies and cannot promise an immediate check at an exact time.
+- Notification payload sent to older app versions and network/OS constraints
+  can delay the very first transition to v2.9.3.

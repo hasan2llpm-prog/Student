@@ -1,0 +1,8 @@
+Student v2.6.0 Production
+- Rooms moved into the main content grid.
+- Room member sidebar, moving chat feed, replies and reactions.
+- Keyboard-safe room composer.
+- Owner room settings with gallery/store backgrounds.
+- Student diamond icon/balance in rooms.
+- Server-side three-way gift split: recipient(s), room owner, app treasury.
+- Story publishing opens the published story instead of reopening the studio.

@@ -1,0 +1,6 @@
+Student v2.5.0 Production
+- Rooms UX: 10 fixed mic seats; 5 base + 5 paid unlocks
+- Join/save room, room text chat, gift box with emoji events
+- Room backgrounds from admin/store with server-side Diamond purchase
+- Idempotent follow from rooms
+- Story publish no longer reopens studio; opens published story

@@ -1,0 +1,9 @@
+Student v2.4.0 Production
+- Keeps v2.3.1 Story UX fix.
+- Personal completion-gated progress for Vocabulary, Grammar, Reading, Listening, Writing, Speaking.
+- New users start each learning path at sequence 0; missed content is not skipped.
+- Global voice rooms: base 50 members, server-priced creation, teacher/admin free creation.
+- LiveKit voice integration with server-minted tokens; no LiveKit secret in APK.
+- Mic request/approval, host/moderator roles, member profiles/follow, room gifts, capacity upgrades by Diamonds.
+- Room financial operations are server-authoritative and atomic with transaction log.
+- Admin room settings and capacity tiers.

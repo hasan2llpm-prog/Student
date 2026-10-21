@@ -1,0 +1,6 @@
+Student v2.3.0 Stable
+- Grammar: unique rule cards (60 major rules backed by 300 detailed lessons), Arabic/English search, bilingual explanations, Remember Later.
+- Store: two-column compact catalog; server-authoritative RPC purchase path retained; no client-side price trust.
+- Profile: compact Edit Profile button; post grid items open an internal full-screen post viewer.
+- Retains v2.2 security hardening: backups disabled, cleartext blocked, encrypted session tokens, server-side store/payment protections.
+- Retains Stories, advanced OCR translation, vocabulary 5000, language skills, messages presence/last seen, full-screen feature navigation and forced-update infrastructure from the tested base.

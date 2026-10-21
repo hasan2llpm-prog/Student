@@ -1,0 +1,23 @@
+Student v2.7.0 FIX2 candidate
+Targeted audit: Vocabulary / Stories / Reels
+
+Vocabulary
+- Removed client-side switching between local/remote word sources.
+- Added server-authoritative student_vocabulary_batch_v271 RPC.
+- Exactly 15 words are tied to the user's sequence index and stay unchanged across reopen/login until completion advances the sequence after 08:00 Baghdad.
+- Added explicit retry instead of silently switching to a different word corpus.
+
+Stories
+- Replaced viewer video playback with Media3 ExoPlayer.
+- Added shared bounded media cache and 2 MB next-video warmup.
+- Uses actual video duration/progress instead of a fixed fake timer.
+- Removed double-next race between timer and player end.
+- One active Story video player is reused and released with lifecycle.
+- Cached story list renders immediately on reopen while refreshing in background.
+- Story uploads stream through a temp file instead of loading the whole video into RAM.
+
+Reels
+- Added shared Media3 cache and next-reel prefix prefetch.
+- Improved load-control buffering thresholds to reduce repeated rebuffering.
+- Cached reel list renders immediately on reopen while refreshing in background.
+- Original and 360p reel uploads stream from files instead of readBytes(), reducing OOM risk.

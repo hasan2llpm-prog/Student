@@ -1,0 +1,19 @@
+Student v2.7.4 FIX9 / versionCode 38
+
+الهدف:
+توسيع التحكم من Supabase بحيث يمكن تعديل الواجهة والمحتوى وإضافة/إخفاء/حذف/ترتيب اختصارات ديناميكية بدون APK جديد.
+
+الجديد:
+- student_native_runtime_config يبقى المصدر الأساسي لإعدادات الواجهة Runtime UI.
+- جدول student_remote_modules الجديد يسمح بإضافة/حذف/إخفاء/ترتيب عناصر ديناميكية في الصفحة الرئيسية.
+- كل عنصر Remote Module يحتوي: module_key, title, subtitle, icon_key, target, enabled, sort_order.
+- target يمكن أن يفتح مسارًا موجودًا داخل Student مثل messages / store / reels / rooms / education / community / translate أو رابط HTTPS.
+- الكتابة على Remote Modules محصورة بحساب admin عبر RLS.
+- التطبيق يقرأ Remote Modules مع كل تحديث للصفحة ويعرضها حسب sort_order.
+- استمرار fallback الآمن للإعدادات عند فشل Supabase.
+
+حد مهم:
+يمكن لـSupabase التحكم بأي ميزة سبق أن بُني محركها أو مسارها داخل APK. ميزة Android جديدة بالكامل، Permission جديدة، SDK جديد، أو منطق Native غير موجود يحتاج APK مرة واحدة ثم يمكن جعله ديناميكيًا بعد ذلك.
+
+الإجراءات الخطرة:
+أي حذف/حظر/شراء/إجراء حساس يجب أن يبقى بخطوة تأكيد في الواجهة وبصلاحيات Server-side/RLS.

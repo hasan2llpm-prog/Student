@@ -1,0 +1,13 @@
+Student v2.7.1 FIX6 — Automatic Release + Mandatory Internal Update
+
+- Keeps all FIX5 Community changes and vocabulary behavior unchanged.
+- versionCode: 35
+- versionName: 2.7.1
+- GitHub Actions automatically creates/updates the production GitHub Release after compile/tests/lint/signing pass.
+- The workflow uploads APK, AAB, SHA256SUMS.txt and update.json automatically.
+- The workflow calls Supabase Edge Function sync-github-update after publishing.
+- sync-github-update reads only the official hasan2llpm-prog/Student latest GitHub release, validates update.json + APK asset, then updates student_runtime_settings.
+- force_update=true and minimum_version_code=35 for this release.
+- A single broadcast notification row is created when a newer versionCode is published; the existing push webhook can deliver it to active FCM tokens.
+- Existing app update manager downloads the APK in the background and blocks continued use once the verified APK is ready for installation.
+- No Supabase service-role secret is placed in GitHub or the Android app.

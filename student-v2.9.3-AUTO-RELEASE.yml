@@ -1,0 +1,285 @@
+name: Build + Auto Release Student v2.9.3 SAVED-BACKGROUND-UPDATE
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: student-production-v2.9.3
+  cancel-in-progress: false
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+
+    env:
+      RELEASE_TAG: v2.9.3
+      VERSION_NAME: 2.9.3
+      VERSION_CODE: '43'
+      ZIP_NAME: Student-v2.9.3-STABLE-PRODUCTION.zip
+      APK_NAME: Student-v2.9.3.apk
+      AAB_NAME: Student-v2.9.3.aab
+      SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Verify V293 ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$ZIP_NAME" || { echo "ERROR: $ZIP_NAME not found in repository root"; exit 1; }
+          unzip -tq "$ZIP_NAME"
+
+      - name: Extract project
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf extracted
+          mkdir extracted
+          unzip -q "$ZIP_NAME" -d extracted
+          SETTINGS="$(find extracted \( -name settings.gradle -o -name settings.gradle.kts \) -type f | head -n 1 || true)"
+          test -n "$SETTINGS" || { echo "ERROR: settings.gradle not found"; exit 1; }
+          echo "PROJECT_DIR=$GITHUB_WORKSPACE/$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+          log-accepted-android-sdk-licenses: 'false'
+
+      - name: Install Android SDK 36
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager --list_installed | grep -E 'platform-tools|platforms;android-36|build-tools;36.0.0'
+
+      - name: Set up trusted Gradle 8.13
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+          cache-provider: basic
+
+      - name: Static production checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          test ! -e gradle/wrapper/gradle-wrapper.jar
+          grep -q "versionCode ${VERSION_CODE}" app/build.gradle
+          grep -q "versionName '${VERSION_NAME}'" app/build.gradle
+          grep -q 'android:allowBackup="false"' app/src/main/AndroidManifest.xml
+          grep -q 'android:usesCleartextTraffic="false"' app/src/main/AndroidManifest.xml
+          ! grep -R -n -E 'SUPABASE_SERVICE_ROLE_KEY\s*=|BEGIN (RSA |EC |)PRIVATE KEY' app core feature || {
+            echo 'ERROR: private server secret found in Android sources'; exit 1;
+          }
+          ! grep -R -n 'readBytes(' app core feature || { echo 'ERROR: whole-file readBytes() found'; exit 1; }
+          ! grep -R -n 'VideoView' app core feature || { echo 'ERROR: legacy VideoView found'; exit 1; }
+          test ! -f feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          ! grep -R -n -E 'StoriesScreen|StoryItem|StoryReplyItem|createStory|story_replies|story_reactions|story_views|student://story|hasActiveStory' app core feature --include='*.kt' --include='*.xml' || {
+            echo 'ERROR: legacy Stories runtime symbols remain'; exit 1;
+          }
+          grep -q 'messages.room_bubble_mine_color' feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
+          grep -q 'messages.room_bubble_other_color' feature/home/src/main/java/com/student/feature/home/MessagesScreen.kt
+          grep -q 'student_native_runtime_config' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun NativeRemoteConfig.color' feature/home/src/main/java/com/student/feature/home/RemoteConfigUi.kt
+          grep -q 'student_vocabulary_batch_v272' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          test -f supabase/functions/sync-github-update/index.ts
+          grep -q 'hasan2llpm-prog/Student' supabase/functions/sync-github-update/index.ts
+          grep -q 'student_runtime_settings' supabase/functions/sync-github-update/index.ts
+          grep -q 'student_remote_modules' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          test -f supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          test -f supabase/migrations/20260922_student_v293_unified_saved_cleanup.sql
+          test -f feature/home/src/main/java/com/student/feature/home/RemoteActionScreen.kt
+          test -f feature/home/src/main/java/com/student/feature/home/RemoteScreenScreen.kt
+          test -f feature/home/src/main/java/com/student/feature/home/SavedScreen.kt
+          grep -q 'student_purchase_username3' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_voice_room_manage_member_v28' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_upsert_v293' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_items' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'student_saved_upsert_v293' supabase/migrations/20260922_student_v293_unified_saved_cleanup.sql
+          grep -q 'rememberEnglishWord' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          grep -q 'api.saveItem(session, "grammar"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          grep -q 'api.saveItem(session, "listening"' feature/home/src/main/java/com/student/feature/home/EnglishAcademyScreen.kt
+          test -f app/src/main/java/com/student/app/StudentUpdateChecks.kt
+          grep -q 'StudentUpdateChecks.enqueueNow(this)' app/src/main/java/com/student/app/StudentMessagingService.kt
+          grep -q 'StudentUpdateChecks.schedule(this)' app/src/main/java/com/student/app/StudentApplication.kt
+          grep -q 'work-runtime-ktx' app/build.gradle
+          grep -q 'onSaved = { navigate(StudentRoute.SAVED) }' feature/home/src/main/java/com/student/feature/home/HomeScreen.kt
+          grep -q 'Icons.Rounded.Bookmark, "المحفوظات"' feature/home/src/main/java/com/student/feature/home/MenuScreen.kt
+          grep -q 'student_remote_modules' supabase/migrations/20260923_student_v293_saved_update.sql
+          test -f supabase/migrations/20260923_student_v293_saved_update.sql
+          grep -q 'manifest.forceUpdate === true' supabase/functions/sync-github-update/index.ts
+          grep -q 'fun remoteScreen' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun remoteRule' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'fun remoteAssets' core/data/src/main/java/com/student/core/data/SupabaseApi.kt
+          grep -q 'REMOTE_SCREEN' feature/home/src/main/java/com/student/feature/home/HomeScreen.kt
+          grep -q 'student_remote_screens' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          grep -q 'student_remote_assets' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          grep -q 'student_remote_rules' supabase/migrations/20260921_student_v290_foundation_remote_engine.sql
+          test ! -f feature/home/src/main/java/com/student/feature/home/DocumentStudioScreen.kt
+          test ! -f feature/home/src/main/java/com/student/feature/home/PdfStudioOperations.kt
+          test ! -f feature/home/src/main/java/com/student/feature/home/PdfToolsSheet.kt
+          ! grep -R -n -E 'DOCUMENT_STUDIO|DocumentStudio|PdfStudio|pdfbox-android' app core feature --include='*.kt' --include='*.gradle' || {
+            echo 'ERROR: Document/PDF Studio runtime remnants found'; exit 1;
+          }
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          vocab = next(Path('.').rglob('oxford_5000_ar.json'))
+          grammar = next(Path('.').rglob('grammar_300_bilingual.json'))
+          assert len(json.loads(vocab.read_text(encoding='utf-8'))) == 5000
+          assert len(json.loads(grammar.read_text(encoding='utf-8'))) == 300
+          print('V293 static checks passed')
+          PY
+
+      - name: Compile Kotlin before signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --version
+          gradle --no-daemon --stacktrace :app:compileStableReleaseKotlin
+
+      - name: Run unit tests and Android lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --no-daemon --stacktrace :app:testStableReleaseUnitTest :app:lintStableRelease
+
+      - name: Restore production signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            test -n "${!v:-}" || { echo "ERROR: missing GitHub secret $v"; exit 1; }
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/student-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "STUDENT_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "STUDENT_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build signed Stable APK and AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
+
+      - name: Verify and collect production artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          APK="$(find "$PROJECT_DIR/app/build/outputs/apk/stable/release" -type f -name '*.apk' | head -n 1 || true)"
+          AAB="$(find "$PROJECT_DIR/app/build/outputs/bundle/stableRelease" -type f -name '*.aab' | head -n 1 || true)"
+          test -n "$APK" || { echo 'ERROR: signed APK not found'; exit 1; }
+          test -n "$AAB" || { echo 'ERROR: signed AAB not found'; exit 1; }
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          cp "$APK" "$GITHUB_WORKSPACE/dist/$APK_NAME"
+          cp "$AAB" "$GITHUB_WORKSPACE/dist/$AAB_NAME"
+          sha256sum "$GITHUB_WORKSPACE/dist/$APK_NAME" "$GITHUB_WORKSPACE/dist/$AAB_NAME" > "$GITHUB_WORKSPACE/dist/SHA256SUMS.txt"
+          cat > "$GITHUB_WORKSPACE/dist/update.json" <<JSON
+          {
+            "versionCode": ${VERSION_CODE},
+            "versionName": "${VERSION_NAME}",
+            "apkAsset": "${APK_NAME}",
+            "forceUpdate": false,
+            "minimumVersionCode": 0,
+            "message": "يتوفر تحديث Student ${VERSION_NAME} مع تحسينات جديدة."
+          }
+          JSON
+          python3 -m json.tool "$GITHUB_WORKSPACE/dist/update.json" >/dev/null
+          ls -lh "$GITHUB_WORKSPACE/dist"
+
+      - name: Upload build artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v2.9.3-production
+          path: |
+            dist/Student-v2.9.3.apk
+            dist/Student-v2.9.3.aab
+            dist/SHA256SUMS.txt
+            dist/update.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release automatically
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing assets."
+            gh release upload "$RELEASE_TAG" \
+              "dist/$APK_NAME" "dist/$AAB_NAME" dist/SHA256SUMS.txt dist/update.json \
+              --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" \
+              --title "Student v${VERSION_NAME}" \
+              --notes "Student v${VERSION_NAME} Production — automatic internal update." \
+              --latest --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" \
+              "dist/$APK_NAME" "dist/$AAB_NAME" dist/SHA256SUMS.txt dist/update.json \
+              --target "$GITHUB_SHA" \
+              --title "Student v${VERSION_NAME}" \
+              --notes "Student v${VERSION_NAME} Production — automatic internal update." \
+              --latest --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Wait until GitHub latest release is visible
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            TAG="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name' 2>/dev/null || true)"
+            if [ "$TAG" = "$RELEASE_TAG" ]; then
+              echo "Latest release is $TAG"
+              exit 0
+            fi
+            echo "Waiting for GitHub latest release propagation ($i/12), current=$TAG"
+            sleep 5
+          done
+          echo 'ERROR: GitHub latest release did not propagate in time'
+          exit 1
+
+      - name: Sync update automatically to Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 90 \
+            -X POST "$SUPABASE_SYNC_URL")"
+          echo "$RESPONSE"
+          python3 - "$RESPONSE" <<'PY'
+          import json, sys
+          data=json.loads(sys.argv[1])
+          assert data.get('ok') is True, data
+          assert data.get('versionCode') == 43, data
+          assert data.get('versionName') == '2.9.3', data
+          assert data.get('forceUpdate') is False, data
+          assert data.get('minimumVersionCode') == 0, data
+          print('Supabase quiet update synced successfully')
+          PY

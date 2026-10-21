@@ -1,0 +1,11 @@
+Student v2.10.1 — versionCode 45
+
+HOTFIX
+- Replaced the generic bell notification small icon with a dedicated monochrome Student "S" icon.
+- Firebase default notification icon remains @drawable/ic_stat_student, now branded as Student.
+- Native notifications from StudentMessagingService and StudentUpdateManager use the same branded icon automatically.
+- No Supabase schema change is required for this icon fix.
+- Includes all v2.10.0 UI/progress/translation changes.
+
+BUILD
+- Rebuild APK/AAB because Android notification small icons are packaged inside the APK and cannot be changed by Supabase alone.

@@ -1,0 +1,16 @@
+Student v2.9.2 — Unified Saved Items / PDF Studio Removal
+versionCode 42
+
+- Removed Document/PDF Studio completely from Android runtime and removed pdfbox-android dependency.
+- Removed Document Studio route, home tile, PDF operations and PDF tools screens.
+- Added unified Supabase-backed Saved Items system with per-user RLS and duplicate prevention.
+- “ذكّرني” for vocabulary now also saves the word to Saved Items automatically.
+- Grammar, listening and simple daily English reminders also save to Saved Items.
+- Reels “حفظ” mirrors into the unified Saved Items system; un-save removes it.
+- Saved screen now supports search, type filters, newest/oldest ordering, source navigation and bulk clear confirmation.
+- Saved records preserve title, subtitle, source, target and JSON metadata.
+- Legacy saved_items rows are migrated when the compatible legacy columns exist.
+- Supabase cleanup removes document rules/assets/modules/runtime config keys.
+- Remote screen/action engine remains available for future server-driven additions.
+
+Build policy: compileStableReleaseKotlin + unit tests + lint must pass before automatic release.

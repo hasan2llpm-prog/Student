@@ -1,0 +1,11 @@
+Student v2.7.0 (versionCode 31)
+- Stable 15-word personal vocabulary batch with translation, pronunciation and reminder.
+- Faster Stories/Reels preload and lower startup buffering.
+- Story navigation: left next / right previous; story replies go to DMs and close reply UI.
+- Full post detail from profile, likes/comments, sharing, community image viewer/save.
+- Rounded chat bubbles: sent blue, received purple.
+- Mutual-follow visibility guard for private-account public content.
+- Public Posts/Stories/Reels media moderation; private DMs are not subject to the public nudity filter.
+- Voice rooms: faster LiveKit connection, speaking pulse, release microphone on leave/background, fresh session feed.
+- Verification is profile-authoritative with realtime refresh.
+- Quiet background update download, one-per-version notices, mandatory install gate after download.

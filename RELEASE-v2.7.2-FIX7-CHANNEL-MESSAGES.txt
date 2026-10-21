@@ -1,0 +1,13 @@
+Student v2.7.2 FIX7
+
+Targeted fix: channel/group messages were loaded but rendered as white text on the nearly-white room background, making them appear missing.
+
+Changes:
+- Room messages now render inside visible rounded message bubbles.
+- Current-user room messages use blue bubbles.
+- Other-user room messages use purple bubbles.
+- Message text, file actions, timestamps and reaction counters use high-contrast colors inside the bubble.
+- Sender identity remains visible above received room messages.
+- No vocabulary, community, reels, rooms backend, or Supabase schema behavior was changed by this fix.
+- Version bumped to 2.7.2 (versionCode 36).
+- Auto-release workflow publishes APK/AAB and activates the mandatory internal update automatically.

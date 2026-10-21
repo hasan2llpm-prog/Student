@@ -1,0 +1,20 @@
+Student v2.7.0 FIX5 — Community replaces Stories
+
+- Stories runtime removed from Android: routes, viewer/editor, creation, notifications, deep links, caches, profile/message/activity UI.
+- Home Stories position replaced by Community strip and quick post action.
+- Community supports text, image, video, text+image, text+video.
+- Selected media is copied immediately into an app-private persistent draft, so activity/process recreation does not lose the draft.
+- Images are downscaled/recompressed before upload (more aggressive on metered/cellular/slow links).
+- Videos are transcoded to 480p on constrained links / 720p otherwise, plus an optional 360p fallback.
+- Large uploads (>6 MiB) use Supabase TUS resumable 6 MiB chunks, direct storage hostname, retry/backoff, and server-offset recovery after interrupted PATCH requests.
+- Community feed uses pagination; load-more is manual to save data. Videos do not auto-load in the scrolling feed and prefer the low rendition on constrained links.
+- Failed media publication keeps the local draft. Uploaded temporary/orphan objects are cleaned when publication/moderation fails.
+- Dangerous deletion remains confirmation-gated.
+- Supabase migration creates the community bucket/RLS, adds post video columns/type, removes live Stories tables/functions/notification/saved records/feature controls.
+- Legacy Stories Storage files must be emptied/deleted using Supabase Storage API or Dashboard, not SQL, to avoid orphaned billable objects.
+
+Migration order:
+1) Build FIX5 and require compile + tests + lint + APK/AAB success.
+2) Run Student-v2.7.0-FIX5-COMMUNITY-SUPABASE.sql.
+3) In Supabase Storage, empty then delete the legacy `stories` bucket using Dashboard/API.
+4) Ensure `moderate-public-media` Edge Function is deployed before testing image/video community posts.

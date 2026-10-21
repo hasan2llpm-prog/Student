@@ -1,0 +1,23 @@
+Student v2.7.3 FIX8 — Supabase Runtime UI
+
+Version: 2.7.3
+versionCode: 37
+
+Changes:
+- Fixes invisible/low-contrast channel and group messages with proper message bubbles.
+- Channel/group message colors, text colors, background, radius, width and font size are now runtime-controlled.
+- Supabase table public.student_native_runtime_config is the primary source for native UI runtime configuration.
+- Existing public web config remains emergency fallback only if Supabase config cannot be loaded.
+- Runtime config refreshes periodically without rebuilding the APK.
+- Existing vocabulary system and the persisted 15-word daily assignment were not changed.
+- Automatic GitHub Release + mandatory internal update flow remains enabled.
+
+Initial channel runtime keys:
+messages.room_background_color
+messages.room_bubble_mine_color
+messages.room_bubble_other_color
+messages.room_text_color
+messages.room_meta_text_color
+messages.room_bubble_radius_dp
+messages.room_bubble_max_width_dp
+messages.room_message_font_sp

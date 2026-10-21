@@ -1,0 +1,23 @@
+Student v2.0.0 Production Final
+versionCode: 21
+applicationId: com.studentiraq.app
+
+قواعد الإصدار:
+- Stable فقط للإصدار النهائي.
+- نفس applicationId ومفتاح التوقيع Production حتى يثبت كتحديث فوق Student الحالي.
+- GitHub Actions يبني APK + AAB ويصدر GitHub Release v2.0.0.
+- رابط APK النهائي المتوقع:
+  https://github.com/hasan2llpm-prog/Student/releases/download/v2.0.0/Student-v2.0.0.apk
+
+التحديث:
+- v2 يحتوي Update Manager داخل التطبيق.
+- الإصدارات اللاحقة عندما يكون latest_version_code أكبر من النسخة الحالية تظهر نافذة تحديث داخل Student.
+- إذا force_update=true وكان الإصدار أقل من minimum_version_code تصبح شاشة التحديث إلزامية.
+- Android يبقى مسؤولاً عن تأكيد تثبيت APK لأسباب أمنية؛ لا يوجد تثبيت صامت.
+
+Learn English:
+- يوم التعلم يتغير الساعة 08:00 بتوقيت بغداد.
+- قاعدة اليوم والأفعال اليومية تأتي من Supabase مع fallback محلي.
+- بقية الأقسام اليومية تتغير على نفس يوم التعلم.
+- إشعار 08:00، ثم تذكير 13:00 و18:00 و23:00 فقط إذا لم يفتح المستخدم Student بعد تحديث 08:00.
+- لا يوجد إشعار 04:00 حتى لا نزعج المستخدم أثناء النوم.
