@@ -13,6 +13,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.FormatColorText
 import androidx.compose.material.icons.rounded.Gesture
+import androidx.compose.material.icons.rounded.EmojiEmotions
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RotateRight
 import androidx.compose.material3.*
@@ -39,6 +40,9 @@ data class StoryEditDraft(
     val scale: Float,
     val strokes: List<List<Offset>> = emptyList(),
     val canvasSize: Size = Size.Zero
+    val textScale: Float = 1f
+    val textOffset: Offset = Offset.Zero
+    val sticker: String? = null
 )
 
 @Composable
@@ -57,6 +61,9 @@ fun StoryComposerScreen(
     var textColor by remember(uri) { mutableStateOf(Color.White) }
     var rotation by remember(uri) { mutableFloatStateOf(0f) }
     var scale by remember(uri) { mutableFloatStateOf(1f) }
+    var textScale by remember(uri) { mutableFloatStateOf(1f) }
+    var textOffset by remember(uri) { mutableStateOf(Offset.Zero) }
+    var sticker by remember(uri) { mutableStateOf<String?>(null) }
     var canvasSize by remember(uri) { mutableStateOf(Size.Zero) }
     val strokes = remember(uri) { mutableStateListOf<List<Offset>>() }
     var currentStroke by remember(uri) { mutableStateOf<List<Offset>>(emptyList()) }
@@ -90,17 +97,20 @@ fun StoryComposerScreen(
             Text(
                 caption,
                 color = textColor,
-                fontSize = 26.sp,
+                fontSize = (26f * textScale).sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Center).padding(28.dp)
+                modifier = Modifier.align(Alignment.Center).offset { androidx.compose.ui.unit.IntOffset(textOffset.x.toInt(), textOffset.y.toInt()) }.pointerInput(caption) {
+                    detectDragGestures { change, dragAmount -> change.consume(); textOffset += dragAmount }
+                }.padding(28.dp)
             )
         }
+        sticker?.let { value -> Text(value, fontSize = 58.sp, modifier = Modifier.align(Alignment.Center).offset(y = 110.dp)) }
 
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose, enabled = !busy) { Icon(Icons.Rounded.Close, "إلغاء", tint = Color.White) }
                 Text(if (mediaType == "video") "تحرير الفيديو" else "تحرير الصورة", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale, strokes.toList(), canvasSize)) }, enabled = !busy) {
+                TextButton(onClick = { onPublish(StoryEditDraft(caption.trim(), rotation, scale, strokes.toList(), canvasSize, textScale, textOffset, sticker)) }, enabled = !busy) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                     else { Text("مشاركة", color = Color.White, fontWeight = FontWeight.Bold); Spacer(Modifier.width(4.dp)); Icon(Icons.Rounded.Check, null, tint = Color.White) }
                 }
@@ -118,17 +128,24 @@ fun StoryComposerScreen(
                     colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Black.copy(alpha = .5f), focusedContainerColor = Color.Black.copy(alpha = .5f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedLabelColor = Color.White, focusedLabelColor = Color.White)
                 )
             }
-            if (mediaType == "image") {
+                if (mediaType == "image") {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     EditorTool(Icons.Rounded.RotateRight, "تدوير") { rotation = (rotation + 90f) % 360f }
                     Text("تكبير", color = Color.White, fontSize = 11.sp)
                     Slider(value = scale, onValueChange = { scale = it }, valueRange = 1f..2.5f, modifier = Modifier.weight(1f))
+                }
+                }
+            if (textMode && caption.isNotBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("حجم النص", color = Color.White, fontSize = 11.sp)
+                    Slider(value = textScale, onValueChange = { textScale = it }, valueRange = .7f..2f, modifier = Modifier.weight(1f))
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 EditorTool(Icons.Rounded.Refresh, "استبدال") { onPickAnother() }
                 EditorTool(Icons.Rounded.FormatColorText, "نص") { textMode = !textMode; drawMode = false }
                 EditorTool(Icons.Rounded.Gesture, "رسم") { drawMode = !drawMode; textMode = false }
+                EditorTool(Icons.Rounded.EmojiEmotions, "ملصق") { sticker = if (sticker == null) "✨" else null }
                 colors.forEach { color ->
                     Surface(Modifier.size(27.dp).clickable { textColor = color }, shape = CircleShape, color = color, border = androidx.compose.foundation.BorderStroke(if (textColor == color) 3.dp else 1.dp, Color.White)) { Box(Modifier.fillMaxSize()) }
                 }

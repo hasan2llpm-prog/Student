@@ -162,7 +162,7 @@ private fun materializeEditedStoryFile(context: android.content.Context, uri: Ur
     if (draft.caption.isNotBlank()) {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
-            textSize = (source.width * .065f).coerceIn(28f, 92f)
+            textSize = ((source.width * .065f) * draft.textScale).coerceIn(28f, 140f)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             setShadowLayer(8f, 2f, 2f, android.graphics.Color.BLACK)
             textAlign = Paint.Align.CENTER
@@ -176,8 +176,14 @@ private fun materializeEditedStoryFile(context: android.content.Context, uri: Ur
             if (paint.measureText(candidate) > maxWidth && line.isNotBlank()) { lines += line; line = word } else line = candidate
         }
         if (line.isNotBlank()) lines += line
-        val startY = source.height - (lines.size * paint.textSize * 1.2f) - source.height * .08f
-        lines.forEachIndexed { index, text -> canvas.drawText(text, source.width / 2f, startY + index * paint.textSize * 1.2f, paint) }
+        val offsetX = if (draft.canvasSize.width > 0f) draft.textOffset.x / draft.canvasSize.width * source.width else 0f
+        val offsetY = if (draft.canvasSize.height > 0f) draft.textOffset.y / draft.canvasSize.height * source.height else 0f
+        val startY = source.height / 2f + offsetY - (lines.size * paint.textSize * .6f)
+        lines.forEachIndexed { index, text -> canvas.drawText(text, source.width / 2f + offsetX, startY + index * paint.textSize * 1.2f, paint) }
+    }
+    draft.sticker?.let { sticker ->
+        val stickerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; textSize = (source.width * .14f).coerceIn(54f, 180f); textAlign = Paint.Align.CENTER }
+        canvas.drawText(sticker, source.width / 2f, source.height * .72f, stickerPaint)
     }
     if (draft.strokes.isNotEmpty() && draft.canvasSize.width > 0f && draft.canvasSize.height > 0f) {
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
