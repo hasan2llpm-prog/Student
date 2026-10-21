@@ -786,7 +786,16 @@ private fun MessagesHomeList(
 }
 
 @Composable private fun ConversationHeader(conv:ConversationItem,onBack:()->Unit,onProfile:()->Unit){
-    Surface(color=Color.White,shadowElevation=2.dp){Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=7.dp),verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Rounded.ArrowBack,"رجوع")};Row(Modifier.weight(1f).clickable{onProfile()},verticalAlignment=Alignment.CenterVertically){StudentAvatar(conv.title,conv.avatarUrl,conv.profileFrameUrl,45.dp);Spacer(Modifier.width(8.dp));Column{Row(verticalAlignment=Alignment.CenterVertically){StudentName(conv.title,conv.isVerified,conv.verificationColor);Spacer(Modifier.width(5.dp));RolePill(conv.otherRole)};Text(presenceText(conv.lastActiveAt),fontSize=10.sp,color=if(isUserActive(conv.lastActiveAt))Color(0xFF16834A) else StudentMuted)}};Icon(Icons.Rounded.MoreVert,null,tint=StudentMuted)}}
+    Surface(color=Color.White,shadowElevation=2.dp){
+        Row(Modifier.fillMaxWidth().padding(horizontal=8.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically){
+            IconButton(onClick=onBack){Icon(Icons.Rounded.ArrowBack,"رجوع")}
+            Row(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).clickable{onProfile()}.padding(horizontal=6.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically){
+                StudentAvatar(conv.title,conv.avatarUrl,conv.profileFrameUrl,45.dp); Spacer(Modifier.width(9.dp))
+                Column { Row(verticalAlignment=Alignment.CenterVertically){StudentName(conv.title,conv.isVerified,conv.verificationColor);Spacer(Modifier.width(5.dp));RolePill(conv.otherRole)}; Text(presenceText(conv.lastActiveAt),fontSize=10.sp,color=if(isUserActive(conv.lastActiveAt))StudentTeal else StudentMuted) }
+            }
+            Icon(Icons.Rounded.MoreVert,null,tint=StudentMuted)
+        }
+    }
 }
 
 @Composable private fun MessageBubble(
@@ -806,7 +815,7 @@ private fun MessagesHomeList(
             Surface(
                 modifier = Modifier.widthIn(max=330.dp).clickable(enabled=m.deletedAt==null){ actionsOpen=true },
                 shape = RoundedCornerShape(18.dp),
-                color = if (mine) Color(0xFF1976D2) else Color(0xFF7E57C2),
+                color = if (mine) StudentBlueDark else StudentTeal,
                 tonalElevation = 0.dp,
                 shadowElevation = 0.dp
             ) {

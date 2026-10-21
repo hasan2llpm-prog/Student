@@ -456,6 +456,12 @@ private fun StorePurchasePage(
                         Text(product.name, fontWeight = FontWeight.Black, fontSize = 20.sp)
                         if (product.description.isNotBlank()) Text(product.description, color = StudentMuted)
                         product.frameDurationDays?.let { Text("المدة: $it يوم", color = StudentMuted, fontSize = 12.sp) }
+                        HorizontalDivider(color = StudentBorder)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("السعر", color = StudentMuted, modifier = Modifier.weight(1f))
+                            if (product.allowDiamonds) Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Diamond, null, tint = StudentGold, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(4.dp)); Text("${product.priceDiamonds}", fontWeight = FontWeight.Black, color = StudentBlueDark) }
+                            else if (product.allowMoney) Text("${product.priceMoney.toLong()} ${product.currency}", fontWeight = FontWeight.Black, color = StudentBlueDark)
+                        }
                     }
                 }
             }
