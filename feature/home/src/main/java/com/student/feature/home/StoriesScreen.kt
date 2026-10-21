@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.student.feature.home
 
 import android.net.Uri
@@ -151,6 +153,7 @@ private fun StoryViewer(
     var selectedReaction by remember { mutableStateOf<String?>(null) }
     var interactionMessage by remember { mutableStateOf<String?>(null) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
+    val current = stories.getOrNull(pagerState.currentPage)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
             StoryPage(stories[page], onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
@@ -173,7 +176,6 @@ private fun StoryViewer(
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                val current = stories.getOrNull(pagerState.currentPage)
                 current?.let {
                     StudentAvatar(it.authorName, it.authorAvatarUrl, it.authorFrameUrl, 38.dp)
                     Spacer(Modifier.width(8.dp))
