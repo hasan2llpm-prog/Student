@@ -16,10 +16,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -248,11 +250,12 @@ private fun StoryViewer(
     var reply by remember { mutableStateOf("") }
     var selectedReaction by remember { mutableStateOf<String?>(null) }
     var interactionMessage by remember { mutableStateOf<String?>(null) }
+    var paused by remember { mutableStateOf(false) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
-            StoryPage(stories[page], onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
+            StoryPage(stories[page], paused, onTogglePause = { paused = !paused }, onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
         }
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -281,17 +284,24 @@ private fun StoryViewer(
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
                 IconButton(onClick = {}) { Icon(Icons.Rounded.MoreVert, "المزيد", tint = Color.White) }
             }
-            current?.let { story ->
+        }
+        current?.let { story ->
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
+                color = Color.Black.copy(alpha = .68f),
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+            ) {
+            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf("like" to "👍", "love" to "❤️", "fire" to "🔥", "wow" to "😮").forEach { (key, emoji) ->
-                        TextButton(onClick = {
+                        FilledTonalButton(onClick = {
                             val nextReaction = if (selectedReaction == key) null else key
                             selectedReaction = nextReaction
                             scope.launch {
                                 val result = withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, nextReaction) }
                                 if (result.isFailure) interactionMessage = "تعذر حفظ التفاعل"
                             }
-                        }, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(emoji, fontSize = 22.sp) }
+                        }, contentPadding = PaddingValues(horizontal = 7.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = if (selectedReaction == key) Color.White.copy(alpha = .35f) else Color.White.copy(alpha = .12f))) { Text(emoji, fontSize = 22.sp) }
                     }
                     OutlinedTextField(
                         value = reply,
@@ -312,18 +322,20 @@ private fun StoryViewer(
                 }
                 interactionMessage?.let { Text(it, color = Color(0xFFFFC7B8), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp)) }
             }
+            }
         }
     }
 }
 
 @Composable
-private fun StoryPage(story: StoryItem, onNext: () -> Unit, onPrevious: () -> Unit, onProgress: (Float) -> Unit) {
+private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onProgress: (Float) -> Unit) {
     var progress by remember(story.id) { mutableFloatStateOf(0f) }
     val animatedProgress by animateFloatAsState(progress, label = "story-progress")
     LaunchedEffect(story.id) {
         progress = 0f
         val steps = (story.durationSeconds.coerceIn(3, 15) * 20)
         repeat(steps) {
+            while (paused) kotlinx.coroutines.delay(100)
             kotlinx.coroutines.delay(50)
             progress = ((it + 1).toFloat() / steps).coerceIn(0f, 1f)
             onProgress(progress)
@@ -332,20 +344,29 @@ private fun StoryPage(story: StoryItem, onNext: () -> Unit, onPrevious: () -> Un
     }
     Box(
         Modifier.fillMaxSize().pointerInput(story.id) {
-            detectTapGestures(
-                onTap = { position -> if (position.x < size.width * 0.35f) onPrevious() else onNext() }
-            )
+            detectTapGestures(onTap = { position ->
+                when {
+                    position.x < size.width * 0.25f -> onPrevious()
+                    position.x > size.width * 0.75f -> onNext()
+                    else -> onTogglePause()
+                }
+            })
         }
     ) {
         val mediaUrl = story.mediaUrl
         when {
             story.mediaType == "image" && mediaUrl != null -> AsyncImage(mediaUrl, "Story", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, Modifier.fillMaxSize())
+            story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, paused, Modifier.fillMaxSize())
             else -> Box(Modifier.fillMaxSize().background(storyColor(story.backgroundColor)), contentAlignment = Alignment.Center) {
                 Text(story.caption, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(30.dp))
             }
         }
         Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.08f)))
+        if (paused) {
+            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = Color.Black.copy(alpha = .55f), modifier = Modifier.align(Alignment.Center)) {
+                Icon(Icons.Rounded.PlayArrow, "استئناف القصة", tint = Color.White, modifier = Modifier.padding(16.dp).size(42.dp))
+            }
+        }
         if (story.caption.isNotBlank() && story.mediaType != "text") {
             Text(story.caption, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 70.dp))
         }
@@ -370,9 +391,10 @@ private fun EmptyStories(profile: StudentProfile?, message: String?, onBack: () 
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun RemoteStoryVideo(url: String, modifier: Modifier = Modifier) {
+private fun RemoteStoryVideo(url: String, paused: Boolean, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val player = remember(url) { androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply { setMediaItem(androidx.media3.common.MediaItem.fromUri(url)); prepare(); playWhenReady = true } }
+    LaunchedEffect(paused) { player.playWhenReady = !paused }
     DisposableEffect(player) { onDispose { player.release() } }
     androidx.compose.ui.viewinterop.AndroidView(factory = { ctx -> androidx.media3.ui.PlayerView(ctx).apply { useController = false; this.player = player } }, modifier = modifier)
 }
