@@ -379,30 +379,37 @@ private fun VocabularySection(api: SupabaseApi, session: StudentSession) {
         }
         items(today, key = { it.id.ifBlank { it.word } }) { w ->
             val saved = isSaved(w)
-            StudentOutlinedCard(Modifier.fillMaxWidth()) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(w.word, fontSize = 22.sp, fontWeight = FontWeight.Black)
-                        Text(w.meaningAr, color = StudentBlue, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        val category = w.primaryVocabularyCategory()
-                        val typeLabel = vocabularyCategoryArabic(category)
-                        Text("${vocabularyCategoryEnglish(category)} • $typeLabel", color = StudentMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                    IconButton(onClick = { speech.speak(w.word, "american", "normal") }) {
-                        Icon(Icons.Rounded.VolumeUp, "نطق")
-                    }
-                    TextButton(onClick = {
+            Card(Modifier.fillMaxWidth().heightIn(min = 178.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, StudentBorder)) {
+                Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                        Surface(shape = androidx.compose.foundation.shape.CircleShape, color = StudentSoft, modifier = Modifier.size(58.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Text(w.word.take(1).uppercase(), color = StudentBlue, fontSize = 24.sp, fontWeight = FontWeight.Black) }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(w.word, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                            Text(w.meaningAr, color = StudentBlue, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            val category = w.primaryVocabularyCategory()
+                            Text("${vocabularyCategoryEnglish(category)} • ${vocabularyCategoryArabic(category)}", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                        TextButton(onClick = {
                         prefs.edit().putBoolean(reviewKey(w), true).putBoolean("review_${w.id}", true).apply()
                         reminderRevision++
                         scope.launch { withContext(Dispatchers.IO) { api.rememberEnglishWord(session, w.word) } }
                         message = "تمت إضافة ${w.word} إلى المراجعة والمحفوظات."
-                    }) {
-                        Icon(if (saved) Icons.Rounded.CheckCircle else Icons.Rounded.NotificationsActive, null)
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (saved) "تم" else "ذكّرني")
+                        }) { Icon(if (saved) Icons.Rounded.CheckCircle else Icons.Rounded.NotificationsActive, null); Spacer(Modifier.width(3.dp)); Text(if (saved) "تم" else "ذكّرني", fontSize = 11.sp) }
+                    }
+                    if (!saved) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(Modifier.weight(1f).clickable { speech.speak(w.word, "american", "normal") }, shape = RoundedCornerShape(14.dp), color = Color(0xFFEAF8F5)) {
+                                Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("American", color = StudentTeal, fontWeight = FontWeight.Bold, fontSize = 12.sp); Text("اضغط للنطق", color = StudentMuted, fontSize = 10.sp) }
+                            }
+                            Surface(Modifier.weight(1f).clickable { speech.speak(w.word, "british", "normal") }, shape = RoundedCornerShape(14.dp), color = Color(0xFFEAF0FA)) {
+                                Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("British", color = StudentBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp); Text("اضغط للنطق", color = StudentMuted, fontSize = 10.sp) }
+                            }
+                        }
+                    } else {
+                        Text("محفوظة للمراجعة اليومية", color = Color(0xFF16834A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
