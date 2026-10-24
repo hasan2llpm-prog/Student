@@ -19,7 +19,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material3.*
@@ -250,6 +253,7 @@ private fun StoryViewer(
     var selectedReaction by remember { mutableStateOf<String?>(null) }
     var interactionMessage by remember { mutableStateOf<String?>(null) }
     var paused by remember { mutableStateOf(false) }
+    var replyOpen by remember { mutableStateOf(false) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -284,42 +288,29 @@ private fun StoryViewer(
             }
         }
         current?.let { story ->
-            Surface(
-                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(),
-                color = Color.Black.copy(alpha = .68f),
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
-            ) {
-            Column(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf("like" to "👍", "love" to "❤️", "fire" to "🔥", "wow" to "😮").forEach { (key, emoji) ->
-                        FilledTonalButton(onClick = {
-                            val nextReaction = if (selectedReaction == key) null else key
-                            selectedReaction = nextReaction
-                            scope.launch {
-                                val result = withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, nextReaction) }
-                                if (result.isFailure) interactionMessage = "تعذر حفظ التفاعل"
-                            }
-                        }, contentPadding = PaddingValues(horizontal = 7.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = if (selectedReaction == key) Color.White.copy(alpha = .35f) else Color.White.copy(alpha = .12f))) { Text(emoji, fontSize = 22.sp) }
-                    }
-                    OutlinedTextField(
-                        value = reply,
-                        onValueChange = { reply = it.take(1000) },
-                        placeholder = { Text("أرسل ردًا...") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.Black.copy(alpha = .45f), focusedContainerColor = Color.Black.copy(alpha = .55f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedPlaceholderColor = Color.White.copy(alpha = .8f), focusedPlaceholderColor = Color.White)
-                    )
-                    IconButton(enabled = reply.isNotBlank(), onClick = {
-                        val body = reply.trim()
-                        reply = ""
-                        scope.launch {
-                            val result = withContext(Dispatchers.IO) { api.replyToStory(session, story.id, body) }
-                            if (result.isFailure) { reply = body; interactionMessage = "تعذر إرسال الرد" }
+            Surface(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), color = Color(0xFF090B10)) {
+                Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+                    if (replyOpen) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(value = reply, onValueChange = { reply = it.take(1000) }, placeholder = { Text("اكتب ردًا...") }, singleLine = true, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.White.copy(alpha = .10f), focusedContainerColor = Color.White.copy(alpha = .14f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedPlaceholderColor = Color.White.copy(alpha = .75f), focusedPlaceholderColor = Color.White), shape = RoundedCornerShape(22.dp))
+                            IconButton(enabled = reply.isNotBlank(), onClick = {
+                                val body = reply.trim(); reply = ""
+                                scope.launch { val result = withContext(Dispatchers.IO) { api.replyToStory(session, story.id, body) }; if (result.isFailure) { reply = body; interactionMessage = "تعذر إرسال الرد" } }
+                            }) { Icon(Icons.Rounded.Send, "إرسال رد", tint = Color.White) }
                         }
-                    }) { Icon(Icons.Rounded.Send, "إرسال رد", tint = Color.White) }
+                    }
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                        IconButton(onClick = { replyOpen = !replyOpen }) { Icon(Icons.Rounded.ChatBubbleOutline, "تعليق", tint = Color.White, modifier = Modifier.size(29.dp)) }
+                        IconButton(onClick = {
+                            val next = if (selectedReaction == "love") null else "love"
+                            selectedReaction = next
+                            scope.launch { if (withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, next) }.isFailure) interactionMessage = "تعذر حفظ التفاعل" }
+                        }) { Icon(if (selectedReaction == "love") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "إعجاب", tint = if (selectedReaction == "love") Color(0xFFFF2D55) else Color.White, modifier = Modifier.size(31.dp)) }
+                        Spacer(Modifier.weight(1f))
+                        Text("تفاعل مع القصة", color = Color.White.copy(alpha = .75f), fontSize = 12.sp)
+                    }
+                    interactionMessage?.let { Text(it, color = Color(0xFFFFC7B8), fontSize = 11.sp) }
                 }
-                interactionMessage?.let { Text(it, color = Color(0xFFFFC7B8), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp)) }
-            }
             }
         }
     }
@@ -353,13 +344,13 @@ private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Un
     ) {
         val mediaUrl = story.mediaUrl
         when {
-            story.mediaType == "image" && mediaUrl != null -> AsyncImage(mediaUrl, "Story", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, paused, Modifier.fillMaxSize())
-            else -> Box(Modifier.fillMaxSize().background(storyColor(story.backgroundColor)), contentAlignment = Alignment.Center) {
+            story.mediaType == "image" && mediaUrl != null -> AsyncImage(mediaUrl, "Story", Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center), contentScale = ContentScale.Crop)
+            story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, paused, Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center))
+            else -> Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center).background(storyColor(story.backgroundColor)), contentAlignment = Alignment.Center) {
                 Text(story.caption, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(30.dp))
             }
         }
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.08f)))
+        Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center).background(Color.Black.copy(alpha = 0.08f)))
         if (paused) {
             Surface(shape = androidx.compose.foundation.shape.CircleShape, color = Color.Black.copy(alpha = .55f), modifier = Modifier.align(Alignment.Center)) {
                 Icon(Icons.Rounded.PlayArrow, "استئناف القصة", tint = Color.White, modifier = Modifier.padding(16.dp).size(42.dp))
