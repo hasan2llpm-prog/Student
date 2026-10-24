@@ -109,14 +109,6 @@ fun FeedScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            HomeWelcomePanel(
-                name = profile?.fullName?.substringBefore(" ").orEmpty().ifBlank { "طالب" },
-                onTranslate = onOpenStudentAi,
-                onEducation = { onOpenEducation("home") },
-                onCreatePost = onCreatePost
-            )
-        }
-        item {
             HomeStoriesRow(
                 stories = stories,
                 profile = profile,
