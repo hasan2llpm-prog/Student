@@ -7,8 +7,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -122,6 +125,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     var translationMode by remember { mutableStateOf("auto") }
     var lastTranslationEngine by remember { mutableStateOf<String?>(null) }
     val translationCache = remember { mutableStateMapOf<String, String>() }
+    val localVocabulary = remember(context) { loadOxford5000Vocabulary(context) }
 
     val arToEn = remember { createTranslator(TranslateLanguage.ARABIC, TranslateLanguage.ENGLISH) }
     val enToAr = remember { createTranslator(TranslateLanguage.ENGLISH, TranslateLanguage.ARABIC) }
@@ -275,6 +279,16 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     }
 
     val inputHasArabic = Regex("[\\u0600-\\u06FF]").containsMatchIn(input)
+    val currentWord = input.substringAfterLast(" ").trim().lowercase()
+    val wordSuggestions = remember(currentWord, localVocabulary) {
+        if (currentWord.length < 2) emptyList()
+        else localVocabulary.asSequence()
+            .map { it.word.trim() }
+            .filter { it.length > currentWord.length && it.startsWith(currentWord, ignoreCase = true) }
+            .distinctBy { it.lowercase() }
+            .take(6)
+            .toList()
+    }
     val englishForSpeech = when {
         output.isBlank() -> if (!inputHasArabic) input.trim() else ""
         inputHasArabic -> output
@@ -381,6 +395,24 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                         textStyle = LocalTextStyle.current.copy(textDirection = bidiTextDirection(input), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(input.trim().take(24))) TextAlign.Right else TextAlign.Left),
                         shape = RoundedCornerShape(16.dp)
                     )
+                    if (wordSuggestions.isNotEmpty()) {
+                        Text("اقتراحات سريعة", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
+                            items(wordSuggestions, key = { it }) { suggestion ->
+                                Surface(
+                                    modifier = Modifier.clickable {
+                                        val before = input.dropLast(currentWord.length)
+                                        input = "$before$suggestion "
+                                    },
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = StudentSoft,
+                                    border = BorderStroke(1.dp, StudentBorder)
+                                ) {
+                                    Text(suggestion, color = StudentBlueDark, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -422,7 +454,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         if (output.isNotBlank()) {
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(.96f),
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF8F5)),
                     border = BorderStroke(1.dp, Color(0xFFB9E5DA))
