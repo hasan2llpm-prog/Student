@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -135,6 +136,19 @@ fun StoriesScreen(
             },
             onPrevious = {
                 scope.launch { if (pagerState.currentPage > 0) pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+            },
+            onDelete = {
+                scope.launch {
+                    val story = stories.getOrNull(pagerState.currentPage) ?: return@launch
+                    val result = withContext(Dispatchers.IO) { api.deleteStory(session, story.id) }
+                    if (result.isSuccess) {
+                        val remaining = stories.filterNot { it.id == story.id }
+                        if (remaining.isEmpty()) onBack() else {
+                            stories = remaining
+                            pagerState.scrollToPage(pagerState.currentPage.coerceAtMost(remaining.lastIndex))
+                        }
+                    }
+                }
             }
         )
     }
@@ -246,7 +260,8 @@ private fun StoryViewer(
     onClose: () -> Unit,
     onCreate: () -> Unit,
     onNext: () -> Unit,
-    onPrevious: () -> Unit
+    onPrevious: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     var reply by remember { mutableStateOf("") }
@@ -254,8 +269,16 @@ private fun StoryViewer(
     var interactionMessage by remember { mutableStateOf<String?>(null) }
     var paused by remember { mutableStateOf(false) }
     var replyOpen by remember { mutableStateOf(false) }
+    var deleteConfirm by remember { mutableStateOf(false) }
+    var viewers by remember { mutableStateOf<List<StoryViewer>>(emptyList()) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
+    LaunchedEffect(current?.id) {
+        val story = current ?: return@LaunchedEffect
+        viewers = if (story.userId == session.userId) {
+            withContext(Dispatchers.IO) { api.storyViewers(session, story.id).getOrDefault(emptyList()) }
+        } else emptyList()
+    }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
             StoryPage(stories[page], paused, onTogglePause = { paused = !paused }, onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
@@ -283,6 +306,11 @@ private fun StoryViewer(
                     Spacer(Modifier.width(8.dp))
                     Text(it.authorName, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
                 }
+                if (current?.userId == session.userId) {
+                    IconButton(onClick = { deleteConfirm = true }) {
+                        Icon(Icons.Rounded.DeleteOutline, "حذف القصة", tint = Color.White)
+                    }
+                }
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
                 IconButton(onClick = onCreate) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
             }
@@ -290,6 +318,36 @@ private fun StoryViewer(
         current?.let { story ->
             Surface(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), color = Color(0xFF090B10)) {
                 Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
+                    if (story.userId == session.userId) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.width(92.dp).height(38.dp)) {
+                                viewers.take(4).forEachIndexed { index, viewer ->
+                                    StudentAvatar(
+                                        viewer.fullName,
+                                        viewer.avatarUrl,
+                                        viewer.profileFrameUrl,
+                                        36.dp,
+                                        modifier = Modifier.offset(x = (index * 18).dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("النشاط", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(
+                                    if (viewers.isEmpty()) "لم يشاهدها أحد بعد" else "${viewers.size} مشاهدة",
+                                    color = Color.White.copy(alpha = .68f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                            if (viewers.size > 4) {
+                                Text("+${viewers.size - 4}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
                     if (replyOpen) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(value = reply, onValueChange = { reply = it.take(1000) }, placeholder = { Text("اكتب ردًا...") }, singleLine = true, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(unfocusedContainerColor = Color.White.copy(alpha = .10f), focusedContainerColor = Color.White.copy(alpha = .14f), unfocusedTextColor = Color.White, focusedTextColor = Color.White, unfocusedPlaceholderColor = Color.White.copy(alpha = .75f), focusedPlaceholderColor = Color.White), shape = RoundedCornerShape(22.dp))
@@ -312,6 +370,19 @@ private fun StoryViewer(
                     interactionMessage?.let { Text(it, color = Color(0xFFFFC7B8), fontSize = 11.sp) }
                 }
             }
+        }
+        if (deleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { deleteConfirm = false },
+                title = { Text("حذف القصة؟") },
+                text = { Text("سيتم حذف هذه القصة نهائيًا ولن تعود ظاهرة للآخرين.") },
+                confirmButton = {
+                    TextButton(onClick = { deleteConfirm = false; onDelete() }) {
+                        Text("حذف", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = { TextButton(onClick = { deleteConfirm = false }) { Text("إلغاء") } }
+            )
         }
     }
 }

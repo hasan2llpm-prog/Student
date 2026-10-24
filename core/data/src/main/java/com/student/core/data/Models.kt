@@ -72,6 +72,14 @@ data class StoryItem(
     val viewed: Boolean = false
 )
 
+data class StoryViewer(
+    val userId: String,
+    val fullName: String,
+    val username: String,
+    val avatarUrl: String?,
+    val profileFrameUrl: String?
+)
+
 
 data class ReelItem(
     val id: String,
