@@ -399,16 +399,15 @@ private fun VocabularySection(api: SupabaseApi, session: StudentSession) {
                         message = "تمت إضافة ${w.word} إلى المراجعة والمحفوظات."
                         }) { Icon(if (saved) Icons.Rounded.CheckCircle else Icons.Rounded.NotificationsActive, null); Spacer(Modifier.width(3.dp)); Text(if (saved) "تم" else "ذكّرني", fontSize = 11.sp) }
                     }
-                    if (!saved) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Surface(Modifier.weight(1f).clickable { speech.speak(w.word, "american", "normal") }, shape = RoundedCornerShape(14.dp), color = Color(0xFFEAF8F5)) {
                                 Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("American", color = StudentTeal, fontWeight = FontWeight.Bold, fontSize = 12.sp); Text("اضغط للنطق", color = StudentMuted, fontSize = 10.sp) }
                             }
                             Surface(Modifier.weight(1f).clickable { speech.speak(w.word, "british", "normal") }, shape = RoundedCornerShape(14.dp), color = Color(0xFFEAF0FA)) {
                                 Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) { Text("British", color = StudentBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp); Text("اضغط للنطق", color = StudentMuted, fontSize = 10.sp) }
                             }
-                        }
-                    } else {
+                    }
+                    if (saved) {
                         Text("محفوظة للمراجعة اليومية", color = Color(0xFF16834A), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
