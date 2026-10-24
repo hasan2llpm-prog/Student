@@ -287,19 +287,22 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            StudentOutlinedCard(Modifier.fillMaxWidth()) {
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = StudentBlueDark)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Rounded.Translate, null, tint = StudentTeal, modifier = Modifier.size(28.dp))
-                        Text("الترجمة المتقدمة", fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                        Surface(shape = RoundedCornerShape(14.dp), color = StudentTeal.copy(alpha = .2f)) { Icon(Icons.Rounded.Translate, null, tint = StudentGold, modifier = Modifier.padding(10.dp).size(24.dp)) }
+                        Column {
+                            Text("مترجم Student", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
+                            Text("ترجمة ذكية وسريعة على جهازك", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
+                        }
                     }
-                    Text("ترجمة • صورة إلى نص • نسخ • نطق", color = StudentMuted)
+                    Text("نص • صورة إلى نص • نسخ • نطق", color = Color.White.copy(alpha = .82f))
                     when {
                         preparing -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Text("جارِ تجهيز الترجمة للاستخدام بدون نت...", color = StudentMuted)
+                            Text("جارِ تجهيز الترجمة للاستخدام بدون نت...", color = Color.White.copy(alpha = .82f))
                         }
-                        modelsReady -> Text("✓ الترجمة Offline جاهزة", color = Color(0xFF16834A), fontWeight = FontWeight.Bold)
+                        modelsReady -> Text("✓ الترجمة بدون إنترنت جاهزة", color = Color(0xFFB8F2D0), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -361,22 +364,25 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         }
 
         item {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it.take(20000); output = "" },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 5,
-                maxLines = 12,
-                label = { Text(if (selectedTab == 1) "النص المستخرج — يمكنك تصحيحه" else "النص") },
-                placeholder = { Text("اكتب بالعربي أو بالإنجليزي...") },
-                textStyle = LocalTextStyle.current.copy(
-                    textDirection = bidiTextDirection(input),
-                    textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(input.trim().take(24))) TextAlign.Right else TextAlign.Left
-                ),
-                trailingIcon = {
-                    if (input.isNotBlank()) IconButton(onClick = { input = ""; output = "" }) { Icon(Icons.Rounded.Close, "مسح") }
+            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, StudentBorder)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (selectedTab == 1) "النص المستخرج" else "النص الأصلي", fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                        Surface(shape = RoundedCornerShape(10.dp), color = StudentSoft) { Text(if (input.isBlank()) "AR / EN" else if (inputHasArabic) "العربية" else "English", color = StudentBlue, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)) }
+                        if (input.isNotBlank()) IconButton(onClick = { input = ""; output = "" }) { Icon(Icons.Rounded.Close, "مسح") }
+                    }
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it.take(20000); output = "" },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 5,
+                        maxLines = 12,
+                        placeholder = { Text("اكتب أو الصق النص هنا...") },
+                        textStyle = LocalTextStyle.current.copy(textDirection = bidiTextDirection(input), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(input.trim().take(24))) TextAlign.Right else TextAlign.Left),
+                        shape = RoundedCornerShape(16.dp)
+                    )
                 }
-            )
+            }
         }
 
         if (input.isNotBlank()) {
@@ -403,7 +409,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                 onClick = ::translateNow,
                 enabled = input.isNotBlank() && !busy,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = StudentBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = StudentTeal),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
@@ -418,11 +424,14 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF7F3FC)),
-                    border = BorderStroke(1.dp, Color(0xFFE6DDF5))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF8F5)),
+                    border = BorderStroke(1.dp, Color(0xFFB9E5DA))
                 ) {
                     Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("الترجمة", color = StudentMuted, style = MaterialTheme.typography.labelLarge)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("الترجمة النهائية", color = StudentBlueDark, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                            lastTranslationEngine?.let { Surface(shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = .75f)) { Text(it, color = StudentTeal, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) } }
+                        }
                         Text(output, style = MaterialTheme.typography.bodyLarge.copy(textDirection = bidiTextDirection(output)), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left, modifier = Modifier.fillMaxWidth())
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { clipboard.setText(AnnotatedString(output)) }) {
