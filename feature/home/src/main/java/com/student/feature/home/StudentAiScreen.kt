@@ -253,7 +253,8 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             return
         }
 
-        val canUseOnline = translationMode == "online" && isStudentOnline(context)
+        // بعض شبكات Android لا تعيد NET_CAPABILITY_VALIDATED رغم أن HTTPS يعمل.
+        val canUseOnline = translationMode == "online"
         if (!canUseOnline) {
             finishOffline()
             return
@@ -388,13 +389,23 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it.take(20000); output = "" },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 5,
-                        maxLines = 12,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp, max = 190.dp),
+                        minLines = 3,
+                        maxLines = 8,
                         placeholder = { Text("اكتب أو الصق النص هنا...") },
                         textStyle = LocalTextStyle.current.copy(textDirection = bidiTextDirection(input), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(input.trim().take(24))) TextAlign.Right else TextAlign.Left),
                         shape = RoundedCornerShape(16.dp)
                     )
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("اللهجة", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        FilterChip(selected = accent == "american", onClick = { accent = "american" }, label = { Text("American", fontSize = 11.sp) })
+                        FilterChip(selected = accent == "british", onClick = { accent = "british" }, label = { Text("British", fontSize = 11.sp) })
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }) {
+                            Icon(Icons.Rounded.VolumeUp, null, Modifier.size(17.dp))
+                            Text("نطق", fontSize = 11.sp)
+                        }
+                    }
                     if (wordSuggestions.isNotEmpty()) {
                         Text("اقتراحات سريعة", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
@@ -473,23 +484,6 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                                 Icon(Icons.Rounded.SwapVert, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text("عكس")
                             }
                         }
-                    }
-                }
-            }
-        }
-
-        item {
-            StudentOutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("النطق الإنجليزي", fontWeight = FontWeight.Black)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterChip(selected = accent == "american", onClick = { accent = "american" }, label = { Text("American") })
-                        FilterChip(selected = accent == "british", onClick = { accent = "british" }, label = { Text("British") })
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterChip(selected = speed == "slow", onClick = { speed = "slow" }, label = { Text("بطيء") })
-                        FilterChip(selected = speed == "normal", onClick = { speed = "normal" }, label = { Text("طبيعي") })
-                        FilterChip(selected = speed == "fast", onClick = { speed = "fast" }, label = { Text("سريع") })
                     }
                 }
             }
