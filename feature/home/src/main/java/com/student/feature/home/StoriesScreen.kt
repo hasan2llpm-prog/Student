@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -270,9 +271,13 @@ private fun StoryViewer(
     var paused by remember { mutableStateOf(false) }
     var replyOpen by remember { mutableStateOf(false) }
     var deleteConfirm by remember { mutableStateOf(false) }
+    var showViewers by remember { mutableStateOf(false) }
+    var showLikers by remember { mutableStateOf(false) }
     var viewers by remember { mutableStateOf<List<StoryViewer>>(emptyList()) }
+    var likers by remember { mutableStateOf<List<StoryViewer>>(emptyList()) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
+    val timerPaused = paused || replyOpen || deleteConfirm || showViewers || showLikers
     LaunchedEffect(current?.id) {
         val story = current ?: return@LaunchedEffect
         viewers = if (story.userId == session.userId) {
@@ -281,7 +286,7 @@ private fun StoryViewer(
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
-            StoryPage(stories[page], paused, onTogglePause = { paused = !paused }, onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
+            StoryPage(stories[page], timerPaused, onTogglePause = { paused = !paused }, onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
         }
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -307,12 +312,12 @@ private fun StoryViewer(
                     Text(it.authorName, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, modifier = Modifier.weight(1f))
                 }
                 if (current?.userId == session.userId) {
-                    IconButton(onClick = { deleteConfirm = true }) {
+                    IconButton(onClick = { paused = true; deleteConfirm = true }) {
                         Icon(Icons.Rounded.DeleteOutline, "حذف القصة", tint = Color.White)
                     }
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, "إغلاق", tint = Color.White) }
-                IconButton(onClick = onCreate) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
+                IconButton(onClick = { paused = true; onCreate() }) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
             }
         }
         current?.let { story ->
@@ -320,7 +325,7 @@ private fun StoryViewer(
                 Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
                     if (story.userId == session.userId) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { showViewers = true },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(modifier = Modifier.width(92.dp).height(38.dp)) {
@@ -360,10 +365,19 @@ private fun StoryViewer(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                         IconButton(onClick = { replyOpen = !replyOpen }) { Icon(Icons.Rounded.ChatBubbleOutline, "تعليق", tint = Color.White, modifier = Modifier.size(29.dp)) }
                         IconButton(onClick = {
-                            val next = if (selectedReaction == "love") null else "love"
-                            selectedReaction = next
-                            scope.launch { if (withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, next) }.isFailure) interactionMessage = "تعذر حفظ التفاعل" }
-                        }) { Icon(if (selectedReaction == "love") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "إعجاب", tint = if (selectedReaction == "love") Color(0xFFFF2D55) else Color.White, modifier = Modifier.size(31.dp)) }
+                            if (story.userId == session.userId) {
+                                showLikers = true
+                                scope.launch { likers = withContext(Dispatchers.IO) { api.storyLikers(session, story.id).getOrDefault(emptyList()) } }
+                            } else {
+                                val next = if (selectedReaction == "love") null else "love"
+                                selectedReaction = next
+                                paused = true
+                                scope.launch {
+                                    if (withContext(Dispatchers.IO) { api.setStoryReaction(session, story.id, next) }.isFailure) interactionMessage = "تعذر حفظ التفاعل"
+                                    paused = false
+                                }
+                            }
+                        }) { Icon(if (selectedReaction == "love") Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "إعجاب أو عرض المعجبين", tint = if (selectedReaction == "love") Color(0xFFFF2D55) else Color.White, modifier = Modifier.size(31.dp)) }
                         Spacer(Modifier.weight(1f))
                         Text("تفاعل مع القصة", color = Color.White.copy(alpha = .75f), fontSize = 12.sp)
                     }
@@ -384,18 +398,52 @@ private fun StoryViewer(
                 dismissButton = { TextButton(onClick = { deleteConfirm = false }) { Text("إلغاء") } }
             )
         }
+        if (showViewers) {
+            StoryPeopleDialog(title = "مشاهدو القصة", people = viewers, onDismiss = { showViewers = false })
+        }
+        if (showLikers) {
+            StoryPeopleDialog(title = "المعجبون بالقصة", people = likers, onDismiss = { showLikers = false })
+        }
     }
+}
+
+@Composable
+private fun StoryPeopleDialog(title: String, people: List<StoryViewer>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            if (people.isEmpty()) {
+                Text("لا توجد بيانات بعد.")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    people.take(30).forEach { person ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            StudentAvatar(person.fullName, person.avatarUrl, person.profileFrameUrl, 34.dp)
+                            Spacer(Modifier.width(9.dp))
+                            Column {
+                                Text(person.fullName, fontWeight = FontWeight.Bold)
+                                Text("@${person.username}", color = StudentMuted, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }
+    )
 }
 
 @Composable
 private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onProgress: (Float) -> Unit) {
     var progress by remember(story.id) { mutableFloatStateOf(0f) }
     val animatedProgress by animateFloatAsState(progress, label = "story-progress")
+    val latestPaused by rememberUpdatedState(paused)
     LaunchedEffect(story.id) {
         progress = 0f
         val steps = (story.durationSeconds.coerceIn(3, 15) * 20)
         repeat(steps) {
-            while (paused) kotlinx.coroutines.delay(100)
+            while (latestPaused) kotlinx.coroutines.delay(100)
             kotlinx.coroutines.delay(50)
             progress = ((it + 1).toFloat() / steps).coerceIn(0f, 1f)
             onProgress(progress)

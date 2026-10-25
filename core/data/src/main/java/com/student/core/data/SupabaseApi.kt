@@ -358,6 +358,15 @@ class SupabaseApi {
         Unit
     }
 
+    fun storyLikers(session: StudentSession, storyId: String): Result<List<StoryViewer>> = runCatching {
+        val story = getArray(session, "student_stories_v281?select=user_id&id=eq.$storyId&limit=1")
+        require(story.length() > 0 && story.getJSONObject(0).optString("user_id") == session.userId) { "لا تملك صلاحية عرض المعجبين." }
+        val rows = getArray(session, "student_story_reactions_v282?select=user_id&story_id=eq.$storyId&order=created_at.desc&limit=200")
+        val ids = buildSet { for (i in 0 until rows.length()) add(rows.getJSONObject(i).optString("user_id")) }.filter { it.isNotBlank() }
+        val profiles = profileMap(session, ids)
+        ids.mapNotNull { id -> profiles[id]?.let { p -> StoryViewer(id, p.fullName, p.username, p.avatarUrl, p.profileFrameUrl) } }
+    }
+
     fun replyToStory(session: StudentSession, storyId: String, body: String): Result<Unit> = runCatching {
         val clean = body.trim().take(1000)
         require(clean.isNotBlank()) { "اكتب ردًا قبل الإرسال." }
