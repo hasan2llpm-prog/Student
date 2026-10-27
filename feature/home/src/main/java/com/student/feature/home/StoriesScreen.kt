@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
@@ -32,6 +33,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -39,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.student.core.data.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -264,6 +268,7 @@ private fun StoryViewer(
     onPrevious: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var reply by remember { mutableStateOf("") }
     var selectedReaction by remember { mutableStateOf<String?>(null) }
@@ -275,9 +280,23 @@ private fun StoryViewer(
     var showLikers by remember { mutableStateOf(false) }
     var viewers by remember { mutableStateOf<List<StoryViewer>>(emptyList()) }
     var likers by remember { mutableStateOf<List<StoryViewer>>(emptyList()) }
+    var chromeVisible by remember { mutableStateOf(true) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
     val timerPaused = paused || replyOpen || deleteConfirm || showViewers || showLikers
+    LaunchedEffect(pagerState.currentPage, stories) {
+        stories.getOrNull(pagerState.currentPage + 1)?.let { next ->
+            if (next.mediaType == "image" && !next.mediaUrl.isNullOrBlank()) {
+                context.imageLoader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(next.mediaUrl)
+                        .memoryCacheKey(next.mediaUrl)
+                        .diskCacheKey(next.mediaUrl)
+                        .build()
+                )
+            }
+        }
+    }
     LaunchedEffect(current?.id) {
         val story = current ?: return@LaunchedEffect
         viewers = if (story.userId == session.userId) {
@@ -286,9 +305,20 @@ private fun StoryViewer(
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
-            StoryPage(stories[page], timerPaused, onTogglePause = { paused = !paused }, onNext, onPrevious, onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value })
+            StoryPage(
+                story = stories[page],
+                paused = timerPaused,
+                chromeVisible = chromeVisible,
+                onTogglePause = { paused = !paused },
+                onLongPressStart = { paused = true; chromeVisible = false },
+                onLongPressEnd = { paused = false; chromeVisible = true },
+                onSwipeDown = onClose,
+                onNext = onNext,
+                onPrevious = onPrevious,
+                onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value }
+            )
         }
-        Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
+        if (chromeVisible) Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 stories.forEachIndexed { index, _ ->
                     val fraction = when {
@@ -320,7 +350,7 @@ private fun StoryViewer(
                 IconButton(onClick = { paused = true; onCreate() }) { Icon(Icons.Rounded.Add, "إضافة قصة", tint = Color.White) }
             }
         }
-        current?.let { story ->
+        if (chromeVisible) current?.let { story ->
             Surface(modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding(), color = Color(0xFF090B10)) {
                 Column(Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
                     if (story.userId == session.userId) {
@@ -435,13 +465,26 @@ private fun StoryPeopleDialog(title: String, people: List<StoryViewer>, onDismis
 }
 
 @Composable
-private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Unit, onNext: () -> Unit, onPrevious: () -> Unit, onProgress: (Float) -> Unit) {
+private fun StoryPage(
+    story: StoryItem,
+    paused: Boolean,
+    chromeVisible: Boolean,
+    onTogglePause: () -> Unit,
+    onLongPressStart: () -> Unit,
+    onLongPressEnd: () -> Unit,
+    onSwipeDown: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onProgress: (Float) -> Unit
+) {
     var progress by remember(story.id) { mutableFloatStateOf(0f) }
+    var dragDistanceX by remember(story.id) { mutableFloatStateOf(0f) }
+    var dragDistanceY by remember(story.id) { mutableFloatStateOf(0f) }
     val animatedProgress by animateFloatAsState(progress, label = "story-progress")
     val latestPaused by rememberUpdatedState(paused)
     LaunchedEffect(story.id) {
         progress = 0f
-        val steps = (story.durationSeconds.coerceIn(3, 15) * 20)
+        val steps = 100 // Instagram-style five-second story duration.
         repeat(steps) {
             while (latestPaused) kotlinx.coroutines.delay(100)
             kotlinx.coroutines.delay(50)
@@ -451,13 +494,33 @@ private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Un
         onNext()
     }
     Box(
-        Modifier.fillMaxSize().pointerInput(story.id) {
+        Modifier
+            .fillMaxSize()
+            .pointerInput(story.id) {
+                detectDragGestures(
+                    onDragEnd = {
+                        if (dragDistanceY > 180f && kotlin.math.abs(dragDistanceY) > kotlin.math.abs(dragDistanceX) * 1.2f) onSwipeDown()
+                        dragDistanceX = 0f
+                        dragDistanceY = 0f
+                    },
+                    onDragCancel = { dragDistanceX = 0f; dragDistanceY = 0f },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        dragDistanceX += amount.x
+                        dragDistanceY += amount.y
+                    }
+                )
+            }
+            .pointerInput(story.id) {
             detectTapGestures(onTap = { position ->
                 when {
                     position.x < size.width * 0.25f -> onPrevious()
                     position.x > size.width * 0.75f -> onNext()
                     else -> onTogglePause()
                 }
+            }, onLongPress = { onLongPressStart() }, onPress = {
+                tryAwaitRelease()
+                onLongPressEnd()
             })
         }
     ) {
@@ -470,7 +533,7 @@ private fun StoryPage(story: StoryItem, paused: Boolean, onTogglePause: () -> Un
             }
         }
         Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center).background(Color.Black.copy(alpha = 0.08f)))
-        if (paused) {
+        if (paused && chromeVisible) {
             Surface(shape = androidx.compose.foundation.shape.CircleShape, color = Color.Black.copy(alpha = .55f), modifier = Modifier.align(Alignment.Center)) {
                 Icon(Icons.Rounded.PlayArrow, "استئناف القصة", tint = Color.White, modifier = Modifier.padding(16.dp).size(42.dp))
             }
