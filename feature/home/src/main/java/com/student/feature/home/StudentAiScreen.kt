@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -21,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextDirection
@@ -91,6 +94,14 @@ private fun splitParagraphs(text: String): List<String> =
         .map { it.trim() }
         .filter { it.isNotBlank() }
 
+private fun localContextText(word: EnglishWord?, fallback: String): String = word?.let {
+    buildString {
+        append("المعنى: ${it.meaningAr}")
+        if (it.example.isNotBlank()) append("\nمثال: ${it.example}")
+        if (it.exampleAr.isNotBlank()) append("\n${it.exampleAr}")
+    }
+} ?: "لا توجد بطاقة سياق محفوظة لكلمة $fallback."
+
 @Composable
 fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     // api/session intentionally kept in signature to preserve current navigation contract.
@@ -112,7 +123,11 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     var translationMode by remember { mutableStateOf("auto") }
     var lastTranslationEngine by remember { mutableStateOf<String?>(null) }
     var speechBusy by remember { mutableStateOf(false) }
+    var contextBusy by remember { mutableStateOf(false) }
+    var selectedContextWord by remember { mutableStateOf<String?>(null) }
+    var contextText by remember { mutableStateOf("") }
     val translationCache = remember { mutableStateMapOf<String, String>() }
+    val offlineStore = remember(context) { TranslationOfflineStore(context) }
     val localVocabulary = remember(context) { loadOxford5000Vocabulary(context) }
 
     val arToEn = remember { createTranslator(TranslateLanguage.ARABIC, TranslateLanguage.ENGLISH) }
@@ -203,6 +218,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                     .addOnSuccessListener { translated ->
                         output = translated.trim()
                         translationCache[text] = output
+                        offlineStore.put(text, output)
                         lastTranslationEngine = "Offline • ML Kit"
                         onDone(true)
                     }
@@ -216,7 +232,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         if (text.isBlank() || busy) return
         error = null
         status = null
-        translationCache[text]?.let { cached ->
+        (translationCache[text] ?: offlineStore.get(text))?.let { cached ->
             output = cached
             lastTranslationEngine = "ذاكرة الجهاز"
             status = "تم عرض ترجمة محفوظة فورًا."
@@ -235,14 +251,13 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             }
         }
 
-        // Use the on-device model first when it is ready: this avoids a network round-trip.
-        if (translationMode == "offline" || (translationMode == "auto" && modelsReady)) {
+        if (translationMode == "offline") {
             finishOffline()
             return
         }
 
-        // بعض شبكات Android لا تعيد NET_CAPABILITY_VALIDATED رغم أن HTTPS يعمل.
-        val canUseOnline = translationMode == "online"
+        // Auto uses the server while connected and falls back to ML Kit offline.
+        val canUseOnline = translationMode == "online" || (translationMode == "auto" && hasValidatedNetwork(context))
         if (!canUseOnline) {
             finishOffline()
             return
@@ -253,6 +268,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             online.onSuccess { translated ->
                 output = translated.trim()
                 translationCache[text] = output
+                offlineStore.put(text, output)
                 lastTranslationEngine = "Online • Context AI"
                 busy = false
                 status = "تمت ترجمة النص أونلاين مع مراعاة السياق."
@@ -282,6 +298,41 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         output.isBlank() -> if (!inputHasArabic) input.trim() else ""
         inputHasArabic -> output
         else -> input.trim()
+    }
+
+    fun requestContext(word: String) {
+        val clean = word.trim().lowercase()
+        if (clean.length < 2 || contextBusy) return
+        selectedContextWord = clean
+        contextText = ""
+        contextBusy = true
+        scope.launch {
+            val local = localVocabulary.firstOrNull { it.word.equals(clean, ignoreCase = true) }
+            if (hasValidatedNetwork(context)) {
+                val prompt = "Give a compact English-learning context card for '$clean': Arabic meaning, 2 synonyms, one American example and one British example. Use short lines."
+                withContext(Dispatchers.IO) { api.callStudentAi(session, "ask", prompt) }
+                    .onSuccess { contextText = it.trim() }
+                    .onFailure { contextText = localContextText(local, clean) }
+            } else {
+                contextText = localContextText(local, clean)
+            }
+            contextBusy = false
+        }
+    }
+
+    val annotatedOutput = remember(output) {
+        buildAnnotatedString {
+            val tokenPattern = Regex("[A-Za-z]{2,}")
+            var cursor = 0
+            tokenPattern.findAll(output).forEach { match ->
+                append(output.substring(cursor, match.range.first))
+                val start = length
+                append(match.value)
+                addStringAnnotation("word", match.value, start, length)
+                cursor = match.range.last + 1
+            }
+            append(output.substring(cursor))
+        }
     }
     LaunchedEffect(speechBusy) {
         if (speechBusy) {
@@ -436,7 +487,27 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                     border = BorderStroke(1.dp, Color(0xFFB9E5DA))
                 ) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(output, style = MaterialTheme.typography.bodyMedium.copy(textDirection = bidiTextDirection(output)), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left, modifier = Modifier.weight(1f), maxLines = 3)
+                        Box(Modifier.weight(1f)) {
+                            ClickableText(
+                                text = annotatedOutput,
+                                style = MaterialTheme.typography.bodyMedium.copy(textDirection = bidiTextDirection(output), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left),
+                                onClick = { offset ->
+                                    annotatedOutput.getStringAnnotations("word", offset, offset).firstOrNull()?.let { requestContext(it.item) }
+                                }
+                            )
+                            DropdownMenu(
+                                expanded = selectedContextWord != null,
+                                onDismissRequest = { selectedContextWord = null },
+                                modifier = Modifier.widthIn(max = 300.dp)
+                            ) {
+                                Text(selectedContextWord.orEmpty(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                                if (contextBusy) {
+                                    CircularProgressIndicator(Modifier.padding(14.dp).size(18.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Text(contextText, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 12.sp)
+                                }
+                            }
+                        }
                         TextButton(onClick = { accent = "american"; speechBusy = true; if (!speech.speak(englishForSpeech, "american", speed)) error = "النطق الأمريكي غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇺🇸", fontSize = 17.sp) }
                         TextButton(onClick = { accent = "british"; speechBusy = true; if (!speech.speak(englishForSpeech, "british", speed)) error = "النطق البريطاني غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇬🇧", fontSize = 17.sp) }
                         IconButton(onClick = { speechBusy = true; if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }, modifier = Modifier.size(32.dp)) {
