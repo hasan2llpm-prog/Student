@@ -26,17 +26,19 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.student.app.StudentPalette
+import com.student.app.StudentDimens
 
-val StudentBlue = Color(0xFF152238)
-val StudentBlueDark = Color(0xFF0C1728)
-val StudentTeal = Color(0xFF0F766E)
-val StudentGold = Color(0xFFD69E2E)
-val StudentCoral = Color(0xFFE76F51)
-val StudentText = Color(0xFF172033)
-val StudentMuted = Color(0xFF718096)
-val StudentBorder = Color(0xFFD8E0E8)
-val StudentSoft = Color(0xFFF5F7FA)
-val StudentMessageBg = Color(0xFFEAF5F3)
+val StudentBlue = StudentPalette.Navy
+val StudentBlueDark = StudentPalette.NavyDark
+val StudentTeal = StudentPalette.Teal
+val StudentGold = StudentPalette.Gold
+val StudentCoral = StudentPalette.Coral
+val StudentText = StudentPalette.Ink
+val StudentMuted = StudentPalette.Muted
+val StudentBorder = StudentPalette.Border
+val StudentSoft = StudentPalette.SurfaceSoft
+val StudentMessageBg = StudentPalette.TealLight
 
 @Composable
 fun VerificationBadge(
@@ -105,18 +107,18 @@ fun StudentAvatar(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(Color(0xFFE3F0EF))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
             )
         } else {
             Surface(
                 modifier = Modifier.size(size),
                 shape = CircleShape,
-                color = Color(0xFFE3F0EF)
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         name.trim().firstOrNull()?.toString()?.uppercase() ?: "S",
-                        color = StudentTeal,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontSize = (size.value * 0.36f).sp,
                         fontWeight = FontWeight.Black
                     )
@@ -147,7 +149,7 @@ fun StudentName(
     style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.titleMedium
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(name, style = style, fontWeight = FontWeight.Bold, color = StudentText)
+        Text(name, style = style, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         VerificationBadge(verified, verificationColor)
     }
 }
@@ -167,12 +169,12 @@ fun StudentOutlinedCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE7E5EA)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        Card(
+            modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = StudentDimens.SoftElevation),
         content = content
     )
 }
@@ -181,7 +183,7 @@ fun StudentOutlinedCard(
 fun StudentLogo() {
     Text(
         "Student",
-        color = StudentBlue,
+        color = MaterialTheme.colorScheme.primary,
         fontSize = 25.sp,
         fontWeight = FontWeight.Black,
         fontStyle = FontStyle.Italic
