@@ -1,8 +1,6 @@
 package com.student.feature.home
 
 import android.net.Uri
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -21,9 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,14 +39,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-
-private fun isStudentOnline(context: android.content.Context): Boolean {
-    val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-    val network = cm.activeNetwork ?: return false
-    val caps = cm.getNetworkCapabilities(network) ?: return false
-    return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-}
 
 private fun bidiTextDirection(text: String): TextDirection =
     if (Regex("[\u0600-\u06FF]").containsMatchIn(text.trim().take(24))) TextDirection.ContentOrRtl else TextDirection.ContentOrLtr
@@ -107,7 +95,6 @@ private fun splitParagraphs(text: String): List<String> =
 fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     // api/session intentionally kept in signature to preserve current navigation contract.
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     val speech = rememberStudentSpeechController()
     val scope = rememberCoroutineScope()
 
@@ -124,6 +111,7 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var translationMode by remember { mutableStateOf("auto") }
     var lastTranslationEngine by remember { mutableStateOf<String?>(null) }
+    var speechBusy by remember { mutableStateOf(false) }
     val translationCache = remember { mutableStateMapOf<String, String>() }
     val localVocabulary = remember(context) { loadOxford5000Vocabulary(context) }
 
@@ -295,6 +283,12 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         inputHasArabic -> output
         else -> input.trim()
     }
+    LaunchedEffect(speechBusy) {
+        if (speechBusy) {
+            kotlinx.coroutines.delay(450)
+            speechBusy = false
+        }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize().background(Color(0xFFF5F7FA)).imePadding().navigationBarsPadding(),
@@ -396,16 +390,6 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
                         textStyle = LocalTextStyle.current.copy(textDirection = bidiTextDirection(input), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(input.trim().take(24))) TextAlign.Right else TextAlign.Left),
                         shape = RoundedCornerShape(16.dp)
                     )
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text("اللهجة", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        FilterChip(selected = accent == "american", onClick = { accent = "american" }, label = { Text("American", fontSize = 11.sp) })
-                        FilterChip(selected = accent == "british", onClick = { accent = "british" }, label = { Text("British", fontSize = 11.sp) })
-                        Spacer(Modifier.weight(1f))
-                        TextButton(onClick = { if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }) {
-                            Icon(Icons.Rounded.VolumeUp, null, Modifier.size(17.dp))
-                            Text("نطق", fontSize = 11.sp)
-                        }
-                    }
                     if (wordSuggestions.isNotEmpty()) {
                         Text("اقتراحات سريعة", color = StudentMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(vertical = 2.dp)) {
@@ -428,30 +412,11 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             }
         }
 
-        if (input.isNotBlank()) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { clipboard.setText(AnnotatedString(input)) }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Rounded.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text("نسخ الكل")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            if (englishForSpeech.isBlank()) error = "النطق الكامل متاح للنص الإنجليزي. ترجم العربية أولًا."
-                            else if (!speech.speak(englishForSpeech, accent, speed)) error = "صوت English المطلوب غير مثبت على الجهاز."
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Rounded.VolumeUp, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text("نطق الكل")
-                    }
-                }
-            }
-        }
-
         item {
             Button(
                 onClick = ::translateNow,
                 enabled = input.isNotBlank() && !busy,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = StudentTeal),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -464,25 +429,18 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
 
         if (output.isNotBlank()) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(.96f),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF8F5)),
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0xFFEAF8F5),
                     border = BorderStroke(1.dp, Color(0xFFB9E5DA))
                 ) {
-                    Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("الترجمة النهائية", color = StudentBlueDark, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-                            lastTranslationEngine?.let { Surface(shape = RoundedCornerShape(10.dp), color = Color.White.copy(alpha = .75f)) { Text(it, color = StudentTeal, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)) } }
-                        }
-                        Text(output, style = MaterialTheme.typography.bodyLarge.copy(textDirection = bidiTextDirection(output)), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left, modifier = Modifier.fillMaxWidth())
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { clipboard.setText(AnnotatedString(output)) }) {
-                                Icon(Icons.Rounded.ContentCopy, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text("نسخ")
-                            }
-                            OutlinedButton(onClick = { val old = input; input = output; output = old }) {
-                                Icon(Icons.Rounded.SwapVert, null, Modifier.size(18.dp)); Spacer(Modifier.width(5.dp)); Text("عكس")
-                            }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(output, style = MaterialTheme.typography.bodyMedium.copy(textDirection = bidiTextDirection(output)), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left, modifier = Modifier.weight(1f), maxLines = 3)
+                        TextButton(onClick = { accent = "american"; speechBusy = true; if (!speech.speak(englishForSpeech, "american", speed)) error = "النطق الأمريكي غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇺🇸", fontSize = 17.sp) }
+                        TextButton(onClick = { accent = "british"; speechBusy = true; if (!speech.speak(englishForSpeech, "british", speed)) error = "النطق البريطاني غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇬🇧", fontSize = 17.sp) }
+                        IconButton(onClick = { speechBusy = true; if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }, modifier = Modifier.size(32.dp)) {
+                            if (speechBusy) CircularProgressIndicator(Modifier.size(15.dp), color = StudentTeal, strokeWidth = 2.dp) else Icon(Icons.Rounded.VolumeUp, "نطق", tint = StudentTeal, modifier = Modifier.size(19.dp))
                         }
                     }
                 }
