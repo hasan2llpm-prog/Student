@@ -45,7 +45,7 @@ fun SearchScreen(api: SupabaseApi, session: StudentSession, onOpenMessages: (Str
             busy = true; message = null
             when (mode) {
                 0 -> withContext(Dispatchers.IO) { api.searchProfiles(session, q) }.onSuccess { people = it }.onFailure { message = it.message }
-                1 -> withContext(Dispatchers.IO) { api.englishVocabulary(session, limit = 5000) }.onSuccess { all -> english = all.filter { it.word.contains(q,true) || it.meaningAr.contains(q,true) || it.exampleEn.contains(q,true) }.take(60) }.onFailure { message = it.message }
+                1 -> withContext(Dispatchers.IO) { api.englishVocabulary(session, limit = 100) }.onSuccess { all -> english = all.filter { it.word.contains(q,true) || it.meaningAr.contains(q,true) || it.exampleEn.contains(q,true) }.take(60) }.onFailure { message = it.message }
                 else -> withContext(Dispatchers.IO) { api.searchEducationMaterials(session, q) }.onSuccess { materials = it }.onFailure { message = it.message }
             }
             busy = false

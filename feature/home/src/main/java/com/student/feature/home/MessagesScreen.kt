@@ -184,7 +184,16 @@ fun MessagesScreen(
         conversations.firstOrNull { it.id == id }?.let { conv -> if (current?.id != conv.id) { current = conv; loadMessages(conv) } }
     }
     LaunchedEffect(current?.id, currentRoom?.id) { onConversationStateChanged(current != null || currentRoom != null) }
-    DisposableEffect(Unit) { onDispose { onConversationStateChanged(false); runCatching { recorder?.release() } } }
+    DisposableEffect(Unit) {
+        onDispose {
+            onConversationStateChanged(false)
+            runCatching { recorder?.stop() }
+            runCatching { recorder?.release() }
+            recorder = null
+            runCatching { recordingFile?.delete() }
+            recordingFile = null
+        }
+    }
     DisposableEffect(current?.id, session.accessToken) {
         val conv = current
         val obs = if (conv != null) api.observeConversationMessages(session, conv.id) { loadMessages(conv, true) } else null

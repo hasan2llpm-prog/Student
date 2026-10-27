@@ -312,12 +312,12 @@ class SupabaseApi {
         }
     }
 
-    fun stories(session: StudentSession, limit: Int = 80): Result<List<StoryItem>> = runCatching {
-        val safeLimit = limit.coerceIn(1, 100)
+    fun stories(session: StudentSession, limit: Int = 40): Result<List<StoryItem>> = runCatching {
+        val safeLimit = limit.coerceIn(1, 60)
         val arr = getArray(session, "student_stories_v281?select=*&expires_at=gt.now()&moderation_status=eq.approved&order=created_at.asc&limit=$safeLimit")
         val ids = buildSet { for (i in 0 until arr.length()) add(arr.getJSONObject(i).optString("user_id")) }
         val profiles = profileMap(session, ids.filter { it.isNotBlank() })
-        val viewed = getArray(session, "student_story_views_v281?select=story_id&user_id=eq.${session.userId}&limit=500")
+        val viewed = getArray(session, "student_story_views_v281?select=story_id&user_id=eq.${session.userId}&limit=200")
             .let { a -> buildSet { for (i in 0 until a.length()) add(a.getJSONObject(i).optString("story_id")) } }
         buildList {
             for (i in 0 until arr.length()) {
@@ -1607,7 +1607,7 @@ class SupabaseApi {
     }
 
     fun adminRecentUsers(session: StudentSession): Result<List<AdminRecentUser>> = runCatching {
-        val arr = rpcArray(session, "student_admin_recent_users", JSONObject().put("p_limit", 50))
+        val arr = rpcArray(session, "student_admin_recent_users", JSONObject().put("p_limit", 20))
         buildList {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
@@ -1712,9 +1712,10 @@ class SupabaseApi {
         Unit
     }
 
-    fun englishVocabulary(session: StudentSession, level: String? = null, limit: Int = 500): Result<List<EnglishVocabularyItem>> = runCatching {
+    fun englishVocabulary(session: StudentSession, level: String? = null, limit: Int = 100): Result<List<EnglishVocabularyItem>> = runCatching {
         val levelFilter = level?.takeIf { it.isNotBlank() }?.let { "&level=eq.$it" }.orEmpty()
-        val arr = getArray(session, "english_vocabulary?select=*&is_active=eq.true$levelFilter&order=source_rank.asc.nullslast,word.asc&limit=$limit")
+        val safeLimit = limit.coerceIn(20, 200)
+        val arr = getArray(session, "english_vocabulary?select=*&is_active=eq.true$levelFilter&order=source_rank.asc.nullslast,word.asc&limit=$safeLimit")
         buildList {
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
