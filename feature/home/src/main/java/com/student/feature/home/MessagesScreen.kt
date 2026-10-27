@@ -16,10 +16,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,6 +35,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -151,7 +155,7 @@ fun MessagesScreen(
                 val cached = offline.loadMessages(conv.id)
                 if (cached.isNotEmpty()) messages = cached.sortedBy { it.createdAt }
             }
-            withContext(Dispatchers.IO) { api.messages(session, conv.id) }
+            withContext(Dispatchers.IO) { api.messages(session, conv.id, 20) }
                 .onSuccess { rows ->
                     messages = rows.sortedBy { it.createdAt }
                     offline.saveMessages(conv.id, rows)
@@ -550,9 +554,13 @@ fun MessagesScreen(
             onSend = {
                 val body=input.trim(); if(body.isBlank()) return@DirectConversationView
                 val reply=replyingMessage; val edit=editingMessage; input="";replyingMessage=null;editingMessage=null
+                val targetConversation = current ?: return@DirectConversationView
+                val optimisticId = "local-${System.nanoTime()}"
+                val optimistic = if (edit == null && reply == null) MessageItem(optimisticId, targetConversation.id, session.userId, body, "text", null, null, Instant.now().toString(), null, null, 0, null) else null
+                if (optimistic != null) messages = (messages + optimistic).sortedBy { it.createdAt }
                 scope.launch {
-                    val r=withContext(Dispatchers.IO){ when { edit!=null -> api.editMessage(session,edit.id,body); reply!=null -> api.sendMessageReply(session,current!!.id,body,reply.id); else -> api.sendMessage(session,current!!.id,body) } }
-                    r.onSuccess{loadMessages(current!!,true)}.onFailure{error=it.message}
+                    val r=withContext(Dispatchers.IO){ when { edit!=null -> api.editMessage(session,edit.id,body); reply!=null -> api.sendMessageReply(session,targetConversation.id,body,reply.id); else -> api.sendMessage(session,targetConversation.id,body) } }
+                    r.onSuccess{loadMessages(targetConversation,true)}.onFailure{messages = messages.filterNot { it.id == optimisticId }; error=it.message}
                 }
             }
         )
@@ -582,6 +590,11 @@ private fun MessagesHomeList(
     onRefresh:()->Unit,onCreateRoom:()->Unit,onOpenConversation:(ConversationItem)->Unit,onDeleteConversation:(ConversationItem)->Unit,onOpenRoom:(SocialRoomItem)->Unit,onOpenProfile:(String)->Unit
 ) {
     var query by remember { mutableStateOf("") }
+    var swipedConversationId by remember { mutableStateOf<String?>(null) }
+    var pinnedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var mutedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val visibleConversations = conversations.filter { query.isBlank() || it.title.contains(query,true) || it.lastMessage.contains(query,true) }
+        .sortedByDescending { it.id in pinnedIds }
     Column(Modifier.fillMaxSize().background(Color(0xFFF5F7FA))) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -635,8 +648,21 @@ private fun MessagesHomeList(
                     HorizontalDivider(color = StudentBorder, modifier = Modifier.padding(top = 8.dp))
                 }
             LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                items(conversations.filter { query.isBlank() || it.title.contains(query,true) || it.lastMessage.contains(query,true) },key={it.id}) { conv ->
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color.White).border(1.dp, StudentBorder, RoundedCornerShape(18.dp)).combinedClickable(onClick={onOpenConversation(conv)},onLongClick={onDeleteConversation(conv)}).padding(horizontal=12.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
+                items(visibleConversations,key={it.id}) { conv ->
+                    Box(Modifier.fillMaxWidth().heightIn(min = 78.dp)) {
+                        if (swipedConversationId == conv.id) {
+                            Row(Modifier.align(Alignment.CenterEnd), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FilledTonalButton(onClick = { pinnedIds = if (conv.id in pinnedIds) pinnedIds - conv.id else pinnedIds + conv.id; swipedConversationId = null }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (conv.id in pinnedIds) "إلغاء التثبيت" else "تثبيت", fontSize = 10.sp) }
+                                FilledTonalButton(onClick = { mutedIds = if (conv.id in mutedIds) mutedIds - conv.id else mutedIds + conv.id; swipedConversationId = null }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (conv.id in mutedIds) "إلغاء الكتم" else "كتم", fontSize = 10.sp) }
+                                FilledTonalButton(onClick = { swipedConversationId = null; onDeleteConversation(conv) }, contentPadding = PaddingValues(horizontal = 8.dp), colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color(0xFFFFE5E5))) { Text("حذف", color = Color(0xFFB42318), fontSize = 10.sp) }
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth().offset { IntOffset(if (swipedConversationId == conv.id) -260 else 0, 0) }.pointerInput(conv.id) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                if (dragAmount < -18f) swipedConversationId = conv.id
+                                if (dragAmount > 18f) swipedConversationId = null
+                            }
+                        }.clip(RoundedCornerShape(18.dp)).background(Color.White).border(1.dp, StudentBorder, RoundedCornerShape(18.dp)).combinedClickable(onClick={ if (swipedConversationId == conv.id) swipedConversationId = null else onOpenConversation(conv) },onLongClick={swipedConversationId=conv.id}).padding(horizontal=12.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically) {
                         Box {
                             Box(Modifier.clickable { conv.otherUserId?.let(onOpenProfile) }) { StudentAvatar(conv.title,conv.avatarUrl,conv.profileFrameUrl,54.dp) }
                             if (isUserActive(conv.lastActiveAt)) Box(Modifier.align(Alignment.BottomEnd).size(14.dp).background(Color(0xFF22C55E),CircleShape).border(2.dp,Color.White,CircleShape))
@@ -647,7 +673,11 @@ private fun MessagesHomeList(
                             Text(presenceText(conv.lastActiveAt), maxLines=1, color=if(isUserActive(conv.lastActiveAt)) Color(0xFF16834A) else StudentMuted, fontSize=10.sp)
                             if(conv.lastMessage.isNotBlank()) Text(conv.lastMessage,maxLines=1,color=StudentMuted,fontSize=12.sp)
                         }
-                        if(conv.unreadCount>0) Surface(shape=CircleShape,color=MsgOrange){Text(conv.unreadCount.toString(),Modifier.padding(horizontal=8.dp,vertical=4.dp),color=Color.White,fontSize=11.sp,fontWeight=FontWeight.Bold)}
+                        Column(horizontalAlignment=Alignment.End) {
+                            if (conv.id in pinnedIds) Icon(Icons.Rounded.PushPin, "مثبت", tint = MsgOrange, modifier = Modifier.size(14.dp))
+                            if(conv.unreadCount>0 && conv.id !in mutedIds) Surface(shape=CircleShape,color=MsgOrange){Text(conv.unreadCount.toString(),Modifier.padding(horizontal=8.dp,vertical=4.dp),color=Color.White,fontSize=11.sp,fontWeight=FontWeight.Bold)}
+                        }
+                    }
                     }
                 }
                 if(conversations.isEmpty()&&!busy) item { EmptyMessageState("لا توجد محادثات بعد","ابحث عن شخص وابدأ المراسلة.") }
@@ -686,7 +716,11 @@ private fun MessagesHomeList(
         ConversationHeader(conv,onBack,onProfile)
         error?.let{Text(it,Modifier.padding(horizontal=12.dp,vertical=4.dp),color=MaterialTheme.colorScheme.error,fontSize=11.sp)}
         LazyColumn(state=listState,modifier=Modifier.weight(1f),contentPadding=PaddingValues(10.dp),verticalArrangement=Arrangement.spacedBy(7.dp)) {
-            items(messages,key={it.id}) { m ->
+            itemsIndexed(messages,key={_, it -> it.id}) { index, m ->
+                val previous = messages.getOrNull(index - 1)
+                if (previous == null || messageDayKey(previous.createdAt) != messageDayKey(m.createdAt)) {
+                    MessageDayDivider(m.createdAt)
+                }
                 val mine=m.senderId==session.userId
                 val replied=messages.firstOrNull{it.id==m.replyTo}
                 MessageBubble(api,session,m,mine,replied,onOpenReel,onOpenImage,onOpenFile,onReply,onForward,onEdit,onDelete)
@@ -871,7 +905,7 @@ private fun MessagesHomeList(
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Text(prettyTime(m.createdAt)+(if(m.editedAt!=null)" • معدّلة" else ""),fontSize=9.sp,color=Color.White.copy(alpha=.72f))
                     if(reactionCount>0){Spacer(Modifier.width(5.dp));Text("${reaction?:"♡"} $reactionCount",fontSize=9.sp,color=Color.White.copy(alpha=.80f))}
-                    if(mine){Spacer(Modifier.width(3.dp));Icon(if(m.readCount>0)Icons.Rounded.DoneAll else Icons.Rounded.Done,null,tint=if(m.readCount>0)Color.White else Color.White.copy(alpha=.65f),modifier=Modifier.size(13.dp))}
+                    if(mine){Spacer(Modifier.width(3.dp));Icon(if(m.id.startsWith("local-")) Icons.Rounded.Schedule else if(m.readCount>0)Icons.Rounded.DoneAll else Icons.Rounded.Done,null,tint=if(m.readCount>0)Color.White else Color.White.copy(alpha=.65f),modifier=Modifier.size(13.dp))}
                 }
             }
             }
@@ -936,8 +970,46 @@ private fun PendingAttachmentPreview(item: PendingAttachmentUi) {
     }
 }
 
+private fun messageDayKey(value: String): String = runCatching { Instant.parse(value).atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString() }.getOrDefault(value.take(10))
+
+private fun messageDayLabel(value: String): String = runCatching {
+    val date = Instant.parse(value).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+    val today = java.time.LocalDate.now()
+    when {
+        date == today -> "اليوم"
+        date == today.minusDays(1) -> "الأمس"
+        else -> date.toString()
+    }
+}.getOrDefault("التاريخ")
+
+@Composable
+private fun MessageDayDivider(createdAt: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        HorizontalDivider(Modifier.weight(1f), color = StudentBorder)
+        Surface(shape = RoundedCornerShape(12.dp), color = MsgOrangeSoft) {
+            Text(messageDayLabel(createdAt), Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = MsgOrange, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+        HorizontalDivider(Modifier.weight(1f), color = StudentBorder)
+    }
+}
+
 @Composable private fun Composer(input:String,onInput:(String)->Unit,onAttach:()->Unit,onCamera:()->Unit,onMic:()->Unit,onSticker:()->Unit,onSend:()->Unit,recording:Boolean,editing:Boolean,onFocused:()->Unit={}){
-    Surface(color=Color.White,shadowElevation=5.dp,modifier=Modifier.navigationBarsPadding()){Column{if(recording)Text("● جارٍ التسجيل... اضغط المايك لإرسال التسجيل",Modifier.fillMaxWidth().background(Color(0xFFFFE6E6)).padding(7.dp),color=Color(0xFFC62828),fontSize=11.sp,fontWeight=FontWeight.Bold);Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)){IconButton(onClick=onSticker){Icon(Icons.Rounded.EmojiEmotions,"ملصقات",tint=MsgOrange)};IconButton(onClick=onAttach){Icon(Icons.Rounded.AttachFile,"ملف",tint=MsgOrange)};IconButton(onClick=onCamera){Icon(Icons.Rounded.PhotoCamera,"كاميرا",tint=MsgOrange)};OutlinedTextField(input,onInput,placeholder={Text("الرسالة")},modifier=Modifier.weight(1f).onFocusChanged{if(it.isFocused)onFocused()},maxLines=4,shape=RoundedCornerShape(20.dp));IconButton(onClick=onMic){Icon(if(recording)Icons.Rounded.StopCircle else Icons.Rounded.Mic,"صوت",tint=if(recording)Color.Red else MsgOrange)};FilledIconButton(onClick=onSend,enabled=input.isNotBlank(),colors=IconButtonDefaults.filledIconButtonColors(containerColor=MsgOrange)){Icon(if(editing)Icons.Rounded.Check else Icons.Rounded.Send,"إرسال",tint=Color.White)}}}}
+    Surface(color=Color.White,shadowElevation=5.dp,modifier=Modifier.navigationBarsPadding()){
+        Column {
+            if(recording) Text("● جارٍ التسجيل... اضغط المايك لإرسال التسجيل",Modifier.fillMaxWidth().background(Color(0xFFFFE6E6)).padding(7.dp),color=Color(0xFFC62828),fontSize=11.sp,fontWeight=FontWeight.Bold)
+            Row(Modifier.fillMaxWidth().padding(horizontal=6.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+                IconButton(onClick=onSticker){Icon(Icons.Rounded.EmojiEmotions,"ملصقات",tint=MsgOrange)}
+                IconButton(onClick=onAttach){Icon(Icons.Rounded.AttachFile,"ملف",tint=MsgOrange)}
+                IconButton(onClick=onCamera){Icon(Icons.Rounded.PhotoCamera,"كاميرا",tint=MsgOrange)}
+                OutlinedTextField(input,onInput,placeholder={Text("الرسالة")},modifier=Modifier.weight(1f).onFocusChanged{if(it.isFocused)onFocused()},maxLines=5,shape=RoundedCornerShape(20.dp))
+                if (input.isBlank() && !editing) {
+                    IconButton(onClick=onMic){Icon(if(recording)Icons.Rounded.StopCircle else Icons.Rounded.Mic,"صوت",tint=if(recording)Color.Red else MsgOrange)}
+                } else {
+                    FilledIconButton(onClick=onSend,enabled=input.isNotBlank(),colors=IconButtonDefaults.filledIconButtonColors(containerColor=MsgOrange)){Icon(if(editing)Icons.Rounded.Check else Icons.Rounded.Send,"إرسال",tint=Color.White)}
+                }
+            }
+        }
+    }
 }
 
 @Composable private fun StickerRow(onPick:(String)->Unit){val stickers=listOf("😂","❤️","🔥","👍","👏","😍","🥳","💯","🙏","😎","🤝","✨");LazyColumn(Modifier.fillMaxWidth().height(92.dp).background(Color.White)){item{Row(Modifier.fillMaxWidth().padding(8.dp),horizontalArrangement=Arrangement.SpaceAround){stickers.take(6).forEach{Text(it,fontSize=27.sp,modifier=Modifier.clickable{onPick(it)})}}};item{Row(Modifier.fillMaxWidth().padding(8.dp),horizontalArrangement=Arrangement.SpaceAround){stickers.drop(6).forEach{Text(it,fontSize=27.sp,modifier=Modifier.clickable{onPick(it)})}}}}
