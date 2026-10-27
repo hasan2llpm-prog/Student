@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.student.feature.home
 
@@ -7,10 +7,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,6 +67,9 @@ fun FeedScreen(
     onOpenRemoteTarget: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val feedCache = remember(context) { com.student.core.data.OfflineStore(context) }
+    val listState = rememberLazyListState()
     val cfg = LocalNativeRemoteConfig.current
     var communityPosts by remember { mutableStateOf<List<PostItem>>(emptyList()) }
     var stories by remember { mutableStateOf<List<StoryItem>>(emptyList()) }
@@ -66,13 +77,19 @@ fun FeedScreen(
     var featureFlags by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     var remoteModules by remember { mutableStateOf<List<RemoteModuleItem>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var loadingMore by remember { mutableStateOf(false) }
+    var feedOffset by remember { mutableIntStateOf(0) }
+    var hasMore by remember { mutableStateOf(true) }
+    var commentsPost by remember { mutableStateOf<PostItem?>(null) }
+    var pullDistance by remember { mutableFloatStateOf(0f) }
+    var pullRefreshing by remember { mutableStateOf(false) }
 
     fun refresh() {
         scope.launch {
             loading = true
             val loaded = withContext(Dispatchers.IO) {
                 coroutineScope {
-                    val communityJob = async { api.feed(session, 6, 0) }
+                    val communityJob = async { api.feed(session, 10, 0) }
                     val adsJob = async { api.homeAds(session) }
                     val flagsJob = async { api.featureFlags(session) }
                     val controlsJob = async { api.v14FeatureControls(session) }
@@ -84,7 +101,16 @@ fun FeedScreen(
                     )
                 }
             }
-            loaded.first.first.onSuccess { communityPosts = it }
+            loaded.first.first.onSuccess {
+                communityPosts = it
+                feedOffset = it.size
+                hasMore = it.size == 10
+                feedCache.savePosts(it.take(20))
+            }.onFailure {
+                communityPosts = feedCache.loadPosts()
+                feedOffset = communityPosts.size
+                hasMore = false
+            }
             loaded.first.second.onSuccess { ads = it }
             loaded.first.third.onSuccess { flags -> featureFlags = flags.associate { it.key.lowercase() to it.enabled } }
             loaded.second.onSuccess { controls ->
@@ -93,9 +119,39 @@ fun FeedScreen(
             loaded.third.onSuccess { remoteModules = it }
             withContext(Dispatchers.IO) { api.stories(session) }.onSuccess { stories = it }
             loading = false
+            pullRefreshing = false
+        }
+    }
+    val pullRefreshConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && listState.firstVisibleItemIndex == 0 && !pullRefreshing) {
+                    pullDistance += available.y
+                    if (pullDistance >= 180f) {
+                        pullDistance = 0f
+                        pullRefreshing = true
+                        refresh()
+                    }
+                } else if (available.y < 0f) pullDistance = 0f
+                return Offset.Zero
+            }
         }
     }
     LaunchedEffect(session.userId) { refresh() }
+    LaunchedEffect(session.userId) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+            .collect { lastIndex ->
+                if (lastIndex >= listState.layoutInfo.totalItemsCount - 2 && hasMore && !loadingMore && !loading) {
+                    loadingMore = true
+                    withContext(Dispatchers.IO) { api.feed(session, 10, feedOffset) }.onSuccess { page ->
+                        communityPosts = (communityPosts + page).distinctBy { it.id }
+                        feedOffset += page.size
+                        hasMore = page.size == 10
+                    }
+                    loadingMore = false
+                }
+            }
+    }
     LaunchedEffect(session.userId, cfg.long("home.remote_modules_refresh_seconds", 30L, 10L, 600L)) {
         while (true) {
             delay(cfg.long("home.remote_modules_refresh_seconds", 30L, 10L, 600L) * 1000L)
@@ -104,10 +160,12 @@ fun FeedScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FB)),
+        state = listState,
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF9F9FB)).nestedScroll(pullRefreshConnection),
         contentPadding = PaddingValues(bottom = 20.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        if (pullRefreshing) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = StudentTeal) }
         item {
             HomeStoriesRow(
                 stories = stories,
@@ -139,6 +197,25 @@ fun FeedScreen(
             item {
                 Spacer(Modifier.height(cfg.int("home.ads_top_space_dp", 10, 0, 50).dp))
                 HomeAdsCarousel(ads)
+            }
+        }
+        items(communityPosts, key = { "feed-${it.id}" }) { post ->
+            FacebookPostCard(
+                api = api,
+                session = session,
+                post = post,
+                onOpenProfile = onOpenProfile,
+                onOpenComments = { commentsPost = post }
+            )
+        }
+        if (loadingMore) item {
+            LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp), color = StudentTeal)
+        }
+    }
+    commentsPost?.let { post ->
+        ModalBottomSheet(onDismissRequest = { commentsPost = null }) {
+            Box(Modifier.fillMaxWidth().heightIn(min = 300.dp, max = 680.dp)) {
+                CommunityComments(api, session, post.id, null) { commentsPost = null }
             }
         }
     }
