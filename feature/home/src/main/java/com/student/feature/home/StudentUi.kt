@@ -26,9 +26,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.student.app.StudentPalette
-import com.student.app.StudentDimens
-
 val StudentBlue = StudentPalette.Navy
 val StudentBlueDark = StudentPalette.NavyDark
 val StudentTeal = StudentPalette.Teal

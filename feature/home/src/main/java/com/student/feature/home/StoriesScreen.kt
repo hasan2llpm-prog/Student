@@ -30,7 +30,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -400,7 +399,7 @@ private fun StoryPage(
                     },
                     onDragCancel = { dragDistanceX = 0f; dragDistanceY = 0f },
                     onDrag = { change, amount ->
-                        change.consume()
+                        change.consumePositionChange()
                         dragDistanceX += amount.x
                         dragDistanceY += amount.y
                     }

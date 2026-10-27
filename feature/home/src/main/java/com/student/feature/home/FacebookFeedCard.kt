@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun FacebookPostCard(
     api: SupabaseApi,
@@ -99,11 +99,16 @@ internal fun FacebookPostCard(
             HorizontalDivider(color = Color(0xFFE9ECF1))
             Box(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton(
-                        onClick = { toggleLike() },
-                        modifier = Modifier.combinedClickable(onClick = { toggleLike() }, onLongClick = { reactionsOpen = true }),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) { Icon(if (liked) Icons.Rounded.ThumbUp else Icons.Rounded.ThumbUpOffAlt, null, tint = if (liked) StudentBlue else StudentMuted); Spacer(Modifier.width(4.dp)); Text("أعجبني", color = if (liked) StudentBlue else StudentMuted) }
+                    Box(
+                        Modifier.combinedClickable(onClick = { toggleLike() }, onLongClick = { reactionsOpen = true }).padding(horizontal = 12.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(if (liked) Icons.Rounded.ThumbUp else Icons.Rounded.ThumbUpOffAlt, null, tint = if (liked) StudentBlue else StudentMuted)
+                            Spacer(Modifier.width(4.dp))
+                            Text("أعجبني", color = if (liked) StudentBlue else StudentMuted)
+                        }
+                    }
                     TextButton(onClick = onOpenComments, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Rounded.ChatBubbleOutline, null, tint = StudentMuted); Spacer(Modifier.width(4.dp)); Text("تعليق", color = StudentMuted) }
                     TextButton(onClick = { shareOpen = true }, contentPadding = PaddingValues(horizontal = 12.dp)) { Icon(Icons.Rounded.Share, null, tint = StudentMuted); Spacer(Modifier.width(4.dp)); Text("مشاركة", color = StudentMuted) }
                 }
