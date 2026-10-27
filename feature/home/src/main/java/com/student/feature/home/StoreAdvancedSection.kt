@@ -3,9 +3,14 @@ package com.student.feature.home
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Diamond
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +32,7 @@ fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChan
     var subTab by remember { mutableIntStateOf(0) }
     var tasks by remember { mutableStateOf<List<StoreTask>>(emptyList()) }
     var packages by remember { mutableStateOf<List<DiamondPackage>>(emptyList()) }
+    var wallet by remember { mutableStateOf(WalletSummary()) }
     var transactions by remember { mutableStateOf<List<WalletTransaction>>(emptyList()) }
     var agency by remember { mutableStateOf<AgencyApplication?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -43,10 +49,12 @@ fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChan
             val taskResult = withContext(Dispatchers.IO) { api.storeTasks(session) }
             val packageResult = withContext(Dispatchers.IO) { api.diamondPackages(session) }
             val transactionResult = withContext(Dispatchers.IO) { api.walletTransactions(session) }
+            val walletResult = withContext(Dispatchers.IO) { api.walletSummary(session) }
             val agencyResult = withContext(Dispatchers.IO) { api.myAgencyApplication(session) }
             taskResult.onSuccess { tasks = it }
             packageResult.onSuccess { packages = it }
             transactionResult.onSuccess { transactions = it }
+            walletResult.onSuccess { wallet = it }
             agencyResult.onSuccess { agency = it }
             busy = false
         }
@@ -114,6 +122,26 @@ fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChan
     }
 
     Column(Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            shape = RoundedCornerShape(22.dp),
+            color = Color.Transparent
+        ) {
+            Row(
+                Modifier.fillMaxWidth().background(
+                    Brush.horizontalGradient(listOf(Color(0xFF172554), Color(0xFF6D28D9), Color(0xFFB7791F))),
+                    RoundedCornerShape(22.dp)
+                ).padding(horizontal = 18.dp, vertical = 15.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("محفظة الألماس", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
+                    Text("${wallet.diamonds}", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                    Text("الرصيد الحالي المتاح", color = Color.White.copy(alpha = .72f), fontSize = 10.sp)
+                }
+                Icon(Icons.Rounded.Diamond, "الألماس", tint = Color(0xFFFFE08A), modifier = Modifier.size(42.dp))
+            }
+        }
         ScrollableTabRow(selectedTabIndex = subTab, edgePadding = 8.dp, containerColor = Color.White, contentColor = StudentBlue) {
             listOf("المهام", "شراء ألماس", "السجل", "الوكالة").forEachIndexed { index, label ->
                 Tab(selected = subTab == index, onClick = { subTab = index }, text = { Text(label) })
@@ -123,11 +151,27 @@ fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChan
         when (subTab) {
             0 -> LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(tasks, key = { it.id }) { task ->
-                    StudentOutlinedCard(Modifier.fillMaxWidth()) {
+                    Surface(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        shadowElevation = 1.dp
+                    ) {
                         Column(Modifier.padding(14.dp)) {
-                            Text(task.title, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.Diamond, null, tint = StudentGold, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(task.title, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                                Text("+${task.rewardDiamonds}", color = StudentGold, fontWeight = FontWeight.Black)
+                            }
+                            Spacer(Modifier.height(5.dp))
                             Text(task.description, color = StudentMuted)
-                            Text("المكافأة: ${task.rewardDiamonds} ألماسة", color = StudentBlue)
+                            LinearProgressIndicator(
+                                progress = { if (task.verificationType == "daily_visit") 1f else 0f },
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 9.dp),
+                                color = StudentTeal,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
                             if (task.verificationType == "daily_visit") {
                                 Button(onClick = {
                                     scope.launch {
@@ -146,14 +190,25 @@ fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChan
             }
             1 -> LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(packages, key = { it.id }) { pack ->
-                    StudentOutlinedCard(Modifier.fillMaxWidth()) {
-                        Row(Modifier.fillMaxWidth().padding(14.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Surface(
+                        Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        color = Color.Transparent
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().background(
+                                Brush.linearGradient(listOf(Color(0xFF24104F), Color(0xFF6D28D9), Color(0xFFB7791F))),
+                                RoundedCornerShape(20.dp)
+                            ).padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        ) {
                             Column {
-                                Text(pack.title, fontWeight = FontWeight.Bold)
-                                Text("${pack.diamonds} ألماسة", color = StudentBlue)
-                                Text("${pack.userPriceIqd} IQD", color = StudentMuted)
+                                Text(pack.title, fontWeight = FontWeight.Black, color = Color.White)
+                                Text("${pack.diamonds} ألماسة", color = Color(0xFFFFE08A), fontWeight = FontWeight.Bold)
+                                Text("${pack.userPriceIqd} IQD", color = Color.White.copy(alpha = .76f), fontSize = 11.sp)
                             }
-                            Button(onClick = { purchase = pack }) { Text("شراء") }
+                            Button(onClick = { purchase = pack }, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF4C1D95))) { Text("شراء") }
                         }
                     }
                 }
