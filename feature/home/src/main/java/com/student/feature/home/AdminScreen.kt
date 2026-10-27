@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.student.app.StudentDimens
 import com.student.core.data.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -139,16 +140,16 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
 
         Surface(
             modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 2.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF111827),
-            shadowElevation = 0.dp
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.primary,
+            shadowElevation = StudentDimens.SoftElevation
         ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("STUDENT ADMIN", color = Color(0xFFDDD6FE), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(cfg.string("admin.header_title", "لوحة الإدارة"), fontWeight = FontWeight.Black, fontSize = 24.sp, color = Color.White)
-                        Text("إدارة واضحة ومقسمة لكل أجزاء التطبيق", color = Color(0xFFD1D5DB), fontSize = 11.sp)
+                        Text("STUDENT ADMIN", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .72f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(cfg.string("admin.header_title", "لوحة الإدارة"), fontWeight = FontWeight.Black, fontSize = 24.sp, color = MaterialTheme.colorScheme.onPrimary)
+                        Text("إدارة واضحة ومقسمة لكل أجزاء التطبيق", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .72f), fontSize = 11.sp)
                     }
                     if (cfg.bool("admin.show_refresh", true)) {
                         FilledTonalButton(onClick = { refresh() }, enabled = !loading) { Text("تحديث") }
@@ -163,12 +164,12 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
         }
 
         message?.let {
-            Surface(
-                color = Color(0xFFF3FAFF),
-                shape = RoundedCornerShape(12.dp),
+                Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp)
             ) {
-                Text(it, Modifier.padding(10.dp), color = StudentText, fontSize = 12.sp)
+                Text(it, Modifier.padding(10.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 12.sp)
             }
         }
 
@@ -527,18 +528,18 @@ private fun AdminDashboard(
 private fun AdminDashboardItem(title:String, icon:ImageVector, onClick:()->Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick=onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = Color.White,
-        border = BorderStroke(1.dp, Color(0xFFE7EAF0)),
-        shadowElevation = 0.dp
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = StudentDimens.SoftElevation
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically) {
-            Surface(Modifier.size(44.dp),shape=RoundedCornerShape(14.dp),color=Color(0xFFF1ECFF)) {
-                Box(contentAlignment=Alignment.Center){Icon(icon,null,tint=Color(0xFF6E42C1))}
+            Surface(Modifier.size(44.dp),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.secondaryContainer) {
+                Box(contentAlignment=Alignment.Center){Icon(icon,null,tint=MaterialTheme.colorScheme.onSecondaryContainer)}
             }
             Spacer(Modifier.width(12.dp))
-            Text(title,Modifier.weight(1f),fontWeight=FontWeight.Black,color=StudentText)
-            Icon(Icons.Rounded.ChevronRight,null,tint=StudentMuted)
+            Text(title,Modifier.weight(1f),fontWeight=FontWeight.Black,color=MaterialTheme.colorScheme.onSurface)
+            Icon(Icons.Rounded.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
