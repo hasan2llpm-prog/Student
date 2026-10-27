@@ -399,7 +399,6 @@ private fun StoryPage(
                     },
                     onDragCancel = { dragDistanceX = 0f; dragDistanceY = 0f },
                     onDrag = { change, amount ->
-                        change.consumePositionChange()
                         dragDistanceX += amount.x
                         dragDistanceY += amount.y
                     }
