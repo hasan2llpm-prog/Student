@@ -292,7 +292,7 @@ private fun StoryViewer(
         }
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true, beyondViewportPageCount = 1) { page ->
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
             StoryPage(
                 story = stories[page],
                 paused = timerPaused,
