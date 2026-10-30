@@ -347,87 +347,10 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = StudentBlueDark)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Surface(shape = RoundedCornerShape(14.dp), color = StudentTeal.copy(alpha = .2f)) { Icon(Icons.Rounded.Translate, null, tint = StudentGold, modifier = Modifier.padding(10.dp).size(24.dp)) }
-                        Column {
-                            Text("مترجم Student", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleLarge)
-                            Text("ترجمة ذكية وسريعة على جهازك", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
-                        }
-                    }
-                    Text("نص • صورة إلى نص • نسخ • نطق", color = Color.White.copy(alpha = .82f))
-                    when {
-                        preparing -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Text("جارِ تجهيز الترجمة للاستخدام بدون نت...", color = Color.White.copy(alpha = .82f))
-                        }
-                        modelsReady -> Text("✓ الترجمة بدون إنترنت جاهزة", color = Color(0xFFB8F2D0), fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        item {
-            StudentOutlinedCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("وضع الترجمة", fontWeight = FontWeight.Black)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        listOf("auto" to "تلقائي", "online" to "Online", "offline" to "Offline").forEach { (key, label) ->
-                            FilterChip(
-                                selected = translationMode == key,
-                                onClick = { translationMode = key },
-                                label = { Text(label) }
-                            )
-                        }
-                    }
-                    Text(
-                        when (translationMode) {
-                            "online" -> "يستخدم الترجمة السياقية عبر الخادم فقط."
-                            "offline" -> "يستخدم نموذج الجهاز فقط ولا يحتاج إنترنت بعد تنزيله."
-                            else -> "يستخدم Online أولاً، ويتحول إلى Offline تلقائياً عند ضعف أو انقطاع الشبكة."
-                        },
-                        color = StudentMuted, fontSize = 12.sp
-                    )
-                    lastTranslationEngine?.let { Text("آخر ترجمة: $it", color = StudentBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp) }
-                }
-            }
-        }
-
-        item {
-            TabRow(selectedTabIndex = selectedTab) {
-                Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("نص وترجمة") }, icon = { Icon(Icons.Rounded.Translate, null) })
-                Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("صورة → نص") }, icon = { Icon(Icons.Rounded.ImageSearch, null) })
-            }
-        }
-
-        if (selectedTab == 1) {
-            item {
-                StudentOutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("استخراج النص من الصور", fontWeight = FontWeight.Black)
-                        Text("اختر صورة أو عدة صور، وسيظهر النص مرتباً إلى فقرات قابلة للتعديل داخل المربع.", color = StudentMuted)
-                        Button(
-                            onClick = { imagePicker.launch("image/*") },
-                            enabled = !ocrBusy,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = StudentBlue)
-                        ) {
-                            if (ocrBusy) CircularProgressIndicator(Modifier.size(19.dp), color = Color.White, strokeWidth = 2.dp)
-                            else Icon(Icons.Rounded.AddPhotoAlternate, null)
-                            Spacer(Modifier.width(7.dp))
-                            Text(if (ocrBusy) "جارِ قراءة الصور..." else "اختيار صور من الاستوديو", fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
             Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, StudentBorder)) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (selectedTab == 1) "النص المستخرج" else "النص الأصلي", fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+                        Text("النص الأصلي", fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
                         Surface(shape = RoundedCornerShape(10.dp), color = StudentSoft) { Text(if (input.isBlank()) "AR / EN" else if (inputHasArabic) "العربية" else "English", color = StudentBlue, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)) }
                         if (input.isNotBlank()) IconButton(onClick = { input = ""; output = "" }) { Icon(Icons.Rounded.Close, "مسح") }
                     }
