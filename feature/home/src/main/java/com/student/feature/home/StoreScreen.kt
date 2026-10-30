@@ -42,7 +42,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
     var frames by remember { mutableStateOf<List<OwnedProfileFrame>>(emptyList()) }
     var roomBackgrounds by remember { mutableStateOf<List<VoiceRoomBackground>>(emptyList()) }
     var selectedBackground by remember { mutableStateOf<VoiceRoomBackground?>(null) }
-    val tabKey = "products"
+    var tabKey by remember { mutableStateOf("home") }
     var productQuery by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<StoreProduct?>(null) }
     var deleteFrame by remember { mutableStateOf<OwnedProfileFrame?>(null) }
@@ -56,8 +56,14 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
             message = null
             val productResult = withContext(Dispatchers.IO) { api.storeProducts(session) }
             val walletResult = withContext(Dispatchers.IO) { api.walletSummary(session) }
+            val orderResult = withContext(Dispatchers.IO) { api.storeOrders(session) }
+            val frameResult = withContext(Dispatchers.IO) { api.myProfileFrames(session) }
+            val backgroundResult = withContext(Dispatchers.IO) { api.voiceRoomBackgrounds(session) }
             productResult.onSuccess { products = it; offline.saveProducts(it) }.onFailure { if (products.isEmpty()) message = it.message }
             walletResult.onSuccess { wallet = it }
+            orderResult.onSuccess { orders = it }
+            frameResult.onSuccess { frames = it }
+            backgroundResult.onSuccess { roomBackgrounds = it }
             busy = false
         }
     }
@@ -186,12 +192,52 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (tabKey != "home") {
+                IconButton(onClick = { tabKey = "home" }) {
+                    Icon(Icons.Rounded.ArrowBack, "رجوع")
+                }
+            }
             Column(Modifier.weight(1f)) {
-                Text("المتجر", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = StudentText)
-                Text("خصّص حسابك وامتلك مزايا جديدة", color = StudentMuted, fontSize = 12.sp)
+                Text(if (tabKey == "home") "المتجر" else "قسم المتجر", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = StudentText)
+                if (tabKey == "home") Text("اختر قسمًا", color = StudentMuted, fontSize = 12.sp)
             }
             Icon(Icons.Rounded.ShoppingBag, "المتجر", tint = StudentGold, modifier = Modifier.size(28.dp))
         }
+        if (tabKey == "home") {
+            val tiles = listOf(
+                "products" to ("المنتجات" to Icons.Rounded.Storefront),
+                "tasks" to ("المهام" to Icons.Rounded.AutoAwesome),
+                "wallet" to ("المحفظة" to Icons.Rounded.AccountBalanceWallet),
+                "diamonds" to ("الألماس" to Icons.Rounded.Diamond),
+                "orders" to ("الطلبات" to Icons.Rounded.Receipt),
+                "frames" to ("الإطارات" to Icons.Rounded.AutoAwesome),
+                "backgrounds" to ("الخلفيات" to Icons.Rounded.Image),
+                "services" to ("الخدمات" to Icons.Rounded.Build)
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(4),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                gridItems(tiles, key = { it.first }) { (key, labelIcon) ->
+                    val (label, icon) = labelIcon
+                    Card(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(0.88f).clickable { tabKey = key },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, StudentBorder),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(Modifier.fillMaxSize().padding(6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(icon, label, tint = StudentBlue, modifier = Modifier.size(25.dp))
+                            Spacer(Modifier.height(5.dp))
+                            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
+                    }
+                }
+            }
+        } else {
         if (tabKey == "products") {
             OutlinedTextField(
                 value = productQuery,
@@ -346,10 +392,19 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                     }
                 }
             }
-            else -> StoreAdvancedSection(api, session) {
+            else -> StoreAdvancedSection(
+                api = api,
+                session = session,
+                initialSubTab = when (tabKey) {
+                    "diamonds" -> 1
+                    "wallet" -> 2
+                    else -> 0
+                }
+            ) {
                 refresh()
                 onProfileRefresh()
             }
+        }
         }
     }
 }

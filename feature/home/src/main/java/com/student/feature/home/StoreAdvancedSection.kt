@@ -24,13 +24,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, onWalletChanged: () -> Unit) {
+fun StoreAdvancedSection(api: SupabaseApi, session: StudentSession, initialSubTab: Int = 0, onWalletChanged: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val masterNumber = "6783943118"
     val masterName = "JAWAD R SAGBAN"
     val whatsappNumber = "9647725541189"
-    var subTab by remember { mutableIntStateOf(0) }
+    var subTab by remember(session.userId, initialSubTab) { mutableIntStateOf(initialSubTab.coerceIn(0, 3)) }
     var tasks by remember { mutableStateOf<List<StoreTask>>(emptyList()) }
     var packages by remember { mutableStateOf<List<DiamondPackage>>(emptyList()) }
     var wallet by remember { mutableStateOf(WalletSummary()) }
