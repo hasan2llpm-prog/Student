@@ -42,7 +42,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
     var frames by remember { mutableStateOf<List<OwnedProfileFrame>>(emptyList()) }
     var roomBackgrounds by remember { mutableStateOf<List<VoiceRoomBackground>>(emptyList()) }
     var selectedBackground by remember { mutableStateOf<VoiceRoomBackground?>(null) }
-    var tabKey by remember { mutableStateOf("products") }
+    val tabKey = "products"
     var productQuery by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<StoreProduct?>(null) }
     var deleteFrame by remember { mutableStateOf<OwnedProfileFrame?>(null) }
@@ -56,14 +56,8 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
             message = null
             val productResult = withContext(Dispatchers.IO) { api.storeProducts(session) }
             val walletResult = withContext(Dispatchers.IO) { api.walletSummary(session) }
-            val orderResult = withContext(Dispatchers.IO) { api.storeOrders(session) }
-            val frameResult = withContext(Dispatchers.IO) { api.myProfileFrames(session) }
-            val backgroundResult = withContext(Dispatchers.IO) { api.voiceRoomBackgrounds(session) }
             productResult.onSuccess { products = it; offline.saveProducts(it) }.onFailure { if (products.isEmpty()) message = it.message }
             walletResult.onSuccess { wallet = it }
-            orderResult.onSuccess { orders = it }
-            frameResult.onSuccess { frames = it }.onFailure { if (tabKey == "frames") message = it.message }
-            backgroundResult.onSuccess { roomBackgrounds = it }.onFailure { if (tabKey == "backgrounds") message = it.message }
             busy = false
         }
     }
@@ -188,20 +182,7 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
         )
     }
 
-    val defaultTabs = listOf("products", "backgrounds", "orders", "frames", "services")
-    val configuredTabs = cfg.strings("store.tab_order", defaultTabs).map { it.lowercase() }.distinct().filter { key ->
-        when (key) {
-            "products" -> cfg.bool("store.show_products_tab", true)
-            "backgrounds" -> true
-            "orders" -> cfg.bool("store.show_orders_tab", true)
-            "frames" -> cfg.bool("store.show_frames_tab", true)
-            "services" -> cfg.bool("store.show_services_tab", true)
-            else -> false
-        }
-    }
-    val allowedTabs = (configuredTabs + "backgrounds").distinct().ifEmpty { listOf("products", "backgrounds") }
     val filteredProducts = products.filter { productQuery.isBlank() || it.name.contains(productQuery.trim(), true) || it.description.contains(productQuery.trim(), true) }
-    LaunchedEffect(allowedTabs) { if (tabKey !in allowedTabs) tabKey = allowedTabs.first() }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -222,32 +203,6 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                 placeholder = { Text("ابحث عن منتج أو ميزة") }
             )
         }
-        if (cfg.bool("store.show_wallet", true)) Card(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7E4)),
-            border = BorderStroke(1.dp, Color(0xFFF0D48A))
-        ) {
-            Column(Modifier.padding(14.dp)) {
-                Text(cfg.string("store.wallet_title", "المحفظة"), fontWeight = FontWeight.Bold, fontSize = cfg.int("store.wallet_title_sp", 16, 12, 24).sp)
-                Spacer(Modifier.height(4.dp))
-                Text("المتاح: ${wallet.availableBalance.toLong()} ${if (wallet.availableBalance > 0) "IQD" else ""}", fontSize = 13.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.Diamond, null, Modifier.size(16.dp), tint = StudentGold); Spacer(Modifier.width(4.dp)); Text("الألماس: ${wallet.diamonds}", fontSize = 13.sp) }
-            }
-        }
-
-        if (cfg.bool("store.show_tabs", true)) TabRow(selectedTabIndex = allowedTabs.indexOf(tabKey).coerceAtLeast(0), containerColor = Color.White, contentColor = StudentBlue) {
-            allowedTabs.forEach { key ->
-                val label = when (key) {
-                    "products" -> cfg.string("store.label_products", "المنتجات")
-                    "backgrounds" -> "خلفيات الغرف"
-                    "orders" -> cfg.string("store.label_orders", "طلباتي")
-                    "frames" -> cfg.string("store.label_frames", "إطاراتي")
-                    else -> cfg.string("store.label_services", "خدمات")
-                }
-                Tab(selected = tabKey == key, onClick = { tabKey = key }, text = { Text(label, fontSize = cfg.int("store.tab_text_sp", 12, 9, 16).sp) })
-            }
-        }
         message?.let { Text(it, Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = if (it.startsWith("تم")) Color(0xFF16803C) else StudentText, fontSize = 12.sp) }
 
         when (tabKey) {
@@ -257,21 +212,6 @@ fun StoreScreen(api: SupabaseApi, session: StudentSession, initialProductType: S
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Card(
-                        Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = StudentBlueDark)
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("اختيارات مناسبة لك", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                                Text("${filteredProducts.size} منتج متاح الآن", color = Color.White.copy(alpha = .76f), fontSize = 12.sp)
-                            }
-                            Icon(Icons.Rounded.AutoAwesome, null, tint = StudentGold, modifier = Modifier.size(28.dp))
-                        }
-                    }
-                }
                 gridItems(filteredProducts, key = { it.id }) { p ->
                     Card(
                         modifier = Modifier.fillMaxWidth().clickable { selected = p },
