@@ -133,7 +133,7 @@ fun StoriesScreen(
             onClose = onBack,
             onNext = {
                 scope.launch {
-                    if (pagerState.currentPage < stories.lastIndex) pagerState.animateScrollToPage(pagerState.currentPage + 1) else onBack()
+                    if (pagerState.currentPage < stories.lastIndex) pagerState.animateScrollToPage(pagerState.currentPage + 1)
                 }
             },
             onPrevious = {
@@ -258,9 +258,22 @@ private fun StoryViewer(
     var paused by remember { mutableStateOf(false) }
     var replyOpen by remember { mutableStateOf(false) }
     var chromeVisible by remember { mutableStateOf(true) }
+    var timerResetKey by remember { mutableIntStateOf(0) }
     var currentProgress by remember(pagerState.currentPage) { mutableFloatStateOf(0f) }
     val current = stories.getOrNull(pagerState.currentPage)
     val timerPaused = paused || replyOpen
+    fun goNextOrReset() {
+        if (pagerState.currentPage < stories.lastIndex) onNext() else {
+            currentProgress = 0f
+            timerResetKey++
+        }
+    }
+    fun goPreviousOrReset() {
+        if (pagerState.currentPage > 0) onPrevious() else {
+            currentProgress = 0f
+            timerResetKey++
+        }
+    }
     LaunchedEffect(pagerState.currentPage, stories) {
         stories.getOrNull(pagerState.currentPage + 1)?.let { next ->
             if (next.mediaType == "image" && !next.mediaUrl.isNullOrBlank()) {
@@ -282,8 +295,9 @@ private fun StoryViewer(
                 onLongPressStart = { paused = true; chromeVisible = false },
                 onLongPressEnd = { paused = false; chromeVisible = true },
                 onSwipeDown = onClose,
-                onNext = onNext,
-                onPrevious = onPrevious,
+                resetSignal = timerResetKey,
+                onNext = ::goNextOrReset,
+                onPrevious = ::goPreviousOrReset,
                 onProgress = { value -> if (page == pagerState.currentPage) currentProgress = value }
             )
         }
@@ -367,6 +381,7 @@ private fun StoryPage(
     onLongPressStart: () -> Unit,
     onLongPressEnd: () -> Unit,
     onSwipeDown: () -> Unit,
+    resetSignal: Int,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onProgress: (Float) -> Unit
@@ -376,7 +391,7 @@ private fun StoryPage(
     var dragDistanceY by remember(story.id) { mutableFloatStateOf(0f) }
     val animatedProgress by animateFloatAsState(progress, label = "story-progress")
     val latestPaused by rememberUpdatedState(paused)
-    LaunchedEffect(story.id) {
+    LaunchedEffect(story.id, resetSignal) {
         progress = 0f
         val steps = 100 // Instagram-style five-second story duration.
         repeat(steps) {
@@ -407,8 +422,8 @@ private fun StoryPage(
             .pointerInput(story.id) {
             detectTapGestures(onTap = { position ->
                 when {
-                    position.x < size.width * 0.25f -> onPrevious()
-                    position.x > size.width * 0.75f -> onNext()
+                    position.x < size.width * 0.5f -> onNext()
+                    position.x >= size.width * 0.5f -> onPrevious()
                 }
             }, onLongPress = { onLongPressStart() }, onPress = {
                 tryAwaitRelease()
