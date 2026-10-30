@@ -275,20 +275,24 @@ private fun StoryViewer(
         }
     }
     LaunchedEffect(pagerState.currentPage, stories) {
-        stories.getOrNull(pagerState.currentPage + 1)?.let { next ->
-            if (next.mediaType == "image" && !next.mediaUrl.isNullOrBlank()) {
+        listOf(
+            stories.getOrNull(pagerState.currentPage - 1),
+            stories.getOrNull(pagerState.currentPage),
+            stories.getOrNull(pagerState.currentPage + 1)
+        ).filterNotNull().forEach { story ->
+            if (story.mediaType == "image" && !story.mediaUrl.isNullOrBlank()) {
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
-                        .data(next.mediaUrl)
-                        .memoryCacheKey(next.mediaUrl)
-                        .diskCacheKey(next.mediaUrl)
+                        .data(story.mediaUrl)
+                        .memoryCacheKey(story.mediaUrl)
+                        .diskCacheKey(story.mediaUrl)
                         .build()
                 )
             }
         }
     }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true) { page ->
+        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize(), userScrollEnabled = true, beyondViewportPageCount = 1) { page ->
             StoryPage(
                 story = stories[page],
                 paused = timerPaused,
@@ -386,6 +390,7 @@ private fun StoryPage(
     onPrevious: () -> Unit,
     onProgress: (Float) -> Unit
 ) {
+    val context = LocalContext.current
     var progress by remember(story.id) { mutableFloatStateOf(0f) }
     var dragDistanceX by remember(story.id) { mutableFloatStateOf(0f) }
     var dragDistanceY by remember(story.id) { mutableFloatStateOf(0f) }
@@ -433,7 +438,17 @@ private fun StoryPage(
     ) {
         val mediaUrl = story.mediaUrl
         when {
-            story.mediaType == "image" && mediaUrl != null -> AsyncImage(mediaUrl, "Story", Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center), contentScale = ContentScale.Crop)
+            story.mediaType == "image" && mediaUrl != null -> AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(mediaUrl)
+                    .memoryCacheKey(mediaUrl)
+                    .diskCacheKey(mediaUrl)
+                    .crossfade(false)
+                    .build(),
+                contentDescription = "Story",
+                modifier = Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center),
+                contentScale = ContentScale.Crop
+            )
             story.mediaType == "video" && mediaUrl != null -> RemoteStoryVideo(mediaUrl, paused, Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center))
             else -> Box(Modifier.fillMaxWidth().aspectRatio(9f / 16f).align(Alignment.Center).background(storyColor(story.backgroundColor)), contentAlignment = Alignment.Center) {
                 Text(story.caption, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(30.dp))
