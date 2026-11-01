@@ -17,6 +17,25 @@ Deno.serve(async(req)=>{
    const {data:userData,error:userError}=await admin.auth.getUser(token);
    if(userError||!userData.user) return json({error:"UNAUTHORIZED",message:"انتهت جلسة الحساب. سجّل الدخول من جديد."},401);
    const userId=userData.user.id;
+   async function notifyAdmin(detail:string){
+     try{
+       const cooldown=new Date(Date.now()-10*60*1000).toISOString();
+       const recent=await admin.from("notifications").select("id").eq("kind","admin_student_ai_error").eq("is_broadcast",true).gte("created_at",cooldown).limit(1);
+       if((recent.data||[]).length>0) return;
+       await admin.from("notifications").insert({
+         user_id:null,
+         actor_id:userId,
+         title:"تعطل Ask AI",
+         body:`فشل طلب من Ask AI. ${detail}`.slice(0,500),
+         kind:"admin_student_ai_error",
+         link:"admin/student-ai",
+         audience:"admin",
+         is_broadcast:true,
+         is_read:false,
+         metadata:{source:"student-ai",request_id:crypto.randomUUID(),detail:detail.slice(0,300)}
+       });
+     }catch(_){ /* Alerting must never break the user's AI response. */ }
+   }
    const body=await req.json();
    const mode=String(body?.mode||"ask").slice(0,30);
    const text=String(body?.prompt??body?.text??"").trim().slice(0,7000);
@@ -58,9 +77,13 @@ Deno.serve(async(req)=>{
 
    if(!ai.ok){
      console.error("Student AI provider error",ai.raw.slice(0,500));
+     await notifyAdmin(`خطأ مزود خارجي (${mode}).`);
      return json({error:"AI_PROVIDER_ERROR",message:"تعذر الوصول إلى Ask AI حالياً. حاول مرة أخرى بعد قليل."},502);
    }
-   if(!ai.answer) return json({error:"EMPTY_AI_RESPONSE",message:"لم تصل إجابة من Ask AI. حاول مرة أخرى."},502);
+   if(!ai.answer){
+     await notifyAdmin(`وصل رد فارغ من مزود الذكاء الاصطناعي (${mode}).`);
+     return json({error:"EMPTY_AI_RESPONSE",message:"لم تصل إجابة من Ask AI. حاول مرة أخرى."},502);
+   }
    if(!isTranslation && safetyPattern.test(ai.answer)){
      return json({ok:true,answer:"لم أستطع معالجة هذا السؤال بصيغته الحالية. أعد صياغته كسؤال تعليمي أو عام، وسأجيبك بدون عرض رسائل الأمان التقنية.",mode,remaining:Math.max(0,settings.free_daily_limit-(count||0)),model:settings.free_model});
    }
