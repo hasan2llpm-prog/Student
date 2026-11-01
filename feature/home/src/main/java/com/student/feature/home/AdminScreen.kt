@@ -31,6 +31,7 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
     var checked by remember { mutableStateOf(false) }
     var users by remember { mutableStateOf<List<AdminRecentUser>>(emptyList()) }
     var flags by remember { mutableStateOf<List<FeatureFlag>>(emptyList()) }
+    var aiAlerts by remember { mutableStateOf<List<StudentNotification>>(emptyList()) }
     var tabKey by remember { mutableStateOf("dashboard") }
     var operationsSection by remember { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
@@ -52,8 +53,11 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
             if (allowed) {
                 val usersResult = withContext(Dispatchers.IO) { api.adminRecentUsers(session) }
                 val flagsResult = withContext(Dispatchers.IO) { api.featureFlags(session) }
+                val notificationsResult = withContext(Dispatchers.IO) { api.notifications(session, 100) }
                 usersResult.onSuccess { users = it }.onFailure { message = it.message }
                 flagsResult.onSuccess { flags = it }.onFailure { if (message == null) message = it.message }
+                notificationsResult.onSuccess { rows -> aiAlerts = rows.filter { it.kind == "admin_student_ai_error" } }
+                    .onFailure { if (message == null) message = it.message }
             }
             loading = false
         }
@@ -106,13 +110,14 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
         )
     }
 
-    val defaultTabs = listOf("dashboard", "users", "features", "broadcast", "v14", "operations", "rooms", "update")
-    val allowedTabs = (listOf("dashboard") + cfg.strings("admin.tab_order", defaultTabs) + "v14").map { it.lowercase() }.distinct().filter { key ->
+    val defaultTabs = listOf("dashboard", "users", "features", "broadcast", "ai", "v14", "operations", "rooms", "update")
+    val allowedTabs = (listOf("dashboard") + cfg.strings("admin.tab_order", defaultTabs) + listOf("v14", "ai")).map { it.lowercase() }.distinct().filter { key ->
         when (key) {
             "dashboard" -> true
             "users" -> cfg.bool("admin.show_users_tab", true)
             "features" -> cfg.bool("admin.show_features_tab", true)
             "broadcast" -> cfg.bool("admin.show_broadcast_tab", true)
+            "ai" -> true
             "v14" -> true
             "operations" -> cfg.bool("admin.show_operations_tab", true)
             "rooms" -> true
@@ -183,6 +188,7 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
                         "users" -> "المستخدمون"
                         "features" -> "الميزات والتحكم"
                         "broadcast" -> "الإشعارات العامة"
+                        "ai" -> "مراقبة Ask AI"
                         "v14" -> "التوثيق والدعم"
                         "operations" -> listOf("طلبات المدرسين","الإعلانات","Learn English","التعليم","المتجر").getOrElse(operationsSection){"الإدارة"}
                         "rooms" -> "إدارة الغرف"
@@ -284,6 +290,7 @@ fun AdminScreen(api: SupabaseApi, session: StudentSession, profile: StudentProfi
             }
 
             "v14" -> AdminV14Pane(api, session) { message = it }
+            "ai" -> AdminAiAlertsPane(api, session, aiAlerts, { refresh() }) { message = it }
 
             "broadcast" -> Column(
                 Modifier.fillMaxWidth().padding(vertical = 14.dp, horizontal = 4.dp),
@@ -478,6 +485,7 @@ private fun AdminDashboard(
     onOpenEducation:()->Unit,
     onOpenStore:()->Unit,
     onOpenBroadcast:()->Unit,
+    onOpenAi:()->Unit = {},
     onOpenSupport:()->Unit,
     onOpenRooms:()->Unit,
     onOpenUpdate:()->Unit
@@ -498,7 +506,8 @@ private fun AdminDashboard(
         ),
         "التسويق والتواصل" to listOf(
             Triple("الإعلانات", Icons.Rounded.Campaign, onOpenAds),
-            Triple("الإشعارات العامة", Icons.Rounded.NotificationsActive, onOpenBroadcast)
+            Triple("الإشعارات العامة", Icons.Rounded.NotificationsActive, onOpenBroadcast),
+            Triple("مراقبة Ask AI", Icons.Rounded.BugReport, onOpenAi)
         ),
         "التحكم بالنظام" to listOf(
             Triple("الميزات والتحكم", Icons.Rounded.Tune, onOpenFeatures),
