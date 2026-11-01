@@ -251,14 +251,10 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             }
         }
 
-        if (translationMode == "offline") {
-            finishOffline()
-            return
-        }
-
-        // Auto uses the server while connected and falls back to ML Kit offline.
-        val canUseOnline = translationMode == "online" || (translationMode == "auto" && hasValidatedNetwork(context))
-        if (!canUseOnline) {
+        // Auto is deliberately offline-first: ML Kit returns immediately on-device.
+        // The server remains available only for an explicit online mode, so normal
+        // translation is not blocked by OpenRouter latency or network quality.
+        if (translationMode != "online") {
             finishOffline()
             return
         }
