@@ -23,7 +23,7 @@ Deno.serve(async(req)=>{
    if(!text) return json({error:"EMPTY_TEXT",message:"اكتب سؤالك أولاً."},400);
 
    const {data:settingsRow}=await admin.from("student_ai_settings").select("*").eq("id",1).maybeSingle();
-   const settings={is_enabled:settingsRow?.is_enabled??true,free_daily_limit:Number(settingsRow?.free_daily_limit??20),free_model:String(settingsRow?.free_model||"openrouter/free")};
+   const settings={is_enabled:settingsRow?.is_enabled??true,free_daily_limit:Number(settingsRow?.free_daily_limit??20),free_model:"openrouter/free"};
    if(settings.is_enabled===false) return json({error:"AI_DISABLED",message:"Ask AI معطل مؤقتاً."},503);
    const since=new Date(); since.setUTCHours(0,0,0,0);
    const {count}=await admin.from("student_ai_usage").select("id",{count:"exact",head:true}).eq("user_id",userId).gte("created_at",since.toISOString());
