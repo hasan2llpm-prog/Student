@@ -1,0 +1,158 @@
+name: Build + Release Student Stable
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: student-stable-release
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v2.10.2
+  VERSION_NAME: 2.10.2
+  VERSION_CODE: '46'
+  APK_NAME: Student-v2.10.2.apk
+  AAB_NAME: Student-v2.10.2.aab
+  SUPABASE_SYNC_URL: https://mlcbixsyizsuxxfjwrym.supabase.co/functions/v1/sync-github-update
+
+jobs:
+  stable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+          cache-provider: basic
+
+      - name: Verify stable source and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "versionCode ${VERSION_CODE}" app/build.gradle
+          grep -q "versionName '${VERSION_NAME}'" app/build.gradle
+          test -f feature/home/src/main/java/com/student/feature/home/StoriesScreen.kt
+          test -f feature/home/src/main/java/com/student/feature/home/AdminAiAlertsPane.kt
+          test -f supabase/functions/student-ai/index.ts
+          grep -q 'openrouter/free' supabase/functions/student-ai/index.ts
+          grep -q 'StudentUpdateChecks.schedule(this)' app/src/main/java/com/student/app/StudentApplication.kt
+          grep -q 'StudentUpdateChecks.enqueueNow(this)' app/src/main/java/com/student/app/StudentMessagingService.kt
+          grep -q 'REQUEST_INSTALL_PACKAGES' app/src/main/AndroidManifest.xml
+
+      - name: Compile stable Kotlin
+        run: gradle --no-daemon --stacktrace :app:compileStableReleaseKotlin
+
+      - name: Run stable tests and lint
+        run: gradle --no-daemon --stacktrace :app:testStableReleaseUnitTest :app:lintStableRelease
+
+      - name: Restore production signing key
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.STUDENT_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.STUDENT_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.STUDENT_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.STUDENT_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for v in KEYSTORE_B64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            test -n "${!v:-}" || { echo "Missing GitHub secret $v"; exit 1; }
+          done
+          KEYSTORE_PATH="$RUNNER_TEMP/student-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "STUDENT_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+          echo "STUDENT_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "STUDENT_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build signed stable APK and AAB
+        run: gradle --no-daemon --stacktrace :app:assembleStableRelease :app:bundleStableRelease
+
+      - name: Verify and package release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          APK="$(find app/build/outputs/apk/stable/release -type f -name '*.apk' | head -n 1)"
+          AAB="$(find app/build/outputs/bundle/stableRelease -type f -name '*.aab' | head -n 1)"
+          test -n "$APK"
+          test -n "$AAB"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+          cp "$APK" "dist/$APK_NAME"
+          cp "$AAB" "dist/$AAB_NAME"
+          sha256sum "dist/$APK_NAME" "dist/$AAB_NAME" > dist/SHA256SUMS.txt
+          cat > dist/update.json <<JSON
+          {
+            "versionCode": ${VERSION_CODE},
+            "versionName": "${VERSION_NAME}",
+            "apkAsset": "${APK_NAME}",
+            "forceUpdate": true,
+            "minimumVersionCode": ${VERSION_CODE},
+            "message": "يتوفر تحديث Student ${VERSION_NAME}. سيتم تنزيله تلقائيًا ثم فتح شاشة التثبيت."
+          }
+          JSON
+          python3 -m json.tool dist/update.json >/dev/null
+          ls -lh dist
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Student-v2.10.2-stable
+          path: |
+            dist/Student-v2.10.2.apk
+            dist/Student-v2.10.2.aab
+            dist/SHA256SUMS.txt
+            dist/update.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish production GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/Student-v2.10.2.apk dist/Student-v2.10.2.aab dist/SHA256SUMS.txt dist/update.json --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$RELEASE_TAG" --title "Student v${VERSION_NAME}" --notes "Student v${VERSION_NAME} Stable — internal automatic update." --latest --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" dist/Student-v2.10.2.apk dist/Student-v2.10.2.aab dist/SHA256SUMS.txt dist/update.json --target "$GITHUB_SHA" --title "Student v${VERSION_NAME}" --notes "Student v${VERSION_NAME} Stable — internal automatic update." --latest --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Sync automatic update settings to Supabase
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body --retry 4 --retry-delay 3 --connect-timeout 15 --max-time 90 -X POST "$SUPABASE_SYNC_URL")"
+          echo "$RESPONSE"
+          python3 - "$RESPONSE" <<'PY'
+          import json, sys
+          data = json.loads(sys.argv[1])
+          assert data.get('ok') is True, data
+          assert data.get('versionCode') == 46, data
+          assert data.get('versionName') == '2.10.2', data
+          assert data.get('forceUpdate') is True, data
+          assert data.get('minimumVersionCode') == 46, data
+          print('Stable automatic update synced successfully')
+          PY
