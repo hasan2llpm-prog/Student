@@ -55,6 +55,7 @@ fun StoriesScreen(
     session: StudentSession,
     profile: StudentProfile?,
     initialStoryId: String? = null,
+    openComposerOnStart: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -107,6 +108,9 @@ fun StoriesScreen(
     }
 
     LaunchedEffect(session.userId) { reload() }
+    LaunchedEffect(session.userId, openComposerOnStart) {
+        if (openComposerOnStart) picker.launch("*/*")
+    }
 
     if (loading) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {

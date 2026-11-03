@@ -56,6 +56,7 @@ fun HomeScreen(
     var initialPostId by remember { mutableStateOf<String?>(null) }
     var initialReelId by remember { mutableStateOf<String?>(null) }
     var initialStoryId by remember { mutableStateOf<String?>(null) }
+    var openStoryComposer by remember { mutableStateOf(false) }
     var initialCommentId by remember { mutableStateOf<String?>(null) }
     var messagesDetail by remember { mutableStateOf(false) }
     var englishSectionKey by remember { mutableStateOf("hub") }
@@ -305,8 +306,16 @@ fun HomeScreen(
                         api, session, profile,
                         onOpenCommunity = { postId -> initialPostId = postId; initialCommentId = null; navigate(StudentRoute.COMMUNITY) },
                         onCreatePost = { navigate(StudentRoute.CREATE) },
-                        onCreateStory = { navigate(StudentRoute.STORIES) },
-                        onOpenStories = { storyId -> initialStoryId = storyId; navigate(StudentRoute.STORIES) },
+                        onCreateStory = {
+                            initialStoryId = null
+                            openStoryComposer = true
+                            navigate(StudentRoute.STORIES)
+                        },
+                        onOpenStories = { storyId ->
+                            openStoryComposer = false
+                            initialStoryId = storyId
+                            navigate(StudentRoute.STORIES)
+                        },
                         onOpenProfile = { navigate(StudentRoute.PROFILE) },
                         onOpenEducation = { slug -> openEducation(slug) },
                         onOpenStudentAi = { navigate(StudentRoute.STUDENT_AI) },
@@ -320,7 +329,18 @@ fun HomeScreen(
                     )
                     StudentRoute.SEARCH -> SearchScreen(api, session, onOpenMessages = { conversationId -> initialConversationId = conversationId; navigate(StudentRoute.MESSAGES) }, onOpenProfile = ::openProfile)
                     StudentRoute.CREATE -> CreateScreen(api, session, onDone = { initialPostId = null; initialCommentId = null; selectRoot(StudentRoute.COMMUNITY) })
-                    StudentRoute.STORIES -> StoriesScreen(api, session, profile, initialStoryId = initialStoryId, onBack = { initialStoryId = null; goBack() })
+                    StudentRoute.STORIES -> StoriesScreen(
+                        api,
+                        session,
+                        profile,
+                        initialStoryId = initialStoryId,
+                        openComposerOnStart = openStoryComposer,
+                        onBack = {
+                            initialStoryId = null
+                            openStoryComposer = false
+                            goBack()
+                        }
+                    )
                     StudentRoute.SAVED -> SavedScreen(api, session, onOpenTarget = { target -> openNotificationTarget(target) })
                     StudentRoute.MENU -> MenuScreen(
                         profile = profile,
