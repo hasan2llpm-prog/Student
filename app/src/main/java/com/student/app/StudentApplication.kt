@@ -23,6 +23,7 @@ class StudentApplication : Application(), ImageLoaderFactory {
         super.onCreate()
         StudentUpdateChecks.schedule(this)
         StudentUpdateChecks.enqueueNow(this)
+        StudentVocabularyReminders.schedule(this)
         if (FirebaseApp.getApps(this).isEmpty()) {
             runCatching {
                 val options = FirebaseOptions.Builder()
