@@ -7,6 +7,8 @@ object StudentConfig {
     const val SUPABASE_KEY = "sb_publishable_DDvBmb3o1x_VfArVUg-mzw_nbsR7rRA"
     const val NATIVE_REMOTE_CONFIG_URL = "https://student-b1v.pages.dev/config.json"
     const val NATIVE_REMOTE_CONFIG_FALLBACK_URL = "https://raw.githubusercontent.com/hasan2llpm-prog/Student/main/config.json"
+    // Set this after deploying services/youtube-caption-api. Empty keeps the local Android fallback active.
+    const val YOUTUBE_CAPTION_API_URL = ""
     const val FIREBASE_PROJECT_ID = "student-1fcba"
     const val FIREBASE_SENDER_ID = "898081758778"
     const val FIREBASE_API_KEY = "AIzaSyCWhbGfLtUymIO3O5itIC9054FOgE0aYi0"

@@ -2,6 +2,9 @@ package com.student.feature.home
 
 import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
+import android.os.Handler
+import android.os.Looper
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +33,7 @@ import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Translate
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -68,6 +73,7 @@ import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.Translator
 import com.google.mlkit.nl.translate.TranslatorOptions
+import com.student.core.data.StudentConfig
 import com.student.core.data.StudentSession
 import com.student.core.data.SupabaseApi
 import kotlinx.coroutines.Dispatchers
@@ -76,9 +82,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.regex.Pattern
 
-private data class YoutubeCue(val startSeconds: Double, val text: String)
+private data class YoutubeCue(val startSeconds: Double, val durationSeconds: Double, val text: String)
 private data class YoutubeTranscript(val videoId: String, val cues: List<YoutubeCue>)
 
 private fun extractYoutubeId(raw: String): String? {
@@ -104,15 +111,53 @@ private fun parseCaptionXml(xml: String): List<YoutubeCue> {
         val attrs = matcher.group(1).orEmpty()
         val text = decodeCaption(matcher.group(2).orEmpty())
         val start = attrPattern.matcher(attrs).let { if (it.find()) it.group(1)?.toDoubleOrNull() else null }
-        if (!text.isNullOrBlank() && start != null) result += YoutubeCue(start, text)
+        if (!text.isNullOrBlank() && start != null) result += YoutubeCue(start, 0.0, text)
     }
     return result.distinctBy { "${it.startSeconds}:${it.text}" }
 }
 
+private fun parseCaptionApiResponse(raw: String, fallbackVideoId: String): YoutubeTranscript {
+    val root = JSONObject(raw)
+    val id = root.optString("video_id").ifBlank { fallbackVideoId }
+    val cuesJson = root.optJSONArray("cues") ?: throw IllegalStateException("Caption API returned no cues")
+    val cues = buildList {
+        for (index in 0 until cuesJson.length()) {
+            val cue = cuesJson.optJSONObject(index) ?: continue
+            val text = cue.optString("text").trim()
+            if (text.isBlank()) continue
+            add(YoutubeCue(cue.optDouble("start", 0.0), cue.optDouble("duration", 0.0), text))
+        }
+    }.take(2000)
+    if (cues.isEmpty()) throw IllegalStateException("Caption API returned an empty transcript")
+    return YoutubeTranscript(id, cues)
+}
+
 private suspend fun fetchYoutubeTranscript(videoId: String): Result<YoutubeTranscript> = withContext(Dispatchers.IO) {
     runCatching {
+        val apiBase = StudentConfig.YOUTUBE_CAPTION_API_URL.trim().trimEnd('/')
+        if (apiBase.isNotBlank()) {
+            val serverTranscript = runCatching {
+                val endpoint = "$apiBase/v1/transcript?video_id=${URLEncoder.encode(videoId, "UTF-8")}"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 8_000
+                    readTimeout = 15_000
+                    setRequestProperty("Accept", "application/json")
+                }
+                try {
+                    if (connection.responseCode !in 200..299) throw IllegalStateException("Caption API HTTP ${connection.responseCode}")
+                    parseCaptionApiResponse(connection.inputStream.bufferedReader().use { it.readText() }, videoId)
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrNull()
+            if (serverTranscript != null) return@runCatching serverTranscript
+        }
+
         val urls = listOf(
             "https://video.google.com/timedtext?lang=en&v=$videoId",
+            "https://video.google.com/timedtext?lang=en-US&v=$videoId",
+            "https://video.google.com/timedtext?lang=en-GB&v=$videoId",
             "https://www.youtube.com/api/timedtext?lang=en&v=$videoId",
             "https://video.google.com/timedtext?lang=en&kind=asr&v=$videoId"
         )
@@ -130,7 +175,7 @@ private suspend fun fetchYoutubeTranscript(videoId: String): Result<YoutubeTrans
                 connection.disconnect()
             }
         }.firstOrNull { it.isNotEmpty() }.orEmpty()
-        if (cues.isEmpty()) throw IllegalStateException("هذا الفيديو لا يوفّر Captions إنجليزية عامة.")
+        if (cues.isEmpty()) throw IllegalStateException("تعذر الوصول إلى نص الفيديو من مصادر YouTube المتاحة حالياً.")
         YoutubeTranscript(videoId, cues.take(80))
     }
 }
@@ -147,28 +192,65 @@ function onYouTubeIframeAPIReady(){
 function setRate(v){if(player&&player.setPlaybackRate)player.setPlaybackRate(parseFloat(v));}
 function setQuality(v){if(player&&player.setPlaybackQuality)player.setPlaybackQuality(v);}
 function seekTo(v){if(player&&player.seekTo)player.seekTo(parseFloat(v),true);}
+function pauseVideo(){if(player&&player.pauseVideo)player.pauseVideo();}
+function playVideo(){if(player&&player.playVideo)player.playVideo();}
+setInterval(function(){if(player&&player.getCurrentTime&&window.StudentAndroid){StudentAndroid.onTime(String(player.getCurrentTime()));}},250);
 </script><script src="https://www.youtube.com/iframe_api"></script>
 </body></html>
 """.trimIndent()
 
+private class YoutubeTimeBridge(private val onTime: (Double) -> Unit) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun onTime(value: String) {
+        value.toDoubleOrNull()?.let { seconds -> mainHandler.post { onTime(seconds) } }
+    }
+}
+
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-private fun YoutubePlayer(videoId: String, quality: String, rate: String, modifier: Modifier = Modifier) {
+private fun YoutubePlayer(
+    videoId: String,
+    quality: String,
+    rate: String,
+    onTimeChanged: (Double) -> Unit,
+    onWebViewReady: (WebView) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val latestTimeCallback by androidx.compose.runtime.rememberUpdatedState(onTimeChanged)
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
     AndroidView(
         modifier = modifier,
         factory = { context ->
             WebView(context).apply {
+                tag = videoId
                 setBackgroundColor(AndroidColor.rgb(16, 24, 32))
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = true
                 webChromeClient = WebChromeClient()
                 webViewClient = WebViewClient()
+                addJavascriptInterface(YoutubeTimeBridge { latestTimeCallback(it) }, "StudentAndroid")
+                webViewRef.value = this
+                onWebViewReady(this)
                 loadDataWithBaseURL("https://www.youtube.com", youtubePlayerHtml(videoId, quality, rate), "text/html", "UTF-8", null)
             }
         },
         update = { view ->
+            if (view.tag != videoId) {
+                view.tag = videoId
+                view.loadDataWithBaseURL("https://www.youtube.com", youtubePlayerHtml(videoId, quality, rate), "text/html", "UTF-8", null)
+            }
             view.evaluateJavascript("setRate('$rate');setQuality('$quality');", null)
+        },
+        onRelease = { view ->
+            view.removeJavascriptInterface("StudentAndroid")
+            view.stopLoading()
+            view.loadUrl("about:blank")
+            view.clearHistory()
+            view.destroy()
+            if (webViewRef.value === view) webViewRef.value = null
         }
     )
 }
@@ -212,10 +294,21 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
     var selectedCueTranslation by remember { mutableStateOf<Map<Double, String>>(emptyMap()) }
     var qualityMenu by remember { mutableStateOf(false) }
     var speedMenu by remember { mutableStateOf(false) }
+    var currentVideoTime by remember { mutableStateOf(0.0) }
+    var playerWebView by remember { mutableStateOf<WebView?>(null) }
+    val transcriptListState = rememberLazyListState()
+    val activeCueIndex = remember(transcript, currentVideoTime) {
+        transcript?.cues?.indexOfLast { currentVideoTime >= it.startSeconds } ?: -1
+    }
 
     DisposableEffect(translator) { onDispose { translator.close() } }
     LaunchedEffect(initialUrl) { if (!initialUrl.isNullOrBlank()) url = initialUrl }
     LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(5000); message = null } }
+    LaunchedEffect(activeCueIndex, transcript) {
+        if (activeCueIndex >= 0 && transcript != null) {
+            transcriptListState.animateScrollToItem((activeCueIndex + 3).coerceAtMost(transcript!!.cues.lastIndex + 3))
+        }
+    }
 
     fun translateCue(cue: YoutubeCue) {
         if (selectedCueTranslation.containsKey(cue.startSeconds) || translating) return
@@ -242,6 +335,7 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
     fun selectWord(word: String) {
         val clean = word.lowercase().trim()
         if (clean.isBlank()) return
+        playerWebView?.evaluateJavascript("pauseVideo();", null)
         selectedWord = clean
         speech.speak(clean, "american", "normal")
         selectedMeaning = localVocabulary.firstOrNull { it.word.equals(clean, true) }?.meaningAr.orEmpty()
@@ -257,6 +351,7 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF5F7FA)),
+        state = transcriptListState,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -320,7 +415,14 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
 
         transcript?.let { data ->
             item {
-                YoutubePlayer(data.videoId, quality, rate, Modifier.fillMaxWidth().height(210.dp))
+                YoutubePlayer(
+                    videoId = data.videoId,
+                    quality = quality,
+                    rate = rate,
+                    onTimeChanged = { currentVideoTime = it },
+                    onWebViewReady = { playerWebView = it },
+                    modifier = Modifier.fillMaxWidth().height(210.dp)
+                )
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -342,7 +444,9 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
                 Text("اضغط على أي كلمة لسماعها ومعرفة معناها", color = StudentMuted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 4.dp))
             }
             items(data.cues, key = { "${it.startSeconds}-${it.text}" }) { cue ->
-                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, StudentBorder)) {
+                val cueIndex = data.cues.indexOf(cue)
+                val isActive = cueIndex == activeCueIndex
+                Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = if (isActive) Color(0xFFEAF8F5) else Color.White), border = BorderStroke(1.dp, if (isActive) StudentTeal else StudentBorder)) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text("${cue.startSeconds.toInt()}s", color = StudentMuted, fontSize = 10.sp)
                         androidx.compose.foundation.text.ClickableText(
@@ -367,6 +471,11 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl:
                             Text(selectedMeaning, color = StudentText, modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
                         }
                         IconButton(onClick = { speech.speak(selectedWord.orEmpty(), "american", "normal") }) { Icon(Icons.Rounded.RecordVoiceOver, "نطق الكلمة", tint = StudentTeal) }
+                        IconButton(onClick = {
+                            selectedWord = null
+                            selectedMeaning = ""
+                            playerWebView?.evaluateJavascript("playVideo();", null)
+                        }) { Icon(Icons.Rounded.Close, "إغلاق", tint = StudentMuted) }
                     }
                 }
             }
