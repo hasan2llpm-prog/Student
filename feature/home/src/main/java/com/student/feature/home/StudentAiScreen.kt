@@ -16,14 +16,17 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextDirection
@@ -330,6 +333,17 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
             append(output.substring(cursor))
         }
     }
+    val resultTerm = remember(input, output, inputHasArabic) {
+        (if (inputHasArabic) output else input)
+            .trim()
+            .split(Regex("\\s+"))
+            .firstOrNull { token -> token.any { character -> character.isLetter() } }
+            .orEmpty()
+            .lowercase()
+    }
+    val resultVocabulary = remember(resultTerm, localVocabulary) {
+        localVocabulary.firstOrNull { it.word.equals(resultTerm, ignoreCase = true) }
+    }
     LaunchedEffect(speechBusy) {
         if (speechBusy) {
             kotlinx.coroutines.delay(450)
@@ -399,38 +413,73 @@ fun StudentAiScreen(api: SupabaseApi, session: StudentSession) {
 
         if (output.isNotBlank()) {
             item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFFEAF8F5),
-                    border = BorderStroke(1.dp, Color(0xFFB9E5DA))
-                ) {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Box(Modifier.weight(1f)) {
-                            ClickableText(
-                                text = annotatedOutput,
-                                style = MaterialTheme.typography.bodyMedium.copy(textDirection = bidiTextDirection(output), textAlign = if (Regex("[\u0600-\u06FF]").containsMatchIn(output.trim().take(24))) TextAlign.Right else TextAlign.Left),
-                                onClick = { offset ->
-                                    annotatedOutput.getStringAnnotations("word", offset, offset).firstOrNull()?.let { requestContext(it.item) }
-                                }
-                            )
-                            DropdownMenu(
-                                expanded = selectedContextWord != null,
-                                onDismissRequest = { selectedContextWord = null },
-                                modifier = Modifier.widthIn(max = 300.dp)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xFFEAF8F5),
+                        border = BorderStroke(1.dp, Color(0xFFB9E5DA))
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.width(92.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(selectedContextWord.orEmpty(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
-                                if (contextBusy) {
-                                    CircularProgressIndicator(Modifier.padding(14.dp).size(18.dp), strokeWidth = 2.dp)
-                                } else {
-                                    Text(contextText, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 12.sp)
+                                IconButton(onClick = { accent = "american"; speechBusy = true; if (!speech.speak(englishForSpeech, "american", speed)) error = "النطق الأمريكي غير متاح على الجهاز." }) {
+                                    Text("🇺🇸", fontSize = 25.sp)
+                                }
+                                IconButton(onClick = { accent = "british"; speechBusy = true; if (!speech.speak(englishForSpeech, "british", speed)) error = "النطق البريطاني غير متاح على الجهاز." }) {
+                                    Text("🇬🇧", fontSize = 25.sp)
+                                }
+                                IconButton(onClick = { speechBusy = true; if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }) {
+                                    if (speechBusy) CircularProgressIndicator(Modifier.size(20.dp), color = StudentTeal, strokeWidth = 2.dp)
+                                    else Icon(Icons.Rounded.VolumeUp, "نطق", tint = StudentTeal, modifier = Modifier.size(24.dp))
                                 }
                             }
-                        }
-                        TextButton(onClick = { accent = "american"; speechBusy = true; if (!speech.speak(englishForSpeech, "american", speed)) error = "النطق الأمريكي غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇺🇸", fontSize = 17.sp) }
-                        TextButton(onClick = { accent = "british"; speechBusy = true; if (!speech.speak(englishForSpeech, "british", speed)) error = "النطق البريطاني غير متاح على الجهاز." }, contentPadding = PaddingValues(horizontal = 3.dp, vertical = 0.dp), modifier = Modifier.height(32.dp)) { Text("🇬🇧", fontSize = 17.sp) }
-                        IconButton(onClick = { speechBusy = true; if (!speech.speak(englishForSpeech, accent, speed)) error = "اكتب نصًا إنجليزيًا أولًا للنطق." }, modifier = Modifier.size(32.dp)) {
-                            if (speechBusy) CircularProgressIndicator(Modifier.size(15.dp), color = StudentTeal, strokeWidth = 2.dp) else Icon(Icons.Rounded.VolumeUp, "نطق", tint = StudentTeal, modifier = Modifier.size(19.dp))
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                            ) {
+                                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    Text(
+                                        resultTerm.ifBlank { output.trim() },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        fontSize = 25.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = StudentText
+                                    )
+                                    ClickableText(
+                                        text = annotatedOutput,
+                                        style = MaterialTheme.typography.bodyLarge.copy(textDirection = bidiTextDirection(output), textAlign = TextAlign.Right),
+                                        onClick = { offset ->
+                                            annotatedOutput.getStringAnnotations("word", offset, offset).firstOrNull()?.let { requestContext(it.item) }
+                                        }
+                                    )
+                                    Text("Arabic: ${if (inputHasArabic) input.trim() else output.trim()}", fontSize = 15.sp, color = StudentText)
+                                    resultVocabulary?.let { word ->
+                                        if (word.meaningAr.isNotBlank()) Text("المعنى: ${word.meaningAr}", fontSize = 14.sp, color = StudentText)
+                                        if (word.example.isNotBlank()) Text("American: ${word.example}", fontSize = 14.sp, color = StudentText)
+                                        if (word.exampleAr.isNotBlank()) Text("${word.exampleAr}", fontSize = 14.sp, color = StudentMuted)
+                                    }
+                                    DropdownMenu(
+                                        expanded = selectedContextWord != null,
+                                        onDismissRequest = { selectedContextWord = null },
+                                        modifier = Modifier.widthIn(max = 300.dp)
+                                    ) {
+                                        Text(selectedContextWord.orEmpty(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                                        if (contextBusy) CircularProgressIndicator(Modifier.padding(14.dp).size(18.dp), strokeWidth = 2.dp)
+                                        else Text(contextText, modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp), fontSize = 12.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
