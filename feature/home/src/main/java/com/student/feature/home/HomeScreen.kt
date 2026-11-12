@@ -63,6 +63,7 @@ fun HomeScreen(
     var initialStoreProductType by remember { mutableStateOf<String?>(null) }
     var remoteActionKey by remember { mutableStateOf<String?>(null) }
     var remoteScreenKey by remember { mutableStateOf<String?>(null) }
+    var initialYoutubeUrl by remember { mutableStateOf<String?>(null) }
     var nativeConfig by remember { mutableStateOf(NativeRemoteConfig.EMPTY) }
     var featureControls by remember { mutableStateOf<Map<String, Boolean>>(emptyMap()) }
     var refreshNonce by remember { mutableIntStateOf(0) }
@@ -120,6 +121,7 @@ fun HomeScreen(
             "ask_ai" in v || "student-ai" in v -> StudentRoute.ASK_AI
             "translate" in v -> StudentRoute.STUDENT_AI
             "rooms" in v || "room" in v -> StudentRoute.ROOMS
+            "youtube" in v -> StudentRoute.YOUTUBE_LEARNING
             "ai" in v -> StudentRoute.ASK_AI
             else -> null
         }
@@ -157,6 +159,11 @@ fun HomeScreen(
             "admin" in lower || "teacher_request" in lower -> navigate(StudentRoute.ADMIN)
             "report" in lower || "academic" in lower -> navigate(StudentRoute.ACADEMIC_REPORTS)
             "room" in lower -> navigate(StudentRoute.ROOMS)
+            lower.startsWith("youtube/") || lower.startsWith("youtube:") -> {
+                val id = raw.substringAfter('/').substringAfter(':').substringBefore('?').trim()
+                initialYoutubeUrl = if (id.isNotBlank()) "https://www.youtube.com/watch?v=$id" else null
+                navigate(StudentRoute.YOUTUBE_LEARNING)
+            }
             "translate" in lower -> navigate(StudentRoute.STUDENT_AI)
             else -> navigate(StudentRoute.NOTIFICATIONS)
         }
@@ -382,7 +389,7 @@ fun HomeScreen(
                     )
                     StudentRoute.STUDENT_AI -> StudentAiScreen(api, session)
                     StudentRoute.ASK_AI -> AskAiScreen(api, session)
-                    StudentRoute.YOUTUBE_LEARNING -> YoutubeLearningScreen(api, session)
+                    StudentRoute.YOUTUBE_LEARNING -> YoutubeLearningScreen(api, session, initialUrl = initialYoutubeUrl)
                     StudentRoute.LEARN_ENGLISH -> EnglishAcademyScreen(api, session, "hub")
                     StudentRoute.ENGLISH_ACADEMY -> EnglishAcademyScreen(api, session, englishSectionKey)
                     StudentRoute.ACADEMIC_REPORTS -> AcademicReportsScreen(api, session)

@@ -2,7 +2,6 @@ package com.student.feature.home
 
 import android.annotation.SuppressLint
 import android.graphics.Color as AndroidColor
-import android.text.Html
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -40,6 +39,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -72,6 +72,7 @@ import com.student.core.data.SupabaseApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.regex.Pattern
@@ -186,7 +187,7 @@ private fun coloredWords(text: String): AnnotatedString = buildAnnotatedString {
 }
 
 @Composable
-fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession) {
+fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession, initialUrl: String? = null) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val speech = rememberStudentSpeechController()
@@ -195,12 +196,15 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession) {
         Translation.getClient(TranslatorOptions.Builder().setSourceLanguage("en").setTargetLanguage("ar").build())
     }
 
-    var url by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(initialUrl.orEmpty()) }
+    var videoTitle by remember { mutableStateOf("") }
+    var videoDescription by remember { mutableStateOf("") }
     var transcript by remember { mutableStateOf<YoutubeTranscript?>(null) }
     var quality by remember { mutableStateOf("hd720") }
     var rate by remember { mutableStateOf("1.0") }
     var loading by remember { mutableStateOf(false) }
     var translating by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var selectedWord by remember { mutableStateOf<String?>(null) }
     var selectedMeaning by remember { mutableStateOf("") }
@@ -209,6 +213,7 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession) {
     var speedMenu by remember { mutableStateOf(false) }
 
     DisposableEffect(translator) { onDispose { translator.close() } }
+    LaunchedEffect(initialUrl) { if (!initialUrl.isNullOrBlank()) url = initialUrl }
     LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(5000); message = null } }
 
     fun translateCue(cue: YoutubeCue) {
@@ -266,6 +271,33 @@ fun YoutubeLearningScreen(api: SupabaseApi, session: StudentSession) {
                         }
                     }
                     OutlinedTextField(value = url, onValueChange = { url = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("رابط YouTube") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(14.dp))
+                    OutlinedTextField(value = videoTitle, onValueChange = { videoTitle = it.take(120) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("عنوان محفوظ اختياري") }, shape = RoundedCornerShape(14.dp))
+                    OutlinedTextField(value = videoDescription, onValueChange = { videoDescription = it.take(500) }, modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), minLines = 2, maxLines = 4, label = { Text("وصف الفيديو اختياري") }, shape = RoundedCornerShape(14.dp))
+                    val saveId = extractYoutubeId(url)
+                    OutlinedButton(
+                        onClick = {
+                            if (saveId == null || saving) return@OutlinedButton
+                            saving = true
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    api.saveItem(
+                                        session = session,
+                                        contentType = "youtube",
+                                        contentId = saveId,
+                                        title = videoTitle.ifBlank { "فيديو YouTube" },
+                                        subtitle = videoDescription,
+                                        source = "youtube",
+                                        target = "youtube/$saveId",
+                                        metadata = JSONObject().put("video_id", saveId).put("url", "https://www.youtube.com/watch?v=$saveId")
+                                    )
+                                }.onSuccess { message = "تم حفظ الفيديو في المحفوظات." }.onFailure { message = it.message ?: "تعذر حفظ الفيديو." }
+                                saving = false
+                            }
+                        },
+                        enabled = saveId != null && !saving,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    ) { Text(if (saving) "جاري الحفظ..." else "حفظ الرابط للمستقبل", fontWeight = FontWeight.Bold) }
                     Button(
                         onClick = {
                             val id = extractYoutubeId(url)

@@ -175,6 +175,7 @@ private fun typeLabel(type: String): String = when (type.lowercase()) {
     "lesson" -> "درس"
     "post" -> "منشور"
     "reel" -> "ريلز"
+    "youtube" -> "فيديو YouTube"
     "file" -> "ملف"
     "video" -> "فيديو"
     else -> type.ifBlank { "محتوى" }
