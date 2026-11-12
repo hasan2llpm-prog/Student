@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 enum class StudentRoute {
     HOME, SEARCH, CREATE, SAVED, MENU,
     PROFILE, MESSAGES, NOTIFICATIONS, EDUCATION, STORE, ADMIN, SETTINGS, STORIES,
-    STUDENT_AI, ASK_AI, LEARN_ENGLISH, ENGLISH_ACADEMY, ACADEMIC_REPORTS, SUGGESTIONS, TEACHER_PORTAL, PUBLIC_PROFILE, SUPPORT, COMMUNITY, ACTIVITY, REELS, ROOMS, REMOTE_ACTION, REMOTE_SCREEN
+    STUDENT_AI, ASK_AI, YOUTUBE_LEARNING, LEARN_ENGLISH, ENGLISH_ACADEMY, ACADEMIC_REPORTS, SUGGESTIONS, TEACHER_PORTAL, PUBLIC_PROFILE, SUPPORT, COMMUNITY, ACTIVITY, REELS, ROOMS, REMOTE_ACTION, REMOTE_SCREEN
 }
 
 @Composable
@@ -212,6 +212,7 @@ fun HomeScreen(
         StudentRoute.STORIES -> "Stories"
         StudentRoute.STUDENT_AI -> "الترجمة"
         StudentRoute.ASK_AI -> "Ask AI"
+        StudentRoute.YOUTUBE_LEARNING -> "تعلم من YouTube"
         StudentRoute.LEARN_ENGLISH -> "Learn English"
         StudentRoute.ENGLISH_ACADEMY -> "English"
         StudentRoute.ACADEMIC_REPORTS -> "التقارير الأكاديمية"
@@ -348,6 +349,7 @@ fun HomeScreen(
                         onMessages = { navigate(StudentRoute.MESSAGES) },
                         onEducation = { openEducation(null) },
                         onStudentAi = { navigate(StudentRoute.STUDENT_AI) },
+                        onYoutubeLearning = { navigate(StudentRoute.YOUTUBE_LEARNING) },
                         onLearnEnglish = { navigate(StudentRoute.LEARN_ENGLISH) },
                         onTeacherPortal = { navigate(StudentRoute.TEACHER_PORTAL) },
                         onSuggestions = { navigate(StudentRoute.SUGGESTIONS) },
@@ -380,6 +382,7 @@ fun HomeScreen(
                     )
                     StudentRoute.STUDENT_AI -> StudentAiScreen(api, session)
                     StudentRoute.ASK_AI -> AskAiScreen(api, session)
+                    StudentRoute.YOUTUBE_LEARNING -> YoutubeLearningScreen(api, session)
                     StudentRoute.LEARN_ENGLISH -> EnglishAcademyScreen(api, session, "hub")
                     StudentRoute.ENGLISH_ACADEMY -> EnglishAcademyScreen(api, session, englishSectionKey)
                     StudentRoute.ACADEMIC_REPORTS -> AcademicReportsScreen(api, session)

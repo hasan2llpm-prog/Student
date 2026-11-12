@@ -26,6 +26,7 @@ fun MenuScreen(
     onMessages: () -> Unit,
     onEducation: () -> Unit,
     onStudentAi: () -> Unit,
+    onYoutubeLearning: () -> Unit,
     onLearnEnglish: () -> Unit,
     onTeacherPortal: () -> Unit,
     onSuggestions: () -> Unit,
@@ -66,6 +67,7 @@ fun MenuScreen(
             }
         }
         item { MenuEntry(Icons.Rounded.School, "التعليم", onEducation) }
+        item { MenuEntry(Icons.Rounded.PlayCircle, "التعلم من فيديو YouTube", onYoutubeLearning) }
         item { MenuEntry(Icons.Rounded.Badge, "نظام المدرس", onTeacherPortal) }
         item { MenuEntry(Icons.Rounded.Storefront, "المتجر والمحفظة", onStore) }
         item { MenuEntry(Icons.Rounded.Bookmark, "المحفوظات", onSaved) }
